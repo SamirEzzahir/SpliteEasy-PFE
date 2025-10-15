@@ -1,0 +1,114 @@
+/* frontend/css/style.css - base styles and responsive tweaks */
+
+body { font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial; 
+  background:#f8f9fa; 
+  padding-bottom: 120px; /* adjust if your navbar height changes */
+}
+
+
+#navbarMobile nav {
+  z-index: 1030; /* same as Bootstrap modal fallback */
+}
+/* Navbar placeholder sizing */
+.navbar-brand { font-weight:700; }
+
+/* Card general style */
+.group-card {
+  border-radius: 15px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.group-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Group avatar circle */
+.group-avatar {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+/* Optional: random gradient per group */
+.group-avatar[data-color="1"] { background: linear-gradient(135deg, #ff9a9e, #fad0c4); }
+.group-avatar[data-color="2"] { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+.group-avatar[data-color="3"] { background: linear-gradient(135deg, #f6d365, #fda085); }
+.group-avatar[data-color="4"] { background: linear-gradient(135deg, #84fab0, #8fd3f4); }
+.group-avatar[data-color="5"] { background: linear-gradient(135deg, #cfd9df, #e2ebf0); }
+.group-avatar[data-color="6"] { background: linear-gradient(135deg, #ffecd2, #fcb69f); }
+
+/* Action buttons in card */
+.group-card .btn {
+  width: 70px;
+}
+
+/* 🧩 Member card */
+.member-card {
+  border-radius: 16px;
+  background-color: #ffffff;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+}
+
+.member-card:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+}
+
+/* ✨ Selected state */
+.member-card.selected {
+  border: 2px solid #0d6efd;
+  background-color: #e9f2ff;
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 4px 16px rgba(13, 110, 253, 0.25);
+}
+
+/* 🟦 Avatar style */
+.member-card .avatar {
+  width: 58px;
+  height: 58px;
+  background: linear-gradient(135deg, #0d6efd, #66a6ff);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.2rem;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+  text-transform: uppercase;
+}
+
+/* 📱 Responsive */
+@media (max-width: 768px) {
+  .member-card {
+    padding: 0.8rem;
+  }
+  .member-card .avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 1rem;
+    margin-right: 0.5rem;
+  }
+  .member-card h6 {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .member-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .member-card .avatar {
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+}

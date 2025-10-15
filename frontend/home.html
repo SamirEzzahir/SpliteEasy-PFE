@@ -1,0 +1,259 @@
+<!-- frontend\Home.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SplitEasy – Home</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f8f9fc;
+    }
+
+    .welcome-banner {
+      background: linear-gradient(135deg, #4e73df, #1cc88a);
+      color: white;
+      padding: 60px 20px;
+      border-radius: 12px;
+    }
+
+    .step-card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      transition: transform 0.3s ease;
+    }
+
+    .step-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .use-case {
+      padding: 30px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      transition: transform 0.3s ease;
+    }
+
+    .use-case:hover {
+      transform: scale(1.03);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ✅ Navbar -->
+  <div id="navbar" class="d-none d-md-block"></div>
+  <!-- ✅ Mobile Navbar -->
+  <div id="navbarMobile" class="d-md-none"></div>
+
+
+  <div class="container my-4">
+
+    <!-- Welcome Banner -->
+
+
+
+    <div class="welcome-banner text-center mb-5">
+      <h1 class="fw-bold">Welcome back, <span id="currentUserHome">Friend</span> 👋</h1>
+      <p class="lead">Here’s how SplitEasy helps you manage shared expenses with ease.</p>
+
+
+      <button class="btn btn-light fw-bold mt-3" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+        <i class="bi bi-plus-circle"></i> Create Your First Group
+      </button>
+    </div>
+
+    <!-- How It Works -->
+    <section id="howitworks" class="mb-5">
+      <h2 class="fw-bold text-center mb-4">How it Works</h2>
+      <div class="row g-4">
+        <div class="col-md-3">
+          <div class="card step-card text-center p-4 h-100">
+            <i class="bi bi-person-plus fs-1 text-primary"></i>
+            <h5 class="mt-3">1. Add Friends</h5>
+            <p>Search and connect with your friends or colleagues.</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card step-card text-center p-4 h-100">
+            <i class="bi bi-people fs-1 text-success"></i>
+            <h5 class="mt-3">2. Create Groups</h5>
+            <p>Make a group for a trip, shared flat, family, or work project.</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card step-card text-center p-4 h-100">
+            <i class="bi bi-receipt fs-1 text-info"></i>
+            <h5 class="mt-3">3. Add Expenses</h5>
+            <p>Log who paid what, and SplitEasy does the math for you.</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card step-card text-center p-4 h-100">
+            <i class="bi bi-cash-coin fs-1 text-warning"></i>
+            <h5 class="mt-3">4. Settle Up</h5>
+            <p>Know exactly who owes whom, and settle with a tap.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section id="usecases" class="mb-5">
+      <h2 class="fw-bold text-center mb-4">Perfect for Every Situation</h2>
+      <div class="row g-4">
+        <div class="col-md-3">
+          <div class="use-case text-center h-100">
+            <i class="bi bi-airplane fs-1 text-primary"></i>
+            <h5 class="mt-3">Trips</h5>
+            <p>Plan a vacation with friends without worrying about who paid what.</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="use-case text-center h-100">
+            <i class="bi bi-house-heart fs-1 text-success"></i>
+            <h5 class="mt-3">Roommates</h5>
+            <p>Split rent, utilities, and groceries with zero stress.</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="use-case text-center h-100">
+            <i class="bi bi-people-fill fs-1 text-info"></i>
+            <h5 class="mt-3">Family</h5>
+            <p>Share family expenses like dinners, shopping, and events fairly.</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="use-case text-center h-100">
+            <i class="bi bi-briefcase fs-1 text-warning"></i>
+            <h5 class="mt-3">Work</h5>
+            <p>Manage office collections, shared tools, or team outings smoothly.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="text-center mb-5">
+      <h2 class="fw-bold mb-4">Ready to Get Started?</h2>
+      <a href="friends.html" class="btn btn-primary btn-lg me-2"><i class="bi bi-person-plus"></i> Add Friends</a>
+      <a data-bs-toggle="modal" data-bs-target="#createGroupModal" class="btn btn-success btn-lg me-2"><i class="bi bi-people"></i> Create Group</a>
+      <a class="btn btn-info btn-lg" data-bs-toggle="modal" data-bs-target="#addExpenseModal"><i class="bi bi-receipt"></i> Add Expense</a> 
+    </section>
+
+  </div>
+
+  <footer class="text-center py-3 bg-white shadow-sm">
+    <small>© <span id="year"></span> SplitEasy – Simplify Shared Expenses</small>
+  </footer>
+  <!-- Mobile navbar -->
+  <div id="navbarMobile" class="d-md-none"></div>
+
+
+  <!-- ✅ Create Group Modal -->
+  <div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content shadow">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Create Group</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="createGroupForm">
+            <div class="mb-3">
+              <label for="groupTitle" class="form-label">Group Title</label>
+              <input type="text" class="form-control" id="groupTitle" placeholder="e.g. Trip to Paris" required>
+            </div>
+            <div class="mb-3">
+              <label for="groupCurrency" class="form-label">Currency</label>
+              <select class="form-select" id="groupCurrency" required>
+                <option value="MAD">MAD (Dirham)</option>
+                <option value="$">USD ($)</option>
+                <option value="Euro">EUR (€)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="groupType" class="form-label">Type</label>
+              <select class="form-select" id="groupType" required>
+                <option value="Home">Home</option>
+                <option value="Couple">Couple</option>
+                <option value="Trip">Trip</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Select Members</label>
+              <div id="friendsList" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                <!-- friends checkboxes will be injected dynamically -->
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i>
+            Cancel</button>
+          <button type="button" class="btn btn-success" onclick="createGroup()"><i class="bi bi-check-circle"></i>
+            Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Expense Modal -->
+  <div class="modal fade" id="addExpenseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-cash-stack"></i> Add Expense</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Select Group</label>
+            <select id="groupsListForExpenses" class="form-select">
+              <option value="">-- Select a group --</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <input type="text" class="form-control" id="expenseDesc" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount</label>
+            <input type="number" step="0.01" class="form-control" id="expenseAmount" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Select Members</label>
+            <div id="membersListForGroups" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-success" onclick="addExpenseModalSubmit()">Save Expense</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/group.js"></script>
+     
+
+  <script>
+    if (!localStorage.getItem("token")) window.location.href = "login.html";
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

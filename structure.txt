@@ -1,0 +1,42 @@
+frontend/
+├─ index.html
+├─ register.html
+├─ login.html
+├─ home.html
+├─ friends.html
+├─ expenses.html
+├─ overview.html
+├─ stats.html
+├─ settle.html
+├─ js/
+│   ├─ auth.js
+│   ├─ config.js
+│   ├─ navbar.js
+│   ├─ group.js
+│   ├─ friends.js
+│   ├─ expenses.js
+│   ├─ stats.js
+│   └─ settle.js
+├─ css/
+│   └─ style.css
+
+backend/
+├─ main.py               # FastAPI entry point, all routes
+├─ models.py             # SQLAlchemy models (you already have)
+├─ schemas.py            # Pydantic schemas (you already have)
+├─ db.py           # DB engine + session
+├─ config.py   
+├─ debt.py   
+├─ auth.py               # JWT + password hashing
+├─ crud.py               # DB operations
+├─ dependencies.py       # get_current_user + auth dependencies
+├─ routers/
+│   ├─ users.py*
+│   ├─ auth.py*
+│   ├─ memberships.py*
+│   ├─ friends.py*
+│   ├─ notifications.py*
+│   ├─ groups.py*
+│   ├─ expenses.py*
+│   ├─ settle.py*
+│   └─ stats.py*
