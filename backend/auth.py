@@ -25,7 +25,7 @@ async def authenticate(session: AsyncSession, username: str, password: str) -> U
         return user
     return None
 
-
+ 
 
 def create_access_token(username: str, minutes: int = settings.ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
     payload = {"username": username, "exp": datetime.utcnow() + timedelta(minutes=minutes)}

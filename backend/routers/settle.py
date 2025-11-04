@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 from backend.db import get_session
 from backend.models import Expense, Group, User, Settlement, Split
@@ -35,7 +36,7 @@ async def group_balances(
         BalanceItem(user_id=uid, username=users.get(uid, f"User {uid}"), net=net)
         for uid, net in balances.items()
     ]
-
+ 
 
 # -----------------------------
 # Suggested settlements
@@ -174,36 +175,19 @@ async def record_settlement(
     await session.commit()
     await session.refresh(settlement)
 
-    # -------------------------------
-    # 2️⃣ Also create a linked Expense
-    # -------------------------------
-    
-    expense = Expense(
-        group_id=group_id,
-        payer_id=current.id,
-        amount=float(amount),
-        currency=group_currency,
-        description=f"Settlement: {from_username} → {to_username}",
-        created_at=datetime.utcnow(),
-    )
-    session.add(expense)
-    await session.flush()  # to get expense.id
 
-    # Add Splits so that balance adjusts correctly
-    payer_split = Split(expense_id=expense.id, user_id=current.id, share_amount=payload.amount)
-    receiver_split = Split(expense_id=expense.id, user_id=payload.to_user_id, share_amount=0.0)
-    session.add_all([payer_split, receiver_split])
+
 
     # Commit everything
     await session.commit()
     await session.refresh(settlement)
-    await log_activity(session, user_id=current.id.id, action=f"settled up with {payload.to_user_id}", target_type="settlement", target_id=settlement.id)
+    await log_activity(session, user_id=current.id, action=f"settled up with {payload.to_user_id}", target_type="settlement", target_id=settlement.id)
 
     return SettlementOut(
         id=settlement.id,
         from_user_id=current.id,
-        from_username=from_username,
-        to_user_id=payload.to_user_id,
+        from_username=from_username, 
+        to_user_id=payload.to_user_id,  
         to_username=to_username,
         amount=payload.amount,
         created_at=settlement.created_at

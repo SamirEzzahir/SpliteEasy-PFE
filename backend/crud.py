@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, func
 from sqlalchemy.orm import selectinload
 
-from .models import Settlement, User, Group, Membership, Expense, Split, ActivityLog
+from .models import Income, IncomeType, Settlement, User, Group, Membership, Expense, Split, ActivityLog, Wallet
 from .utils import hash_password
-from .schemas import ExpenseUpdate, SplitRead, UserCreate, UserRead, GroupCreate, GroupRead, MembershipRead, ExpenseCreate, ExpenseRead
+from .schemas import ExpenseUpdate, IncomeCreate, IncomeRead, IncomeUpdate, SplitRead, UserCreate, UserRead, GroupCreate, GroupRead, MembershipRead, ExpenseCreate, ExpenseRead
 from decimal import Decimal, ROUND_HALF_UP
 
 # ------------------------
@@ -130,7 +130,7 @@ async def create_group(
 
     # 4️⃣ Commit and refresh
     await session.commit()
-    await log_activity(session, user_id=current_user.id, action=f"created group '{group.name}'", target_type="group", target_id=group.id)
+    await log_activity(session, user_id=current_user.id, action=f"created group '{group.title}'", target_type="group", target_id=group.id)
     await session.refresh(group)
     return GroupRead.model_validate(group)
 
@@ -180,7 +180,7 @@ async def get_groups_for_user(session: AsyncSession, user_id: int) -> list[Group
     return [GroupRead.model_validate(g) for g in groups]
 
 
-async def update_group(session: AsyncSession, group_id: int, data: dict) -> GroupRead:
+async def update_group(session, group_id: int, data: dict) -> GroupRead:
     group = await session.get(Group, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -243,19 +243,43 @@ async def leave_group(session: AsyncSession, user_id: int, group_id: int):
 def round_amount(value) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[int, float]]) -> ExpenseRead:
+async def update_wallet_balance(session: AsyncSession, wallet_id: int, amount_change: Decimal, user_id: int):
+    """Update wallet balance and verify ownership"""
+    wallet = await session.get(Wallet, wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    if wallet.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this wallet")
+    
+    new_balance = wallet.balance + amount_change
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+    
+    wallet.balance = new_balance
+    await session.commit()
+    return wallet
+
+async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[int, float]], current_user_id: int) -> ExpenseRead:
     total_amount = round_amount(expense_data.amount)
+    
+    # Get group currency
+    group = await session.get(Group, expense_data.group_id)
+    group_currency = group.currency if group else "USD"
 
     exp = Expense(
         group_id=expense_data.group_id,
         payer_id=expense_data.payer_id or None,
+        added_by=expense_data.added_by or current_user_id,
         description=expense_data.description,
         amount=float(total_amount),  # keep float for DB column (Numeric)
-        currency=expense_data.currency,
+        currency=group_currency,  # Use group's currency instead of expense_data.currency
         category=expense_data.category,
+        wallet_id=expense_data.wallet_id,
         split_type=expense_data.split_type,
         note=expense_data.note,
         photo=expense_data.photo,
+        created_at=expense_data.created_at,
+        updated_at=expense_data.created_at,
     )
     session.add(exp)
     await session.flush()
@@ -284,6 +308,11 @@ async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[i
     if total != total_amount:
         raise ValueError(f"Sum of splits ({total}) must equal total amount ({total_amount})")
 
+    # Handle wallet deduction for the TOTAL expense amount (not just payer's share)
+    if expense_data.wallet_id and expense_data.payer_id == current_user_id:
+        # Deduct the total expense amount from the wallet (already calculated above as total_amount)
+        await update_wallet_balance(session, expense_data.wallet_id, -total_amount, current_user_id)
+
     await session.commit()
     await session.flush()
     await session.refresh(exp, ['group']) 
@@ -311,14 +340,16 @@ async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[i
         ))
 
     payer_user = await session.get(User, exp.payer_id)
+    added_by_user = await session.get(User, exp.added_by)
     return ExpenseRead(
         **expense_data.model_dump(exclude={"splits"}),
         id=exp.id,
-        created_at=exp.created_at,
-        updated_at=datetime.utcnow(),
+        updated_at=exp.created_at,
         splits=split_reads,
-        payer_username=payer_user.username if payer_user else "Unknown"
+        payer_username=payer_user.username if payer_user else "Unknown",
+        added_by_username=added_by_user.username if added_by_user else "Unknown"
     )
+
 
 
 
@@ -367,15 +398,21 @@ async def get_expense_ById(session: AsyncSession, expense_id: int, current_user:
     payer_user = None
     if exp.payer_id:
         payer_user = await session.get(User, exp.payer_id)
+    
+    added_by_user = None
+    if exp.added_by:
+        added_by_user = await session.get(User, exp.added_by)
 
     return ExpenseRead(
         id=exp.id,
         group_id=exp.group_id,
         payer_id=exp.payer_id,
+        added_by=exp.added_by,
         description=exp.description,
         amount=exp.amount,
         currency=exp.currency,
         category=exp.category,
+        wallet_id=exp.wallet_id,
         split_type=exp.split_type,
         note=exp.note,
         photo=exp.photo,
@@ -383,6 +420,7 @@ async def get_expense_ById(session: AsyncSession, expense_id: int, current_user:
         updated_at=exp.updated_at,
         splits=split_reads,
         payer_username=payer_user.username if payer_user else "Unknown",
+        added_by_username=added_by_user.username if added_by_user else "Unknown",
     )
 
 
@@ -393,37 +431,84 @@ async def get_expense_ById(session: AsyncSession, expense_id: int, current_user:
 async def update_expense(session: AsyncSession, expense_id: int, payload: ExpenseUpdate, current: User):
     result = await session.execute(
         select(Expense)
-        .options(selectinload(Expense.splits).selectinload(Split.user))  # preload user for username
+        .options(
+            selectinload(Expense.splits).selectinload(Split.user),  # preload user for username
+            selectinload(Expense.group)  # Load group to check owner
+        )
         .where(Expense.id == expense_id)
     )
     expense = result.scalars().first()
 
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
+    
+    # Check if user is the payer OR the group owner (admin)
+    is_payer = expense.payer_id == current.id
+    is_group_owner = expense.group and expense.group.owner_id == current.id
+    
+    if not is_payer and not is_group_owner:
+        raise HTTPException(status_code=403, detail="Not allowed to edit. Only the payer or group owner can edit expenses.")
+
+    # Store original values for wallet balance calculation
+    original_amount = round_amount(Decimal(str(expense.amount)))  # Total expense amount
+    original_wallet_id = expense.wallet_id
 
     # Update fields
     for field, value in payload.dict(exclude={"splits"}, exclude_unset=True).items():
         setattr(expense, field, value)
 
-    # Update splits
+    # Handle wallet balance adjustments using TOTAL amounts (not payer's share)
+    # Only adjust wallet if the current user is the payer (group owner editing doesn't affect wallet)
+    if expense.payer_id == current.id:
+        # Get new total amount
+        new_amount_decimal = round_amount(Decimal(str(payload.amount))) if payload.amount is not None else original_amount
+        new_wallet_id = payload.wallet_id if payload.wallet_id is not None else original_wallet_id
+
+        # Adjust wallet balances using TOTAL expense amounts
+        if original_wallet_id and original_amount > 0:
+            # Refund original TOTAL amount to original wallet
+            await update_wallet_balance(session, original_wallet_id, original_amount, current.id)
+        
+        if new_wallet_id and new_amount_decimal > 0:
+            # Deduct new TOTAL amount from new wallet
+            await update_wallet_balance(session, new_wallet_id, -new_amount_decimal, current.id)
+
+    # --- Update splits safely (for both payer and group owner) ---
     if payload.splits is not None:
         await session.execute(delete(Split).where(Split.expense_id == expense_id))
-        for s in payload.splits:
-            session.add(Split(expense_id=expense_id, user_id=s.user_id, share_amount=s.share_amount))
+        await session.flush()
+
+        new_splits = [
+            Split(expense_id=expense_id, user_id=s.user_id, share_amount=s.share_amount)
+            for s in payload.splits
+        ]
+        session.add_all(new_splits)
 
     await session.commit()
-    await session.refresh(expense)
+        
+    # ✅ Reload expense with user relationship loaded
+    result = await session.execute(
+        select(Expense)
+        .options(selectinload(Expense.splits).selectinload(Split.user))
+        .where(Expense.id == expense_id)
+    )
+    expense = result.scalars().first()
 
-    # Fill username manually for Pydantic
+    # ✅ Safely fill username
     for split in expense.splits:
         split.username = split.user.username if split.user else None
 
     return ExpenseRead.model_validate(expense, from_attributes=True)
 
 
-# Get expenses for a group
+
+# Get expenses for a group, newest first
 async def get_expenses_for_group(session: AsyncSession, group_id: int, current_user) -> list[ExpenseRead]:
-    result = await session.execute(select(Expense).where(Expense.group_id == group_id))
+    result = await session.execute(
+        select(Expense)
+        .where(Expense.group_id == group_id)
+        .order_by(Expense.created_at.desc())  # <-- newest first
+    )
     expenses = result.scalars().all()
 
     expenses_out = []
@@ -432,6 +517,10 @@ async def get_expenses_for_group(session: AsyncSession, group_id: int, current_u
         # payer username
         payer_user = await session.get(User, exp.payer_id)
         payer_username = payer_user.username if payer_user else "Unknown"
+        
+        # added_by username
+        added_by_user = await session.get(User, exp.added_by)
+        added_by_username = added_by_user.username if added_by_user else "Unknown"
 
         # splits
         split_result = await session.execute(
@@ -457,22 +546,24 @@ async def get_expenses_for_group(session: AsyncSession, group_id: int, current_u
                 id=exp.id,
                 group_id=exp.group_id,
                 payer_id=exp.payer_id,
+                added_by=exp.added_by,
                 description=exp.description,
                 amount=exp.amount,
                 currency=exp.currency,
                 category=exp.category,
+                wallet_id=exp.wallet_id,
                 split_type=exp.split_type,
                 note=exp.note,
                 photo=exp.photo,
                 created_at=exp.created_at,
                 updated_at=exp.updated_at,
                 splits=split_reads,
-                payer_username=payer_username
+                payer_username=payer_username,
+                added_by_username=added_by_username
             )
         )
 
     return expenses_out
-
 
 
 # ------------------------
@@ -706,30 +797,193 @@ async def ensure_user_is_admin(session, user_id: int, group_id: int):
 # ------------------------
 
 
-async def log_activity(
-    session: AsyncSession,
-    user_id: int,
-    action: str,
-    target_type: str,
-    target_id: int,
-    affected_users: list[int] | None = None,
-):
-    """
-    Universal activity logger.
-
-    - user_id: actor who did the action
-    - action: human-readable description
-    - target_type: e.g., "expense", "group", "membership"
-    - target_id: the id of the target object
-    - affected_users: list of users affected by this action (optional)
-    """
+async def log_activity(session: AsyncSession, user_id: int, action: str, target_type: str = None, target_id: int = None):
     log = ActivityLog(
         user_id=user_id,
         action=action,
         target_type=target_type,
         target_id=target_id,
-        created_at=datetime.utcnow(),
-        affected_users=affected_users or [],
     )
     session.add(log)
     await session.commit()
+
+
+
+# =========================================================
+# Add Income (and update wallet balance)
+# =========================================================
+async def add_income(session: AsyncSession, user_id: int, data: IncomeCreate) -> IncomeRead:
+    # 1️⃣ Verify wallet
+    wallet = await session.get(Wallet, data.wallet_id)
+    if not wallet or wallet.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    # 2️⃣ Verify income type
+    income_type = await session.get(IncomeType, data.income_type_id)
+    if not income_type or (income_type.user_id not in (None, user_id)):
+        raise HTTPException(status_code=404, detail="Income type not found")
+
+    # 3️⃣ Validate amount
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+
+    # 4️⃣ Create income
+    new_income = Income(
+        user_id=user_id,
+        wallet_id=data.wallet_id,
+        income_type_id=data.income_type_id,
+        amount=data.amount,
+        source_type=data.source_type,
+        note=data.note,
+        date=data.date if data.date else datetime.utcnow(),
+    )
+
+    # 5️⃣ Update wallet balance
+    wallet.balance += Decimal(data.amount)
+
+    session.add(new_income)
+    await session.commit()
+    await session.refresh(new_income)
+    return new_income
+
+
+# =========================================================
+# Get all incomes for user
+# =========================================================
+async def get_user_incomes(session: AsyncSession, user_id: int, from_date=None, to_date=None):
+    query = select(Income).where(Income.user_id == user_id)
+
+    if from_date:
+        query = query.where(Income.date >= from_date)
+    if to_date:
+        query = query.where(Income.date <= to_date)
+
+    # Eager load wallet and income_type
+    query = query.options(
+        selectinload(Income.wallet),
+        selectinload(Income.income_type)
+    ).order_by(Income.date.desc())
+
+    result = await session.execute(query)
+    incomes = result.scalars().all()
+
+    # Serialize with names
+    return [
+    {
+        "id": i.id,
+        "user_id": i.user_id,
+        "amount": float(i.amount),
+        "date": i.date,
+        "note": i.note,
+        "wallet_id": i.wallet_id,
+        "wallet_name": i.wallet.name if i.wallet else "",
+        "income_type_id": i.income_type_id,
+        "category_name": i.income_type.name if i.income_type else "",
+        "created_at": i.created_at,
+        "updated_at": i.updated_at,
+    }
+    for i in incomes
+]
+
+
+
+# =========================================================
+# Get balance summary
+# =========================================================
+async def get_balance_summary(session: AsyncSession, user_id: int):
+    result = await session.execute(
+        select(Wallet.category, func.sum(Wallet.balance))
+        .where(Wallet.user_id == user_id)
+        .group_by(Wallet.category)
+    )
+    balances = {row[0]: row[1] for row in result.all()}
+    total = sum(balances.values())
+    
+    # Bank Balance = Bank + Credit Card wallets
+    bank_balance = balances.get("Bank", 0) + balances.get("Credit Card", 0)
+    
+    # Cash Balance = Cash wallets only
+    cash_balance = balances.get("Cash", 0)
+    
+    return {
+        "bank": bank_balance,
+        "cash": cash_balance,
+        "total": total,
+    }
+
+
+# =========================================================
+# Update Income (adjust wallet balance if amount or wallet changed)
+# =========================================================
+async def update_income(session: AsyncSession, income_id: int, user_id: int, data: IncomeUpdate):
+    result = await session.execute(
+        select(Income).where(Income.id == income_id, Income.user_id == user_id)
+    )
+    income = result.scalar_one_or_none()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    # store old wallet & amount
+    old_wallet = await session.get(Wallet, income.wallet_id)
+    old_amount = income.amount
+
+    # update fields
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(income, field, value)
+
+    # Validate amount if provided
+    if data.amount is not None and data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    
+    # if wallet changed
+    if data.wallet_id and data.wallet_id != old_wallet.id:
+        new_wallet = await session.get(Wallet, data.wallet_id)
+        if not new_wallet or new_wallet.user_id != user_id:
+            raise HTTPException(status_code=404, detail="New wallet not found")
+
+        # move balance between wallets
+        old_wallet.balance -= old_amount
+        # Validate old wallet won't go negative
+        if old_wallet.balance < 0:
+            raise HTTPException(status_code=400, detail=f"Insufficient balance in source wallet. Available: {old_wallet.balance + old_amount:.2f}")
+        
+        new_amount = data.amount if data.amount is not None else income.amount
+        new_wallet.balance += new_amount
+    else:
+        # same wallet → adjust balance difference
+        new_amount = data.amount if data.amount is not None else income.amount
+        diff = new_amount - old_amount
+        new_balance = old_wallet.balance + diff
+        # Validate wallet won't go negative
+        if new_balance < 0:
+            raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {old_wallet.balance:.2f}, Required: {abs(diff):.2f}")
+        old_wallet.balance = new_balance
+
+    await session.commit()
+    await session.refresh(income)
+    return income
+
+
+# =========================================================
+# Delete Income (subtract from wallet)
+# =========================================================
+async def delete_income(session: AsyncSession, income_id: int, user_id: int):
+    result = await session.execute(
+        select(Income).where(Income.id == income_id, Income.user_id == user_id)
+    )
+    income = result.scalar_one_or_none()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    # adjust wallet
+    wallet = await session.get(Wallet, income.wallet_id)
+    if wallet and wallet.user_id == user_id:
+        new_balance = wallet.balance - income.amount
+        # Validate wallet won't go negative
+        if new_balance < 0:
+            raise HTTPException(status_code=400, detail=f"Cannot delete income. Wallet balance would become negative. Current balance: {wallet.balance:.2f}, Income amount: {income.amount:.2f}")
+        wallet.balance = new_balance
+
+    await session.delete(income)
+    await session.commit()
+    return {"message": "Income deleted"}

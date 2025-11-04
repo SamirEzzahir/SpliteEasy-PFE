@@ -1,15 +1,23 @@
-// WebSocket for notifications
-loadAuth();
-let ws;
-function initNotifications(userId) {
-    ws = new WebSocket(`${API_URL.replace("http", "ws")}/Notifications/ws/${userId}`);
-    ws.onmessage = (event) => {
-        showToast(event.data, "info");
-        loadFriends(); // refresh lists when needed
-    };
+// Enhanced Friends Page JavaScript
+console.log("✅ Friends.js loaded successfully");
+
+// Helper function to get avatar HTML
+function getAvatarHtml(user, size = 50) {
+    const name = user.username || user.user_email || user.friend_email || 'User';
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+    const colorIndex = (name.charCodeAt(0) % 6) + 1;
+    
+    if (user.profile_photo) {
+        return `<img src="${user.profile_photo}" class="friend-avatar" alt="Avatar" style="width: ${size}px; height: ${size}px;">`;
+    } else {
+        return `<div class="friend-avatar-gradient" data-color="${colorIndex}" style="width: ${size}px; height: ${size}px; font-size: ${size * 0.22}px;">${initials}</div>`;
+    }
 }
 
-// Show Bootstrap toast notification
+// Enhanced Friends Page JavaScript
+console.log("✅ Friends.js loaded successfully");
+
+// Enhanced toast notification
 function showToast(message, type = "primary") {
     const container = document.getElementById("toastContainer");
     const toastEl = document.createElement("div");
@@ -17,143 +25,369 @@ function showToast(message, type = "primary") {
     toastEl.setAttribute("role", "alert");
     toastEl.setAttribute("aria-live", "assertive");
     toastEl.setAttribute("aria-atomic", "true");
+    
+    const icon = type === "success" ? "check-circle" : 
+                 type === "danger" ? "exclamation-triangle" : 
+                 type === "info" ? "info-circle" : "bell";
+    
     toastEl.innerHTML = `
         <div class="d-flex">
-            <div class="toast-body">${message}</div>
+            <div class="toast-body d-flex align-items-center">
+                <i class="bi bi-${icon} me-2"></i>
+                ${message}
+            </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     `;
+    
     container.appendChild(toastEl);
-    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
     toast.show();
     toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
 }
 
-// Search friends by username, email, or phone
+// Enhanced search functionality
 async function searchFriend() {
-    const query = document.getElementById("friendSearch").value.trim();
-    const t = localStorage.getItem("token");
-    if (!query) return;
+    const query = document.getElementById("searchEmail").value.trim();
+    const searchResults = document.getElementById("searchResults");
+    
+    if (!query) {
+        searchResults.innerHTML = "";
+        return;
+    }
+    
+    console.log("🔍 Searching for:", query);
+    
+    // Show loading state
+    searchResults.innerHTML = `
+        <div class="text-center text-muted py-3">
+            <div class="loading-spinner mx-auto mb-2"></div>
+            <p class="mb-0">Searching...</p>
+        </div>
+    `;
+    
+    try {
     const res = await fetch(`${API_URL}/friends/search?query=${query}`, {
-        headers: { Authorization: `Bearer ${t}` }
+            headers: getHeaders()
     });
+        
     const results = res.ok ? await res.json() : [];
-    const ul = document.getElementById("searchResults");
-    ul.innerHTML = "";
-    results.forEach(u => {
-        const li = newLI(`${u.username || u.email || u.phone}`);
-        const btnAdd = btn("Add", () => sendFriendRequest(u.id));
-        li.appendChild(btnAdd);
-        ul.appendChild(li);
-    });
+        console.log("📋 Search results:", results);
+        
+        if (results.length === 0) {
+            searchResults.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-search"></i>
+                    <h6>No users found</h6>
+                    <p class="mb-0">Try searching with a different username, email, or phone number</p>
+                </div>
+            `;
+            return;
+        }
+        
+        searchResults.innerHTML = results.map(user => `
+            <div class="search-result">
+                <div class="friend-header">
+                    <div class="friend-avatar">${(user.username || user.email || 'U').charAt(0).toUpperCase()}</div>
+                    <div class="friend-info">
+                        <div class="friend-name">${user.username || 'Unknown User'}</div>
+                        <div class="friend-status">${user.email || 'No email'}</div>
+                        ${user.phone ? `<div class="friend-status">${user.phone}</div>` : ''}
+                    </div>
+                </div>
+                <div class="friend-actions">
+                    <button class="btn btn-primary btn-sm" onclick="sendFriendRequest(${user.id})">
+                        <i class="bi bi-person-plus me-1"></i>Add Friend
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error("❌ Search error:", error);
+        searchResults.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Failed to search users. Please try again.
+            </div>
+        `;
+    }
 }
 
-// Send friend request
+// Enhanced friend request sending
 async function sendFriendRequest(friendId) {
-    const t = localStorage.getItem("token");
+    console.log("📤 Sending friend request to:", friendId);
+    
+    try {
     const res = await fetch(`${API_URL}/friends/request/${friendId}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${t}` }
+            headers: getHeaders()
     });
+        
     if (!res.ok) {
-        const e = await res.json().catch(() => null);
-        return showToast(e?.detail || "Failed to send request", "danger");
+            const error = await res.json().catch(() => null);
+            throw new Error(error?.detail || "Failed to send request");
+        }
+        
+        showToast("Friend request sent successfully!", "success");
+        loadFriends();
+        
+        // Clear search results
+        document.getElementById("searchResults").innerHTML = "";
+        document.getElementById("searchEmail").value = "";
+        
+    } catch (error) {
+        console.error("❌ Send request error:", error);
+        showToast(error.message, "danger");
     }
-    showToast("Friend request sent", "success");
-    loadFriends();
 }
 
-// Remove friend
+// Enhanced friend removal
 async function removeFriend(friendshipId) {
-    if (!friendshipId) return showToast("Invalid friend ID", "danger");
-    if (!confirm("Are you sure you want to remove this friend?")) return;
-    const t = localStorage.getItem("token");
+    if (!friendshipId) {
+        showToast("Invalid friend ID", "danger");
+        return;
+    }
+    
+    if (!confirm("Are you sure you want to remove this friend? This action cannot be undone.")) {
+        return;
+    }
+    
+    console.log("🗑️ Removing friend:", friendshipId);
+    
+    try {
     const res = await fetch(`${API_URL}/friends/remove/${friendshipId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${t}` }
+            headers: getHeaders()
     });
+        
     if (!res.ok) {
-        const e = await res.json().catch(() => null);
-        return showToast(e?.detail || "Failed to remove friend", "danger");
+            const error = await res.json().catch(() => null);
+            throw new Error(error?.detail || "Failed to remove friend");
+        }
+        
+        showToast("Friend removed successfully", "warning");
+        loadFriends();
+        
+    } catch (error) {
+        console.error("❌ Remove friend error:", error);
+        showToast(error.message, "danger");
     }
-    showToast("Friend removed", "warning");
-    loadFriends();
 }
 
-// Load all friend lists
+// Enhanced friends loading
 async function loadFriends() {
-    const t = localStorage.getItem("token");
-    if (!t) return;
-
-    // My friends
-    let res = await fetch(`${API_URL}/friends/my`, { headers: { Authorization: `Bearer ${t}` }});
-    const myFriends = res.ok ? await res.json() : [];
-    const ul1 = document.getElementById("myFriends");
-    ul1.innerHTML = "";
-    myFriends.forEach(f => {
-        const li = newLI(`${f.username || f.email || f.phone || f.user_id}`);
-        const btnRemove = btn("Remove", () => removeFriend(f.friendship_id), "danger");
-        li.appendChild(btnRemove);
-        ul1.appendChild(li);
-    });
-
-    // Requests received
-    res = await fetch(`${API_URL}/friends/requests/received`, { headers: { Authorization: `Bearer ${t}` }});
-    const received = res.ok ? await res.json() : [];
-    const ul2 = document.getElementById("requestsReceived");
-    ul2.innerHTML = "";
-    received.forEach(r => {
-        const li = newLI(`${r.username || r.email || r.phone || r.user_email}`);
-        const btnAccept = btn("Accept", () => respondRequest(r.id, true));
-        const btnReject = btn("Reject", () => respondRequest(r.id, false), "danger");
-        li.appendChild(btnAccept);
-        li.appendChild(btnReject);
-        ul2.appendChild(li);
-    });
-
-    // Requests sent
-    res = await fetch(`${API_URL}/friends/requests/sent`, { headers: { Authorization: `Bearer ${t}` }});
-    const sent = res.ok ? await res.json() : [];
-    const ul3 = document.getElementById("requestsSent");
-    ul3.innerHTML = "";
-    sent.forEach(r => {
-        const li = newLI(`${r.username || r.friend_email || r.phone}`);
-        ul3.appendChild(li);
-    });
-}
-
-// Respond to request
-async function respondRequest(requestId, accept) {
-    const t = localStorage.getItem("token");
-    const url = `${API_URL}/friends/request/${requestId}/${accept ? "accept" : "reject"}`;
-    const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${t}` }});
-    if (!res.ok) {
-        const e = await res.json().catch(() => null);
-        return showToast(e?.detail || "Failed", "danger");
+    console.log("🔄 Loading friends data...");
+    
+    try {
+        // Load my friends
+        const friendsRes = await fetch(`${API_URL}/friends/my`, { 
+            headers: getHeaders() 
+        });
+        const myFriends = friendsRes.ok ? await friendsRes.json() : [];
+        
+        // Load requests received
+        const receivedRes = await fetch(`${API_URL}/friends/requests/received`, { 
+            headers: getHeaders() 
+        });
+        const received = receivedRes.ok ? await receivedRes.json() : [];
+        
+        // Load requests sent
+        const sentRes = await fetch(`${API_URL}/friends/requests/sent`, { 
+            headers: getHeaders() 
+        });
+        const sent = sentRes.ok ? await sentRes.json() : [];
+        
+        console.log("📊 Friends data loaded:", { myFriends, received, sent });
+        
+        // Update counts
+        document.getElementById("friendsCount").textContent = myFriends.length;
+        document.getElementById("receivedCount").textContent = received.length;
+        document.getElementById("sentCount").textContent = sent.length;
+        
+        // Render my friends
+        renderMyFriends(myFriends);
+        
+        // Render requests
+        renderRequests(received, sent);
+        
+    } catch (error) {
+        console.error("❌ Load friends error:", error);
+        showToast("Failed to load friends data", "danger");
     }
-    showToast(accept ? "Friend request accepted" : "Friend request rejected", accept ? "success" : "warning");
-    loadFriends();
 }
 
-// Helpers
-function newLI(text) {
-    const li = document.createElement("li");
-    li.className = "list-group-item d-flex justify-content-between align-items-center";
-    li.textContent = text;
-    return li;
-}
-function btn(text, fn, type="success") {
-    const b = document.createElement("button");
-    b.className = `btn btn-sm btn-${type} ms-2`;
-    b.textContent = text;
-    b.onclick = fn;
-    return b;
+// Render my friends
+function renderMyFriends(friends) {
+    const container = document.getElementById("friendsList");
+    
+    if (friends.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-people"></i>
+                <h5>No Friends Yet</h5>
+                <p>Start by searching for friends to connect with!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = friends.map(friend => `
+        <div class="friend-item">
+            <div class="friend-header">
+                <div class="friend-avatar">${(friend.username || friend.friend_email || 'U').charAt(0).toUpperCase()}</div>
+                <div class="friend-info">
+                    <div class="friend-name">${friend.username || friend.friend_email}</div>
+                    <div class="friend-status">${friend.friend_email}</div>
+                </div>
+            </div>
+            <div class="friend-actions">
+                <button class="btn btn-outline-danger btn-sm" onclick="removeFriend(${friend.friendship_id})">
+                    <i class="bi bi-person-dash me-1"></i>Remove
+                </button>
+            </div>
+        </div>
+    `).join('');
 }
 
-// Initialize
-document.addEventListener("DOMContentLoaded", () => {
-    const userId = localStorage.getItem("user_id");
-    if (userId) initNotifications(userId);
+// Render friend requests
+function renderRequests(received, sent) {
+    const receivedContainer = document.getElementById("receivedRequests");
+    const sentContainer = document.getElementById("sentRequests");
+    
+    // Render received requests
+    if (received.length === 0) {
+        receivedContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h5>No Pending Requests</h5>
+                <p>You have no friend requests waiting for your response</p>
+            </div>
+        `;
+    } else {
+        receivedContainer.innerHTML = received.map(request => `
+            <div class="friend-item">
+                <div class="friend-header">
+                    <div class="friend-avatar">${(request.user_email || 'U').charAt(0).toUpperCase()}</div>
+                    <div class="friend-info">
+                        <div class="friend-name">${request.user_email || 'Unknown User'}</div>
+                        <div class="friend-status">Wants to be your friend</div>
+                    </div>
+                </div>
+                <div class="friend-actions">
+                    <button class="btn btn-success btn-sm" onclick="respondRequest(${request.id}, true)">
+                        <i class="bi bi-check me-1"></i>Accept
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="respondRequest(${request.id}, false)">
+                        <i class="bi bi-x me-1"></i>Reject
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Render sent requests
+    if (sent.length === 0) {
+        sentContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-send"></i>
+                <h5>No Sent Requests</h5>
+                <p>You haven't sent any friend requests yet</p>
+            </div>
+        `;
+    } else {
+        sentContainer.innerHTML = sent.map(request => `
+            <div class="friend-item">
+                <div class="friend-header">
+                    <div class="friend-avatar">${(request.friend_email || 'U').charAt(0).toUpperCase()}</div>
+                    <div class="friend-info">
+                        <div class="friend-name">${request.friend_email || 'Unknown User'}</div>
+                        <div class="friend-status">Request sent - waiting for response</div>
+                    </div>
+                </div>
+                <div class="friend-actions">
+                    <span class="badge bg-secondary">Pending</span>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Enhanced request response
+async function respondRequest(requestId, accept) {
+    console.log(`${accept ? '✅ Accepting' : '❌ Rejecting'} request:`, requestId);
+    
+    try {
+    const url = `${API_URL}/friends/request/${requestId}/${accept ? "accept" : "reject"}`;
+        const res = await fetch(url, { 
+            method: "POST", 
+            headers: getHeaders() 
+        });
+        
+    if (!res.ok) {
+            const error = await res.json().catch(() => null);
+            throw new Error(error?.detail || "Failed to respond to request");
+        }
+        
+        const message = accept ? "Friend request accepted!" : "Friend request rejected";
+        const type = accept ? "success" : "warning";
+        showToast(message, type);
+        loadFriends();
+        
+    } catch (error) {
+        console.error("❌ Respond request error:", error);
+        showToast(error.message, "danger");
+    }
+}
+
+// Initialize the page
+document.addEventListener("DOMContentLoaded", async () => {
+    console.log("🚀 Friends page initialized");
+    
+    // Check authentication first
+    loadAuth();
+    if (!localStorage.getItem("token")) {
+        console.log("❌ User not authenticated, redirecting to login");
+        window.location.href = "login.html";
+        return;
+    }
+    
+    // Clear notifications when user visits friends page
+    if (window.globalNotifications) {
+        window.globalNotifications.clearNotifications();
+    }
+    
+    // Get current user to ensure we have the latest data
+    try {
+        const user = await fetchCurrentUser();
+        if (user && user.id) {
+            console.log("✅ User authenticated:", user.username);
+        } else {
+            console.warn("⚠️ Failed to get current user");
+        }
+    } catch (error) {
+        console.error("❌ Error getting current user:", error);
+        showToast("Failed to load user data", "danger");
+    }
+    
+    // Load initial data
     loadFriends();
-    document.getElementById("friendSearchBtn")?.addEventListener("click", searchFriend);
+    
+    // Add event listeners
+    const searchBtn = document.querySelector('button[onclick="searchFriend()"]');
+    const searchInput = document.getElementById("searchEmail");
+    
+    if (searchBtn) {
+        searchBtn.addEventListener("click", searchFriend);
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                searchFriend();
+            }
+        });
+    }
+    
+    console.log("✅ Friends page setup complete");
 });

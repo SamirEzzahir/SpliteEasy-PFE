@@ -112,3 +112,30 @@ body { font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Aria
     margin-bottom: 0.5rem;
   }
 }
+
+
+.expense-item {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.expense-item:hover {
+  background: #f9f9f9;
+}
+.receipt-icon i {
+  font-size: 1.2rem;
+  color: #6c757d;
+}
+.text-success {
+  color: #2e7d32 !important;
+}
+.text-danger {
+  color: #c62828 !important;
+}
+h6.text-secondary {
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}

@@ -1,0 +1,417 @@
+/* =========================================================
+   🎨 Friends Page Styles — Clean, Scrollable & Responsive
+   ========================================================= */
+
+/* ===================== */
+/* 🌈 Global Variables   */
+/* ===================== */
+:root {
+  --primary-color: #007bff;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --danger-color: #dc3545;
+  --light-color: #f8f9fa;
+  --dark-color: #343a40;
+}
+
+/* ===================== */
+/* 🧱 Body & Layout      */
+/* ===================== */
+body {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin-bottom: 8rem !important;
+}
+
+/* ===================== */
+/* 🪧 Card Enhancements   */
+/* ===================== */
+.card {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  border-radius: 16px 16px 0 0 !important;
+  border: none;
+  padding: 1.25rem 1.5rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* ===================== */
+/* 👥 Friends List       */
+/* ===================== */
+.friends-list {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background-color: #ffffff;
+  max-height: 400px;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease-in-out;
+  position: relative;
+}
+
+/* 🖱️ Scrollbar Styling */
+.friends-list::-webkit-scrollbar {
+  width: 8px;
+}
+.friends-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 8px;
+}
+.friends-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 8px;
+}
+.friends-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* ===================== */
+/* 🧍 Friend Item        */
+/* ===================== */
+.friend-item {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.friend-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-color: var(--primary-color);
+}
+
+.friend-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ===================== */
+/* 🧩 Friend Header       */
+/* ===================== */
+.friend-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* 👤 Avatar (with online/offline indicator) */
+.friend-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  position: relative;
+}
+
+/* ✅ Online */
+.friend-avatar.status-online::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--success-color);
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+/* ⚫ Offline */
+.friend-avatar.status-offline::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #6c757d;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+/* ===================== */
+/* 🧾 Friend Info         */
+/* ===================== */
+.friend-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-status {
+  font-size: 12px;
+  color: #6c757d;
+  margin: 0;
+}
+
+/* ===================== */
+/* 🎯 Friend Actions      */
+/* ===================== */
+.friend-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.friend-actions .btn {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.friend-actions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ===================== */
+/* 🔍 Search Results     */
+/* ===================== */
+.search-result {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.search-result:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-color: var(--success-color);
+}
+
+/* ===================== */
+/* 😕 Empty States       */
+/* ===================== */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h5 {
+  margin-bottom: 0.5rem;
+  color: #495057;
+}
+
+.empty-state p {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+/* ===================== */
+/* ⏳ Loading State       */
+/* ===================== */
+.loading-state {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-state .spinner-border {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* ===================== */
+/* 🧷 Misc UI Elements   */
+/* ===================== */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+}
+
+.form-control {
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* ===================== */
+/* 🧭 Page Header         */
+/* ===================== */
+.page-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+  color: white;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.page-header p {
+  margin-bottom: 0;
+  opacity: 0.9;
+}
+
+/* ===================== */
+/* 📱 Responsive Design   */
+/* ===================== */
+@media (max-width: 768px) {
+  .friend-item {
+    padding: 12px;
+  }
+
+  .friend-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .friend-name {
+    font-size: 13px;
+  }
+
+  .friend-actions .btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .friends-list {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 576px) {
+  .friend-header {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .friend-avatar {
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+
+  .friend-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .friend-actions .btn {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .friend-actions .btn:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* ===================== */
+/* ✨ Animations          */
+/* ===================== */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ===================== */
+/* 🌈 Global Scrollbar   */
+/* ===================== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

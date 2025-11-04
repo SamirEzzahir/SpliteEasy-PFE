@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ..db import get_session
-from .. import schemas, crud
-from ..models import Membership
-from ..auth import get_current_user
-from ..models import User
+from backend.db import get_session
+from backend import schemas, crud
+from backend.models import Membership
+from backend.auth import get_current_user
+from backend.models import User
 
 router = APIRouter(prefix="/groups")
 
@@ -29,7 +29,7 @@ async def fetch_group(group_id: int, session: AsyncSession = Depends(get_session
 @router.put("/{group_id}", response_model=schemas.GroupRead)
 async def route_update_group(group_id: int, payload: dict, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     await crud.ensure_user_in_group(session, current.id, group_id)
-    updated = await crud.update_group(session, group_id, payload.get("name"), payload.get("currency"))
+    updated = await crud.update_group(session, group_id, payload)
     return schemas.GroupRead.model_validate(updated)
 
 @router.delete("/{group_id}", status_code=204)

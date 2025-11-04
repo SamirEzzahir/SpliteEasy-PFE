@@ -1,13 +1,12 @@
-from email.headerregistry import Group
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.auth import get_current_user
 from backend.db import get_session
-from backend.models import ActivityLog, Expense, User
+from backend.models import ActivityLog, Expense, User, Group
 from backend.schemas import ActivityLogOut
 
 router = APIRouter(prefix="/activity")
@@ -25,22 +24,33 @@ async def get_activity(current: User = Depends(get_current_user), session: Async
     # Only keep logs where current user is the actor or the target is relevant
     filtered_logs = []
     for log in logs:
-        include = False
-        if log.user_id == current.id:
-            include = True  # user performed the action
-        elif log.target_type == "expense":
-            # Check if user is part of the expense
-            expense = await session.get(Expense, log.target_id)
-            if expense:
-                participant_ids = [expense.payer_id] + [s.user_id for s in expense.splits]
-                if current.id in participant_ids:
-                    include = True
-        elif log.target_type == "group":
-            group = await session.get(Group, log.target_id)
-            if group and current.id in [m.user_id for m in group.memberships]:
-                include = True
-        if include:
-            filtered_logs.append(log)
+     include = False
+     if log.user_id == current.id:
+         include = True
+     elif log.target_type == "expense":
+         result = await session.execute(
+             select(Expense)
+             .options(selectinload(Expense.splits))
+             .where(Expense.id == log.target_id)
+         )
+         expense = result.scalars().first()
+         if expense:
+             participant_ids = [expense.payer_id] + [s.user_id for s in expense.splits]
+             if current.id in participant_ids:
+                 include = True
+     elif log.target_type == "group":
+         result = await session.execute(
+             select(Group)
+             .options(selectinload(Group.memberships))
+             .where(Group.id == log.target_id)
+         )
+         group = result.scalars().first()
+         if group and current.id in [m.user_id for m in group.memberships]:
+             include = True
+
+     if include:
+         filtered_logs.append(log)
+
 
     return [
         {

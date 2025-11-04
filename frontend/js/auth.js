@@ -1,6 +1,6 @@
 // frontend/js/auth.js
 // Requires config.js (global API_URL, token)
-
+//C:\Users\samir\Desktop\coding\python\SplitEasy\.venv\Scripts\activate.bat
 async function loginUser() {
   const data = new URLSearchParams();
   data.append("username", document.getElementById("loginUsername").value.trim());
@@ -51,13 +51,3 @@ async function registerUser() {
   }
 }
 
-// small helper used elsewhere
-async function fetchCurrentUser() {
-  const t = localStorage.getItem("token");
-  if (!t) return null;
-  try {
-    const res = await fetch(`${API_URL}/users/user/me`, { headers: { Authorization: `Bearer ${t}` }});
-    if (!res.ok) return null;
-    return await res.json();
-  } catch(e){ return null; }
-}

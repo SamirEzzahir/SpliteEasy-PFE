@@ -1,118 +1,354 @@
-// frontend/js/group.js
-// create group, list groups, add members (only friends), fetch members
+// Enhanced Groups Page JavaScript
 loadAuth();
-async function fetchGroups() {
-  const t = localStorage.getItem("token");
-  if (!t) return [];
-  const res = await fetch(`${API_URL}/groups`, { headers: { Authorization: `Bearer ${t}` } });
-  if (!res.ok) return [];
-  return await res.json();
-}
 
+let allGroups = [];
+let filteredGroups = [];
 
+// -----------------------------
+// Utility Functions
+// -----------------------------
+function showError(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast align-items-center text-white bg-danger border-0';
+  toast.setAttribute('role', 'alert');
+  toast.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="bi bi-exclamation-triangle me-2"></i>${message}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  `;
 
-// add members to group (expects friend checkboxes elsewhere)
-async function addMembersToGroup(groupId, userIds, is_admin = false) {
-  const t = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/groups/${groupId}/add_members`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
-    body: JSON.stringify({ user_ids: userIds, is_admin })
-  });
-  if (!res.ok) {
-    const e = await res.json().catch(() => null);
-    throw e || new Error("Failed to add members");
+  let toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '9999';
+    document.body.appendChild(toastContainer);
   }
-  return await res.json();
-}
 
-// helper to populate friends checkboxes for group creation
-async function loadFriendsCheckboxes(targetId) {
-  const t = localStorage.getItem("token");
-  if (!t) return;
-  const res = await fetch(`${API_URL}/friends/my`, { headers: { Authorization: `Bearer ${t}` } });
-  const friends = res.ok ? await res.json() : [];
-  const container = document.getElementById(targetId);
-  if (!container) return;
-  container.innerHTML = "";
-  friends.forEach(f => {
-    const div = document.createElement("div");
-    div.className = "form-check";
-    div.innerHTML = `<input class="form-check-input" type="checkbox" value="${f.user_id}" id="friend_${f.user_id}"><label class="form-check-label ms-2" for="friend_${f.user_id}">${f.username || f.user_id}</label>`;
-    container.appendChild(div);
+  toastContainer.appendChild(toast);
+
+  const bsToast = new bootstrap.Toast(toast);
+  bsToast.show();
+
+  toast.addEventListener('hidden.bs.toast', () => {
+    toast.remove();
   });
 }
 
+function showSuccess(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast align-items-center text-white bg-success border-0';
+  toast.setAttribute('role', 'alert');
+  toast.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="bi bi-check-circle me-2"></i>${message}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  `;
+
+  let toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '9999';
+    document.body.appendChild(toastContainer);
+  }
+
+  toastContainer.appendChild(toast);
+
+  const bsToast = new bootstrap.Toast(toast);
+  bsToast.show();
+
+  toast.addEventListener('hidden.bs.toast', () => {
+    toast.remove();
+  });
+}
+
+function formatCurrency(amount, currency = 'MAD') {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount) + ' ' + currency;
+}
+
+function getRelativeTime(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return date.toLocaleDateString();
+}
+
+function safe(str) {
+  return str ? str.replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  )) : "";
+}
+
+// -----------------------------
+// Data Fetching Functions
+// -----------------------------
+async function fetchGroups() {
+  try {
+    console.log("🔄 Fetching groups...");
+    const res = await fetch(`${API_URL}/groups`, {
+      headers: getHeaders()
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const groups = await res.json();
+    console.log("📊 Fetched groups:", groups.length);
+    return groups;
+  } catch (err) {
+    console.error("❌ Error fetching groups:", err);
+    showError("Failed to load groups");
+    return [];
+  }
+}
+
+async function fetchGroupStats() {
+  try {
+    const [groups, friends] = await Promise.all([
+      fetchGroups(),
+      fetchFriends()
+    ]);
+
+    // Calculate unsettled groups (groups with expenses but no settlements)
+    const unsettledGroups = groups.filter(g => {
+      return g.expenses?.length > 0 && (!g.settlements || g.settlements.length === 0);
+    }).length;
+
+    const stats = {
+      totalGroups: groups.length,
+      totalFriends: friends.length,
+      totalExpenses: groups.reduce((sum, g) => sum + (g.expenses?.length || 0), 0),
+      unsettledGroups: unsettledGroups
+    };
+
+    console.log("📈 Group stats:", stats);
+    return stats;
+  } catch (err) {
+    console.error("❌ Error calculating stats:", err);
+    return { totalGroups: 0, totalFriends: 0, totalExpenses: 0, unsettledGroups: 0 };
+  }
+}
+
+async function fetchFriends() {
+  try {
+    const res = await fetch(`${API_URL}/friends/my`, { headers: getHeaders() });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching friends:", err);
+    return [];
+  }
+}
+
+// -----------------------------
+// Summary Statistics
+// -----------------------------
+function updateSummaryStats(stats) {
+  // Desktop stats
+  document.getElementById('totalGroups').textContent = stats.totalGroups;
+  document.getElementById('totalFriends').textContent = stats.totalFriends;
+  document.getElementById('totalExpenses').textContent = stats.totalExpenses;
+  document.getElementById('unsettledGroups').textContent = stats.unsettledGroups;
+
+  // Mobile stats
+  document.getElementById('mobileTotalGroups').textContent = stats.totalGroups;
+  document.getElementById('mobileTotalFriends').textContent = stats.totalFriends;
+}
+
+// -----------------------------
+// Desktop Table Rendering
+// -----------------------------
 async function renderGroupsList() {
-  const groups = await fetchGroups();
   const table = document.getElementById("groupsTable");
-  if (table) {
+  if (!table) return;
+
+  try {
+    // Show loading state
+    table.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-muted py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <div class="mt-2">Loading groups...</div>
+        </td>
+      </tr>
+    `;
+
+    const groups = await fetchGroups();
+    allGroups = groups;
+    filteredGroups = groups;
+
     table.innerHTML = "";
+
     if (!groups.length) {
-      table.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No groups yet</td></tr>`;
-    } else {
-      groups.forEach(g => {
-        const participants = (g.members_usernames || []).join(", ");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${g.id}</td>
-          <td>${g.title}</td>
-          <td>${g.currency}</td>
-          <td>${g.owner_username || g.owner_id}</td>
-          <td>${participants}</td>
-          <td>${new Date(g.created_at).toLocaleString()}</td>
-          <td>
-            <button class="btn btn-sm btn-primary" onclick="openGroup(${g.id})">Open</button>
-            <button class="btn btn-sm btn-warning" onclick="editGroup(${g.id})">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteGroup(${g.id})">Delete</button>
+      table.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-people fs-1 mb-3"></i>
+            <h5>No groups yet</h5>
+            <p>Create your first group to start splitting expenses!</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+              <i class="bi bi-plus-circle me-1"></i>Create Group
+            </button>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    groups.forEach(g => {
+      const participants = (g.members_usernames || []).join(", ");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <span class="badge bg-secondary">${g.id}</span>
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="group-avatar rounded-circle d-flex align-items-center justify-content-center me-2" 
+                 style="width: 32px; height: 32px;" data-color="${(g.id % 6) + 1}">
+              ${(g.title || "").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase() || "G"}
+            </div>
+            <span class="fw-semibold">${safe(g.title)}</span>
+          </div>
+        </td>
+        <td>
+          <span class="badge bg-info">${g.currency}</span>
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center me-2" 
+                 style="width: 24px; height: 24px;">
+              <i class="bi bi-person" style="font-size: 0.75rem;"></i>
+            </div>
+            <span>${g.owner_username || "Unknown"}</span>
+          </div>
+        </td>
+        <td>
+          <span class="badge bg-success">${g.members_usernames?.length || 0} members</span>
+        </td>
+        <td>
+          <small class="text-muted">${getRelativeTime(g.created_at)}</small>
+        </td>
+        <td>
+          <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-primary" onclick="openGroup(${g.id})" title="Open Group">
+              <i class="bi bi-box-arrow-up-right"></i>
+</button>
+            <button class="btn btn-sm btn-outline-warning" 
+                    onclick="openEditGroupModal(${g.id})" title="Edit Group">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})" title="Delete Group">
+              <i class="bi bi-trash"></i>
+</button>
+          </div>
           </td>
         `;
-        table.appendChild(tr);
-      });
-    }
+      table.appendChild(tr);
+    });
+
+    // Update stats
+    const stats = await fetchGroupStats();
+    updateSummaryStats(stats);
+
+  } catch (err) {
+    console.error("❌ Error rendering groups list:", err);
+    table.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-danger py-4">
+          <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+          <h5>Error loading groups</h5>
+          <p>${err.message}</p>
+          <button class="btn btn-outline-primary" onclick="renderGroupsList()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Retry
+          </button>
+        </td>
+      </tr>
+    `;
   }
 }
 
-
-// ==============================
-// Render Groups for Mobile as Cards (Improved)
-// ==============================
+// -----------------------------
+// Mobile Cards Rendering
+// -----------------------------
 async function renderGroupsMobileCards() {
-  const groups = await fetchGroups();
   const container = document.getElementById("groupsMobileCards");
   if (!container) return;
 
-  container.innerHTML = "";
+  try {
+    // Show loading state
+    container.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">Loading groups...</div>
+      </div>
+    `;
 
-  if (!groups.length) {
-    container.innerHTML = `<div class="text-center text-muted py-4">No groups yet.</div>`;
-    return;
-  }
+    const groups = await fetchGroups();
+    allGroups = groups;
+    filteredGroups = groups;
 
-  for (const g of groups) {
-    // Avatar initials
-    const initials = (g.title || "")
-      .split(" ")
-      .map(p => p[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "G";
+    container.innerHTML = "";
 
-    // Participants
-    const participants = (g.members_usernames || []).join(", ") || "No members";
+    if (!groups.length) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-people fs-1 mb-3"></i>
+          <h5>No groups yet</h5>
+          <p>Create your first group to start splitting expenses!</p>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+            <i class="bi bi-plus-circle me-1"></i>Create Group
+          </button>
+        </div>
+      `;
+      return;
+    }
 
-    // Recent expense
-    const recent = g.expenses?.length
-      ? `${g.expenses[0].payer_username ?? "Someone"} paid ${g.expenses[0].amount} ${g.expenses[0].currency}`
-      : "No recent activity";
+    groups.forEach(g => {
+      const initials = (g.title || "")
+        .split(" ")
+        .map(p => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase() || "G";
 
-    const card = document.createElement("div");
-card.className = "group-card card shadow-sm border-0 mb-3";
+      const participants = (g.members_usernames || []).join(", ") || "No members";
+      const recent = g.expenses?.length
+        ? `${g.expenses[0].payer_username ?? "Someone"} paid ${formatCurrency(g.expenses[0].amount, g.expenses[0].currency)}`
+        : "No recent activity";
 
-// Random gradient index (1–6)
-const gradientIndex = (g.id % 6) + 1;
+      const card = document.createElement("div");
+      card.className = "group-card card shadow-sm border-0 mb-3";
+      card.style.cursor = "pointer";
 
-card.innerHTML = `
+      // Add click handler
+      card.addEventListener('click', () => openGroup(g.id));
+
+      const gradientIndex = (g.id % 6) + 1;
+
+      card.innerHTML = `
   <div class="card-body d-flex align-items-center">
     <div class="group-avatar rounded-circle d-flex align-items-center justify-content-center me-3"
          style="width:55px; height:55px;" data-color="${gradientIndex}">
@@ -126,181 +362,1238 @@ card.innerHTML = `
     </div>
     <div class="text-end">
       <div class="text-muted fw-bold mb-2">${g.currency || ""}</div>
-      <button class="btn btn-sm btn-outline-primary mb-1" onclick="openGroup(${g.id})">Open</button><br>
-      <button class="btn btn-sm btn-outline-warning mb-1" onclick="editGroup(${g.id})">Edit</button><br>
-      <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})">Delete</button>
+            <div class="btn-group-vertical" role="group">
+              <button class="btn btn-sm btn-outline-primary mb-1" onclick="event.stopPropagation(); openGroup(${g.id})" title="Open">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </button>
+<button class="btn btn-sm btn-outline-warning mb-1"
+                      onclick="event.stopPropagation(); openEditGroupModal(${g.id})" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteGroup(${g.id})" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
     </div>
   </div>
 `;
 
-    container.appendChild(card);
+      container.appendChild(card);
+    });
+
+    // Update mobile stats
+    const stats = await fetchGroupStats();
+    updateSummaryStats(stats);
+
+  } catch (err) {
+    console.error("❌ Error rendering mobile cards:", err);
+    container.innerHTML = `
+      <div class="text-center text-danger py-4">
+        <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+        <h5>Error loading groups</h5>
+        <p>${err.message}</p>
+        <button class="btn btn-outline-primary" onclick="renderGroupsMobileCards()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Retry
+        </button>
+      </div>
+    `;
   }
 }
 
+// -----------------------------
+// Search and Filter Functions
+// -----------------------------
+function filterGroups() {
+  const searchTerm = document.getElementById('groupSearch')?.value.toLowerCase() ||
+    document.getElementById('mobileGroupSearch')?.value.toLowerCase() || '';
+  const filterType = document.getElementById('groupFilter')?.value || '';
 
-// helper to escape HTML
-function safe(str) {
-  return str ? str.replace(/[&<>"']/g, c => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  )) : "";
-}
+  filteredGroups = allGroups.filter(group => {
+    const matchesSearch = group.title.toLowerCase().includes(searchTerm) ||
+      group.owner_username?.toLowerCase().includes(searchTerm) ||
+      group.members_usernames?.some(member => member.toLowerCase().includes(searchTerm));
 
-// ---------------------
-// Create / Delete / Update / Open  Groups
-// ---------------------
+    const matchesFilter = !filterType || group.type === filterType;
 
-async function createGroup() {
-  const t = localStorage.getItem("token");
-  if (!t) return alert("Login required");
-  const title = document.getElementById("groupTitle")?.value?.trim();
-  const currency = document.getElementById("groupCurrency")?.value || "MAD";
-  const type = document.getElementById("groupType")?.value || "Other";
-  // selected friends checkboxes (friend_{id})
-  const checks = document.querySelectorAll("#friendsTable input[type=checkbox]:checked");
-  const member_ids = Array.from(checks).map(c => parseInt(c.value));
-  if (!title) return alert("Group title required");
-  const res = await fetch(`${API_URL}/groups`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
-    body: JSON.stringify({ title, currency, type, member_ids })
+    return matchesSearch && matchesFilter;
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => null);
-    return alert(e?.detail || "Failed to create group");
+
+  // Re-render based on screen size
+  if (window.innerWidth >= 768) {
+    renderFilteredGroupsTable();
+  } else {
+    renderFilteredGroupsMobile();
   }
-  const g = await res.json();
-  window.location.href = `expenses.html?id=${g.id}`;
 }
 
-function openGroup(id) { window.location.href = `expenses.html?id=${id}`; }
+function renderFilteredGroupsTable() {
+  const table = document.getElementById("groupsTable");
+  if (!table) return;
 
+  table.innerHTML = "";
 
-async function editGroup(newName, newCurrency) {
-  if (!newName && !newCurrency) {
-    alert("Provide a new name or currency");
+  if (!filteredGroups.length) {
+    table.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-muted py-4">
+          <i class="bi bi-search fs-1 mb-3"></i>
+          <h5>No groups found</h5>
+          <p>Try adjusting your search or filter criteria</p>
+        </td>
+      </tr>
+    `;
     return;
   }
 
-  const payload = {};
-  if (newName) payload.name = newName;
-  if (newCurrency) payload.currency = newCurrency;
-
-  const res = await fetch(`${API_URL}/groups/${groupId}`, {
-    method: "PUT",
-    headers: {
-      "Authorization": "Bearer " + token,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
+  filteredGroups.forEach(g => {
+    const participants = (g.members_usernames || []).join(", ");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="badge bg-secondary">${g.id}</span></td>
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="group-avatar rounded-circle d-flex align-items-center justify-content-center me-2" 
+               style="width: 32px; height: 32px;" data-color="${(g.id % 6) + 1}">
+            ${(g.title || "").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase() || "G"}
+          </div>
+          <span class="fw-semibold">${safe(g.title)}</span>
+        </div>
+      </td>
+      <td><span class="badge bg-info">${g.currency}</span></td>
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center me-2" 
+               style="width: 24px; height: 24px;">
+            <i class="bi bi-person" style="font-size: 0.75rem;"></i>
+          </div>
+          <span>${g.owner_username || "Unknown"}</span>
+        </div>
+      </td>
+      <td><span class="badge bg-success">${g.members_usernames?.length || 0} members</span></td>
+      <td><small class="text-muted">${getRelativeTime(g.created_at)}</small></td>
+      <td>
+        <div class="btn-group" role="group">
+          <button class="btn btn-sm btn-primary" onclick="openGroup(${g.id})" title="Open Group">
+            <i class="bi bi-box-arrow-up-right"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-warning" 
+                  onclick="openEditGroupModal(${g.id})" title="Edit Group">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})" title="Delete Group">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    table.appendChild(tr);
   });
+}
 
-  if (res.ok) {
-    const updatedGroup = await res.json();
-    alert(`Group updated: ${updatedGroup.name} (${updatedGroup.currency})`);
-    loadGroupDetails(); // optional: reload group info
-  } else {
-    const err = await res.json();
-    console.error("Update failed:", err);
-    alert("Failed to update group: " + JSON.stringify(err));
+function renderFilteredGroupsMobile() {
+  const container = document.getElementById("groupsMobileCards");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!filteredGroups.length) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="bi bi-search fs-1 mb-3"></i>
+        <h5>No groups found</h5>
+        <p>Try adjusting your search criteria</p>
+      </div>
+    `;
+    return;
   }
+
+  filteredGroups.forEach(g => {
+    const initials = (g.title || "")
+      .split(" ")
+      .map(p => p[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "G";
+
+    const participants = (g.members_usernames || []).join(", ") || "No members";
+    const recent = g.expenses?.length
+      ? `${g.expenses[0].payer_username ?? "Someone"} paid ${formatCurrency(g.expenses[0].amount, g.expenses[0].currency)}`
+      : "No recent activity";
+
+    const card = document.createElement("div");
+    card.className = "group-card card shadow-sm border-0 mb-3";
+    card.style.cursor = "pointer";
+
+    card.addEventListener('click', () => openGroup(g.id));
+
+    const gradientIndex = (g.id % 6) + 1;
+
+    card.innerHTML = `
+      <div class="card-body d-flex align-items-center">
+        <div class="group-avatar rounded-circle d-flex align-items-center justify-content-center me-3"
+             style="width:55px; height:55px;" data-color="${gradientIndex}">
+          ${initials}
+        </div>
+        <div class="flex-grow-1">
+          <h6 class="mb-1 fw-bold">${safe(g.title)}</h6>
+          <small class="text-muted">👑 ${g.owner_username || "Unknown"}</small><br>
+          <small class="text-muted">👥 ${participants}</small><br>
+          <small class="text-muted">💰 ${recent}</small>
+        </div>
+        <div class="text-end">
+          <div class="text-muted fw-bold mb-2">${g.currency || ""}</div>
+          <div class="btn-group-vertical" role="group">
+            <button class="btn btn-sm btn-outline-primary mb-1" onclick="event.stopPropagation(); openGroup(${g.id})" title="Open">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-warning mb-1"
+                    onclick="event.stopPropagation(); openEditGroupModal(${g.id})" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteGroup(${g.id})" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// -----------------------------
+// Group Management Functions
+// -----------------------------
+async function createGroup() {
+  try {
+    const title = document.getElementById("groupTitle")?.value?.trim();
+    const currency = document.getElementById("groupCurrency")?.value || "MAD";
+    const type = document.getElementById("groupType")?.value || "Other";
+    const selectedCards = document.querySelectorAll(".friend-card.selected");
+    if (!selectedCards.length) return alert("Please select a friend!");
+    const member_ids = Array.from(selectedCards).map(card => parseInt(card.dataset.friendId));
+    console.log("eaelakkjepae", member_ids);
+    if (!title) {
+      showError("Group title is required");
+      return;
+    }
+
+    console.log("🔄 Creating group:", { title, currency, type, member_ids });
+
+    const res = await fetch(`${API_URL}/groups`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ title, currency, type, member_ids })
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || "Failed to create group");
+    }
+
+    const newGroup = await res.json();
+    console.log("✅ Group created:", newGroup);
+
+    showSuccess("Group created successfully!");
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById("createGroupModal"));
+    if (modal) modal.hide();
+
+    // Redirect to expenses page
+    window.location.href = `expenses.html?id=${newGroup.id}`;
+
+  } catch (err) {
+    console.error("❌ Error creating group:", err);
+    showError(err.message || "Failed to create group");
+  }
+}
+
+function openGroup(id) {
+  window.location.href = `expenses.html?id=${id}`;
 }
 
 async function deleteGroup(groupId) {
   if (!groupId) return;
 
-  if (!confirm("Are you sure you want to delete this group?")) return;
+  if (!confirm("Are you sure you want to delete this group? This action cannot be undone.")) return;
 
-  const res = await fetch(`${API_URL}/groups/${groupId}`, {
-    method: "DELETE",
-    headers: { "Authorization": "Bearer " + token }
-  });
+  try {
+    console.log("🔄 Deleting group:", groupId);
 
-  if (res.ok) {
-    //alert("Group deleted successfully");
-    renderGroupsMobileCards();
-    loadGroupsForExpense();
- // reload table
-  } else {
-    const err = await res.json();
-    alert("Failed to delete group: " + JSON.stringify(err));
+    const res = await fetch(`${API_URL}/groups/${groupId}`, {
+      method: "DELETE",
+      headers: getHeaders()
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || "Failed to delete group");
+    }
+
+    console.log("✅ Group deleted successfully");
+    showSuccess("Group deleted successfully!");
+
+    // Refresh the groups list
+    await Promise.all([
+      renderGroupsList(),
+      renderGroupsMobileCards(),
+      loadGroupsForExpense()
+    ]);
+
+  } catch (err) {
+    console.error("❌ Error deleting group:", err);
+    showError(err.message || "Failed to delete group");
   }
-
 }
 
-// Load groups into the select
+// -----------------------------
+// Edit Group Modal Functions
+// -----------------------------
+let editGroupModal;
+
+async function openEditGroupModal(groupId) {
+  console.log("🔄 Opening edit modal for group:", groupId);
+  console.log("📊 Modal instance:", editGroupModal);
+
+  try {
+    // Fetch complete group data
+    const res = await fetch(`${API_URL}/groups/${groupId}`, { headers: getHeaders() });
+    if (!res.ok) {
+      throw new Error("Failed to fetch group data");
+    }
+
+    const group = await res.json();
+    console.log("📊 Group data loaded:", group);
+
+    // Populate all fields
+    document.getElementById("editGroupId").value = groupId;
+    document.getElementById("editGroupTitle").value = group.title || "";
+    document.getElementById("editGroupType").value = group.type || "Other";
+    document.getElementById("editGroupCurrency").value = group.currency || "MAD";
+    document.getElementById("editGroupPhoto").value = group.photo || "";
+    console.log("📊 Group descreption :", group.description);
+    document.getElementById("editGroupDescription").value = group.description || "";
+
+    console.log("📝 Fields populated, showing modal...");
+
+    setTimeout(() => {
+      try {
+        if (editGroupModal) {
+          editGroupModal.show();
+          console.log("✅ Modal shown successfully");
+        } else {
+          console.error("❌ Edit group modal not initialized");
+          // Try to create a new instance as fallback
+          const modalEl = document.getElementById('editGroupModal');
+          if (modalEl && typeof bootstrap !== 'undefined') {
+            const fallbackModal = new bootstrap.Modal(modalEl);
+            fallbackModal.show();
+            console.log("✅ Fallback modal created and shown");
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error showing modal:", err);
+      }
+    }, 100);
+
+  } catch (err) {
+    console.error("❌ Error loading group data:", err);
+    showError("Failed to load group information");
+  }
+}
+
+// Make function globally accessible
+window.openEditGroupModal = openEditGroupModal;
+
+async function saveGroupChanges(event) {
+  event.preventDefault();
+
+  const groupId = document.getElementById("editGroupId").value;
+  const newTitle = document.getElementById("editGroupTitle").value.trim();
+  const newType = document.getElementById("editGroupType").value;
+  const newCurrency = document.getElementById("editGroupCurrency").value;
+  const newPhoto = document.getElementById("editGroupPhoto").value.trim();
+  const newDescription = document.getElementById("editGroupDescription").value.trim();
+
+  console.log("🔄 Saving group changes:", { groupId, newTitle, newType, newCurrency, newPhoto, newDescription });
+
+  if (!newTitle) {
+    showError("Group name is required");
+    return;
+  }
+
+  const payload = {
+    title: newTitle,
+    type: newType,
+    currency: newCurrency,
+    photo: newPhoto || null,
+    description: newDescription || ""
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/groups/${groupId}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || "Failed to update group");
+    }
+
+    const updatedGroup = await res.json();
+    console.log("✅ Group updated:", updatedGroup);
+
+    showSuccess(`Group "${updatedGroup.title}" updated successfully!`);
+
+    // Close modal
+    const editGroupModal = bootstrap.Modal.getInstance(document.getElementById('editGroupModal'));
+    if (editGroupModal) editGroupModal.hide();
+
+    // Refresh the groups list
+    await Promise.all([
+      renderGroupsList(),
+      renderGroupsMobileCards()
+    ]);
+
+  } catch (err) {
+    console.error("❌ Error updating group:", err);
+    showError(err.message || "Failed to update group");
+  }
+}
+
+// -----------------------------
+// Expense Creation Functions
+// -----------------------------
+async function loadWalletsForGroups() {
+  try {
+    const res = await fetch(`${API_URL}/wallets`, { headers: getHeaders() });
+    if (!res.ok) return [];
+    const wallets = await res.json();
+
+    const walletSelect = document.getElementById('expenseWallet');
+    if (walletSelect) {
+      walletSelect.innerHTML = '<option value="">No wallet selected</option>';
+      wallets.forEach(wallet => {
+        const option = document.createElement('option');
+        option.value = wallet.id;
+        option.textContent = `${wallet.name} (${wallet.balance.toFixed(2)} ${wallet.category})`;
+        walletSelect.appendChild(option);
+      });
+    }
+
+    return wallets;
+  } catch (err) {
+    console.error('Error loading wallets:', err);
+    return [];
+  }
+}
+
 async function loadGroupsForExpense() {
   try {
     const res = await fetch(`${API_URL}/groups`, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: getHeaders()
     });
     const groups = await res.json();
     const select = document.getElementById("groupsListForExpenses");
-    select.innerHTML = '<option value="">-- Select a group --</option>';
-    groups.forEach(g => {
-      const opt = document.createElement("option");
-      opt.value = g.id;
-      opt.textContent = g.title;
-      select.appendChild(opt);
-    });
 
-    // Listen for selection change
-    select.addEventListener("change", async (e) => {
-      const groupId = e.target.value;
-      if (groupId) {
-        await loadMembersForGroup(groupId);
-      } else {
-        document.getElementById("friendsListAddExpense").innerHTML = "";
-      }
-    });
+    if (select) {
+      select.innerHTML = '<option value="">-- Select a group --</option>';
+      groups.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g.id;
+        opt.textContent = g.title;
+        select.appendChild(opt);
+      });
+
+      // Listen for selection change
+      select.addEventListener("change", async (e) => {
+        const groupId = e.target.value;
+        if (groupId) {
+          await loadMembersForGroup(groupId);
+          await loadPayersForGroup(groupId);
+        } else {
+          const membersContainer = document.getElementById("membersListForGroups");
+          if (membersContainer) membersContainer.innerHTML = "";
+
+          // Clear payer select
+          const payerSelect = document.getElementById('expensePayer');
+          if (payerSelect) {
+            payerSelect.innerHTML = '<option value="">Select who paid...</option>';
+          }
+        }
+      });
+    }
 
   } catch (err) {
     console.error("Failed to load groups:", err);
   }
 }
 
-// Load members for the selected group
 async function loadMembersForGroup(groupId) {
   try {
     const res = await fetch(`${API_URL}/groups/${groupId}/members`, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: getHeaders()
     });
     if (!res.ok) throw new Error("Failed to fetch members");
     const members = await res.json();
 
     const membersContainer = document.getElementById("membersListForGroups");
-    membersContainer.innerHTML = "";
-    members.forEach(m => {
-      const div = document.createElement("div");
-      div.className = "form-check";
-      div.innerHTML = `
-        <input class="form-check-input" type="checkbox" value="${m.user_id}" id="member_${m.user_id}">
-        <label class="form-check-label" for="member_${m.user_id}">${m.username || m.user_id}</label>
+    if (membersContainer) {
+      // Check if we're on home page or groups page
+      if (window.location.pathname.includes('home.html')) {
+        renderMembersCardsForHome(membersContainer, members);
+      } else {
+        renderMembersCardsForGroup(membersContainer, members);
+      }
+    }
+  } catch (err) {
+    console.error("Error loading members:", err);
+    const membersContainer = document.getElementById("membersListForGroups");
+    if (membersContainer) {
+      membersContainer.innerHTML = `
+        <div class="text-center text-danger py-3">
+          <i class="bi bi-exclamation-triangle fs-1 mb-2"></i>
+          <p>Failed to load members</p>
+        </div>
       `;
-      membersContainer.appendChild(div);
+    }
+  }
+}
+
+async function loadPayersForGroup(groupId) {
+  try {
+    console.log("🔄 Loading payers for group:", groupId);
+
+    const res = await fetch(`${API_URL}/groups/${groupId}/members`, {
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch members");
+    const members = await res.json();
+
+    const payerSelect = document.getElementById('expensePayer');
+    if (!payerSelect) {
+      console.warn("Payer select not found");
+      return;
+    }
+
+    // Get current user for comparison
+    const currentUser = await fetchCurrentUser();
+
+    // Clear existing options except the first one
+    payerSelect.innerHTML = '<option value="">Select who paid...</option>';
+
+    // Add member options
+    members.forEach(member => {
+      const option = document.createElement('option');
+      option.value = member.user_id;
+      option.textContent = `${member.username || `User ${member.user_id}`}${member.user_id === currentUser?.id ? ' (You)' : ''}`;
+      payerSelect.appendChild(option);
     });
 
+    // Set current user as default
+    if (currentUser) {
+      payerSelect.value = currentUser.id;
+      // Trigger wallet update
+      updateWalletsForPayer(currentUser.id);
+    }
+
+    // Add event listener for payer changes
+    payerSelect.addEventListener('change', function () {
+      updateWalletsForPayer(this.value);
+    });
+
+    console.log("✅ Payers loaded successfully");
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error loading payers:", err);
+    const payerSelect = document.getElementById('expensePayer');
+    if (payerSelect) {
+      payerSelect.innerHTML = '<option value="">Error loading payers</option>';
+    }
+  }
+}
+
+function renderMembersCardsForGroup(container, members) {
+  if (!container || !Array.isArray(members)) return;
+
+  container.innerHTML = "";
+  container.className = "row g-2 justify-content-center"; // responsive grid spacing
+
+  members.forEach(m => {
+    const col = document.createElement("div");
+    col.className = "col-6 col-md-4 col-lg-3"; // auto-fit grid
+
+    const card = document.createElement("div");
+    card.className = "member-card card text-center border-0 shadow-sm";
+    card.style.cursor = "pointer";
+    card.style.transition = "all 0.25s ease";
+    card.style.userSelect = "none";
+    card.style.padding = "0.75rem";
+
+    // ✅ Avatar or initials
+    const initials = (m.username || "U")
+      .split(" ")
+      .map(w => w[0])
+      .join("")
+      .toUpperCase();
+
+    card.innerHTML = `
+      <input class="form-check-input d-none" type="checkbox" value="${m.user_id}" id="member_${m.user_id}" onchange="updateExpensePreview()" ${m.user_id === currentUser?.id ? 'checked' : ''}>
+      <div class="avatar mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle">
+        ${initials}
+      </div>
+      <h6 class="mb-0 text-truncate" style="font-size: 0.8rem;">${m.username || m.user_id}</h6>
+      <small class="text-muted" style="font-size: 0.7rem;">${m.is_admin ? "👑 Admin" : "👤 Member"}</small>
+      ${m.user_id === currentUser?.id ? '<span class="badge bg-primary mt-1" style="font-size: 0.6rem;">You</span>' : ''}
+    `;
+
+    // ✅ Click to toggle checkbox
+    card.addEventListener("click", (e) => {
+      if (e.target.type === "checkbox") return;
+      const checkbox = card.querySelector("input[type=checkbox]");
+      checkbox.checked = !checkbox.checked;
+
+      // Add/remove selected class for visual feedback
+      if (checkbox.checked) {
+        card.classList.add('member-selected');
+      } else {
+        card.classList.remove('member-selected');
+      }
+
+      updateExpensePreview();
+    });
+
+    // ✅ Visual feedback
+    card.addEventListener("mouseenter", () => {
+      card.style.transform = "translateY(-2px)";
+      card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+    });
+
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "translateY(0)";
+      card.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+    });
+
+    col.appendChild(card);
+    container.appendChild(col);
+  });
+}
+
+// Function to render members for home page (same styling as groups)
+function renderMembersCardsForHome(container, members) {
+  if (!container || !Array.isArray(members)) return;
+
+  container.innerHTML = "";
+  container.className = "row g-2 justify-content-center"; // responsive grid spacing
+
+  // Get current user for comparison
+  fetchCurrentUser().then(currentUser => {
+    members.forEach(m => {
+      const col = document.createElement("div");
+      col.className = "col-6 col-md-4 col-lg-3"; // auto-fit grid
+
+      const card = document.createElement("div");
+      card.className = "member-card card text-center border-0 shadow-sm";
+      card.style.cursor = "pointer";
+      card.style.transition = "all 0.25s ease";
+      card.style.userSelect = "none";
+      card.style.padding = "0.75rem";
+
+      // ✅ Avatar or initials
+      const initials = (m.username || "U")
+        .split(" ")
+        .map(w => w[0])
+        .join("")
+        .toUpperCase();
+
+      card.innerHTML = `
+        <input class="form-check-input d-none" type="checkbox" value="${m.user_id}" id="member_${m.user_id}" onchange="updateExpensePreview()" ${m.user_id === currentUser?.id ? 'checked' : ''}>
+        <div class="avatar mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle">
+          ${initials}
+        </div>
+        <h6 class="mb-0 text-truncate" style="font-size: 0.8rem;">${m.username || m.user_id}</h6>
+        <small class="text-muted" style="font-size: 0.7rem;">${m.is_admin ? "👑 Admin" : "👤 Member"}</small>
+        ${m.user_id === currentUser?.id ? '<span class="badge bg-primary mt-1" style="font-size: 0.6rem;">You</span>' : ''}
+      `;
+
+      // Add selected class if current user is checked by default
+      if (m.user_id === currentUser?.id) {
+        card.classList.add('member-selected');
+      }
+
+      // ✅ Click to toggle checkbox
+      card.addEventListener("click", (e) => {
+        if (e.target.type === "checkbox") return;
+        const checkbox = card.querySelector("input[type=checkbox]");
+        checkbox.checked = !checkbox.checked;
+
+        // Add/remove selected class for visual feedback
+        if (checkbox.checked) {
+          card.classList.add('member-selected');
+        } else {
+          card.classList.remove('member-selected');
+        }
+
+        updateExpensePreview();
+      });
+
+      // ✅ Visual feedback
+      card.addEventListener("mouseenter", () => {
+        card.style.transform = "translateY(-2px)";
+        card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+      });
+
+      card.addEventListener("mouseleave", () => {
+        card.style.transform = "translateY(0)";
+        card.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+      });
+
+      col.appendChild(card);
+      container.appendChild(col);
+    });
+  });
+}
+
+// Add missing functions for home page
+function selectAllMembers() {
+  const checkboxes = document.querySelectorAll("#membersListForGroups input[type=checkbox]");
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = true;
+    // Add visual feedback
+    const card = checkbox.closest('.member-card');
+    if (card) {
+      card.classList.add('member-selected');
+    }
+  });
+  updateExpensePreview();
+}
+
+function deselectAllMembers() {
+  const checkboxes = document.querySelectorAll("#membersListForGroups input[type=checkbox]");
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+    // Remove visual feedback
+    const card = checkbox.closest('.member-card');
+    if (card) {
+      card.classList.remove('member-selected');
+    }
+  });
+  updateExpensePreview();
+}
+
+// Add wallet update function for group.js
+function updateWalletsForPayer(payerId = null) {
+  const payerSelect = document.getElementById('expensePayer');
+  const walletSelect = document.getElementById('expenseWallet');
+  const walletSection = document.getElementById('walletSection');
+
+  if (!payerSelect || !walletSelect || !walletSection) return;
+
+  const selectedPayerId = payerId || payerSelect.value;
+
+  if (!selectedPayerId) {
+    // Hide wallet section if no payer selected
+    walletSection.style.display = 'none';
+    walletSelect.innerHTML = '<option value="">No wallet selected</option>';
+    return;
+  }
+
+  // Get current user
+  fetchCurrentUser().then(currentUser => {
+    if (currentUser && parseInt(selectedPayerId) === currentUser.id) {
+      // Show wallet section only for current user
+      walletSection.style.display = 'block';
+
+      // Load wallets for current user
+      loadWalletsForGroups().then(wallets => {
+        const currentUserWallets = wallets.filter(wallet => wallet.user_id === currentUser.id);
+
+        // Update wallet options
+        walletSelect.innerHTML = '<option value="">No wallet selected</option>';
+
+        currentUserWallets.forEach(wallet => {
+          const option = document.createElement('option');
+          option.value = wallet.id;
+          option.textContent = `${wallet.name} (${wallet.balance.toFixed(2)} ${wallet.category})`;
+          walletSelect.appendChild(option);
+        });
+      });
+    } else {
+      // Hide wallet section for other users
+      walletSection.style.display = 'none';
+      walletSelect.innerHTML = '<option value="">No wallet selected</option>';
+    }
+  });
+}
+
+
+
+// -----------------------------
+// Add Expense from modal (works on both pages)
+// -----------------------------
+async function addExpenseModalSubmit() {
+  try {
+    const date = document.getElementById("expenseDate").value;
+    const time = document.getElementById("expenseTime").value;
+    const amount = parseFloat(document.getElementById("expenseAmount").value);
+    const description = document.getElementById("expenseDesc").value.trim();
+    const note = document.getElementById("expenseNote").value;
+    const category = document.getElementById("expenseCategory").value;
+    const walletId = document.getElementById("expenseWallet").value;
+    const payerId = document.getElementById("expensePayer").value;
+    const groupId = document.getElementById("groupsListForExpenses").value;
+
+
+
+    // Validation
+    if (!groupId) {
+      showError("Please select a group");
+      return;
+    }
+    if (!amount || amount <= 0) {
+      showError("Please enter a valid amount");
+      return;
+    }
+    if (!description) {
+      showError("Please enter a description");
+      return;
+    }
+    if (!date || !time) {
+      showError("Please select both date and time");
+      return;
+    }
+    if (!payerId) {
+      showError("Please select who paid for this expense");
+      return;
+    }
+
+    // Get selected members
+    const checked = document.querySelectorAll("#membersListForGroups input[type=checkbox]:checked");
+    const selectedMembers = Array.from(checked).map(c => parseInt(c.value));
+    if (selectedMembers.length === 0) {
+      showError("Please select at least one member");
+      return;
+    }
+
+    // Build splits equally
+    const share = amount / selectedMembers.length;
+    const splits = selectedMembers.map(id => ({ user_id: id, share_amount: share }));
+
+    // Combine date and time
+    const expenseDate = new Date(`${date}T${time}`);
+
+    const expenseData = {
+      group_id: parseInt(groupId),
+      payer_id: parseInt(payerId),
+      description: description,
+      note: note,
+      amount: amount,
+      currency: "MAD",
+      category: category,
+      wallet_id: walletId ? parseInt(walletId) : null,
+      split_type: "equal",
+      created_at: expenseDate.toISOString(),
+      splits
+    };
+
+    console.log("🔄 Creating expense:", expenseData);
+    console.log("👥 Selected members:", selectedMembers);
+
+    const res = await fetch(`${API_URL}/expenses`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(expenseData),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || "Failed to create expense");
+    }
+
+    const newExpense = await res.json();
+    console.log("✅ Expense created:", newExpense);
+
+    showSuccess(`Expense "${description}" added successfully!`);
+
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById("addExpenseModal"));
+    if (modal) modal.hide();
+
+    // Clear form
+    document.getElementById("addExpenseModal").querySelector("form").reset();
+
+    // Load initial data
+    await Promise.all([
+      initializeExpenseModal(),
+      loadGroupsForExpense(),
+      loadWalletsForGroups()
+    ]);
+  } catch (err) {
+    console.error("❌ Error creating expense:", err);
+    showError(err.message || "Failed to create expense");
   }
 }
 
 
 
 
-document.addEventListener("DOMContentLoaded", () => {
-  // populate friends list for create group if element exists
-  if (document.getElementById("friendsTable")) loadFriendsCheckboxes("friendsTable");
-  if (document.getElementById("friendsList")) loadFriendsCheckboxes("friendsList");
-  // render groups table
-  if (document.getElementById("groupsTable")) renderGroupsList();
-  if (document.getElementById("groupsMobileCards")) renderGroupsMobileCards();
-  if (document.getElementById("groupsListForExpenses")) loadGroupsForExpense();
-  
+// --------------------------------------
+// Initialize expense modal (clean version)
+// --------------------------------------
+async function initializeExpenseModal() {
+  try {
+    // ✅ Run only on expenses page
+    if (!window.location.pathname.includes('Home.html')) {
+      console.log("⚠️ Not on expenses page, skipping initializeExpenseModal");
+      return;
+    }
+
+    // ✅ Set current date and time
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const dateInput = document.getElementById('expenseDate');
+    const timeInput = document.getElementById('expenseTime');
+
+    if (dateInput) dateInput.value = today;
+    if (timeInput) timeInput.value = currentTime;
+
+    // ✅ Add preview listeners
+    const amountInput = document.getElementById('expenseAmount');
+    const categorySelect = document.getElementById('expenseCategory');
+
+    if (amountInput) {
+      amountInput.addEventListener('input', updateExpensePreview);
+    }
+
+    if (categorySelect) {
+      categorySelect.addEventListener('change', updateExpensePreview);
+    }
+
+    // ✅ Fetch current user and set default payer
+    const currentUser = await fetchCurrentUser();
+    const payerSelect = document.getElementById('expensePayer');
+
+    if (payerSelect && currentUser) {
+      payerSelect.value = currentUser.id;
+      console.log(`✅ Default payer set to current user: ${currentUser.id}`);
+
+      // Trigger wallet update
+      updateWalletsForPayer();
+    }
+
+    console.log("✅ Expense modal initialized successfully");
+  } catch (err) {
+    console.error("❌ Error initializing expense modal:", err);
+  }
+}
+
+friendsListtoCreateGroup()
+// -----------------------------
+// Friends list for add-member modal (improved design)
+// -----------------------------
+async function friendsListtoCreateGroup() {
+  const t = localStorage.getItem("token");
+  if (!t) return;
+  console.log("✅ Loadfing friend startt +✅✅++ successfully");
+  // My friends
+  let res = await fetch(`${API_URL}/friends/my`, { headers: getHeaders() });
+  const myFriends = res.ok ? await res.json() : [];
+
+  const ul1 = document.getElementById("friendsListtoCreateGroup");
+  if (!ul1) return;
+
+  if (myFriends.length === 0) {
+    ul1.innerHTML = `
+  <div class="text-center text-muted py-4" 
+       style="cursor: pointer;" 
+       onclick="window.location.href='/friends.html'">
+    <i class="bi bi-person-plus" style="font-size: 2rem;"></i>
+    <p class="mt-2 mb-0">No friends available to add</p>
+    <small>Click here to add friends</small>
+  </div>`;
+    return;
+  }
+
+
+
+
+  ul1.innerHTML = "";
+  ul1.className = "friends-grid";
+
+  myFriends.forEach(f => {
+    const card = document.createElement("div");
+    card.className = "friend-card";
+    card.dataset.friendId = f.user_id;
+
+    const initials = (f.username || "U")
+      .split(" ")
+      .map(w => w[0])
+      .join("")
+      .toUpperCase();
+
+    card.innerHTML = `
+      <div class="friend-avatar">${initials}</div>
+      <div class="friend-name" title="${f.username || f.email || f.phone || `User ${f.user_id}`}">
+        ${f.username || f.email || f.phone || `User ${f.user_id}`}
+      </div>
+    `;
+
+    // Click handler for selection
+    card.addEventListener('click', () => {
+      card.classList.toggle('selected');
+    });
+
+    ul1.appendChild(card);
+  });
+}
+
+
+
+// -----------------------------
+// Modal Helper Functions
+// -----------------------------
+function selectAllFriends() {
+  const checkboxes = document.querySelectorAll("#friendsTable input[type=checkbox]");
+  checkboxes.forEach(cb => cb.checked = true);
+  updateGroupPreview();
+}
+
+function deselectAllFriends() {
+  const checkboxes = document.querySelectorAll("#friendsTable input[type=checkbox]");
+  checkboxes.forEach(cb => cb.checked = false);
+  updateGroupPreview();
+}
+
+function selectAllMembers() {
+  const checkboxes = document.querySelectorAll("#membersListForGroups input[type=checkbox]");
+  checkboxes.forEach(cb => cb.checked = true);
+  updateExpensePreview();
+}
+
+function deselectAllMembers() {
+  const checkboxes = document.querySelectorAll("#membersListForGroups input[type=checkbox]");
+  checkboxes.forEach(cb => cb.checked = false);
+  updateExpensePreview();
+}
+
+function updateGroupPreview() {
+  const name = document.getElementById("groupTitle")?.value || "";
+  const checked = document.querySelectorAll("#friendsTable input[type=checkbox]:checked");
+  const memberCount = checked.length;
+
+  const preview = document.getElementById("groupPreview");
+  if (preview) {
+    if (name && memberCount > 0) {
+      preview.style.display = "block";
+      document.getElementById("previewName").textContent = name;
+      document.getElementById("previewMembers").textContent = memberCount;
+    } else {
+      preview.style.display = "none";
+    }
+  }
+}
+
+function updateExpensePreview() {
+  const amount = parseFloat(document.getElementById("expenseAmount")?.value) || 0;
+  const groupSelect = document.getElementById("groupsListForExpenses");
+  const groupName = groupSelect?.selectedOptions[0]?.textContent || "";
+  const categorySelect = document.getElementById("expenseCategory");
+  const category = categorySelect?.selectedOptions[0]?.textContent || "";
+  const checked = document.querySelectorAll("#membersListForGroups input[type=checkbox]:checked");
+  const memberCount = checked.length;
+
+  const preview = document.getElementById("expensePreview");
+  if (preview) {
+    if (amount > 0 && memberCount > 0 && groupName) {
+      preview.style.display = "block";
+      document.getElementById("previewAmount").textContent = `${amount.toFixed(2)} MAD`;
+      document.getElementById("previewPerPerson").textContent = `${(amount / memberCount).toFixed(2)} MAD`;
+      document.getElementById("previewMemberCount").textContent = memberCount;
+      document.getElementById("previewCategory").textContent = category;
+    } else {
+      preview.style.display = "none";
+    }
+  }
+}
+
+// -----------------------------
+// Friends Management
+// -----------------------------
+async function loadFriendsCheckboxes(targetId) {
+  try {
+    const res = await fetch(`${API_URL}/friends/my`, { headers: getHeaders() });
+    const friends = res.ok ? await res.json() : [];
+    const container = document.getElementById(targetId);
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!friends.length) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-3">
+          <i class="bi bi-person-plus fs-1 mb-2"></i>
+          <p>No friends yet</p>
+          <small>Add friends to invite them to groups</small>
+        </div>
+      `;
+      return;
+    }
+
+    friends.forEach(f => {
+      const div = document.createElement("div");
+      div.className = "form-check";
+      div.innerHTML = `
+        <input class="form-check-input" type="checkbox" value="${f.user_id}" id="friend_${f.user_id}" onchange="updateGroupPreview()">
+        <label class="form-check-label ms-2" for="friend_${f.user_id}">${f.username || f.user_id}</label>
+      `;
+      container.appendChild(div);
+    });
+  } catch (err) {
+    console.error("Error loading friends:", err);
+  }
+}
+
+// -----------------------------
+// Event Listeners
+// -----------------------------
+function setupEventListeners() {
+  // Search functionality
+  const searchInputs = ['groupSearch', 'mobileGroupSearch'];
+  searchInputs.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('input', filterGroups);
+    }
+  });
+
+  // Filter functionality
+  const filterSelect = document.getElementById('groupFilter');
+  if (filterSelect) {
+    filterSelect.addEventListener('change', filterGroups);
+  }
+
+  // Window resize handler
+  window.addEventListener('resize', () => {
+    // Re-render based on screen size
+    if (filteredGroups.length > 0) {
+      if (window.innerWidth >= 768) {
+        renderFilteredGroupsTable();
+      } else {
+        renderFilteredGroupsMobile();
+      }
+    }
+  });
+}
+
+// -----------------------------
+// Initialize Page
+// -----------------------------
+// Initialize date/time inputs
+function initializeDateTimeInputs() {
+  const now = new Date();
+
+  // Format date as YYYY-MM-DD
+  const today = now.toISOString().split('T')[0];
+
+  // Format time as HH:MM (24-hour format)
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const currentTime = `${hours}:${minutes}`;
+
+  // Set default values
+  const dateInput = document.getElementById('expenseDate');
+  const timeInput = document.getElementById('expenseTime');
+  const createdDateInput = document.getElementById('groupCreatedDate');
+
+  if (dateInput) dateInput.value = today;
+  if (timeInput) timeInput.value = currentTime;
+  if (createdDateInput) createdDateInput.value = today;
+
+  console.log("✅ Date/time inputs initialized");
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    console.log("🚀 Initializing groups page...");
+
+    // Setup event listeners
+    setupEventListeners();
+
+    // Initialize date/time inputs
+    initializeDateTimeInputs();
+
+    // Initialize edit group modal
+    setTimeout(() => {
+      try {
+        const modalEl = document.getElementById("editGroupModal");
+        if (modalEl && typeof bootstrap !== 'undefined') {
+          editGroupModal = new bootstrap.Modal(modalEl);
+          console.log("✅ Edit group modal initialized");
+        } else {
+          console.error("❌ Modal element or Bootstrap not found");
+        }
+      } catch (err) {
+        console.error("Modal initialization error:", err);
+      }
+    }, 200);
+
+    // Setup edit form
+    const editForm = document.getElementById("editGroupForm");
+    if (editForm) {
+      editForm.addEventListener("submit", saveGroupChanges);
+    }
+
+    // Setup form event listeners for previews
+    const groupTitle = document.getElementById("groupTitle");
+    if (groupTitle) {
+      groupTitle.addEventListener("input", updateGroupPreview);
+    }
+
+    const expenseAmount = document.getElementById("expenseAmount");
+    if (expenseAmount) {
+      expenseAmount.addEventListener("input", updateExpensePreview);
+    }
+
+    const groupsSelect = document.getElementById("groupsListForExpenses");
+    if (groupsSelect) {
+      groupsSelect.addEventListener("change", updateExpensePreview);
+    }
+
+    const categorySelect = document.getElementById("expenseCategory");
+    if (categorySelect) {
+      categorySelect.addEventListener("change", updateExpensePreview);
+    }
+
+    // Load initial data
+    await Promise.all([
+      loadFriendsCheckboxes("friendsTable"),
+      loadGroupsForExpense(),
+      loadWalletsForGroups()
+    ]);
+
+    // Render groups based on screen size
+    if (window.innerWidth >= 768) {
+      await renderGroupsList();
+    } else {
+      await renderGroupsMobileCards();
+    }
+
+    console.log("✅ Groups page initialized successfully");
+
+    // Test if function is accessible
+    console.log("🔍 Testing openEditGroupModal function:", typeof window.openEditGroupModal);
+
+  } catch (err) {
+    console.error("❌ Error initializing groups page:", err);
+    showError("Failed to load groups page");
+  }
 });
 
-
-
-
-
-
-
+// Modal initialization is now handled in groups.html

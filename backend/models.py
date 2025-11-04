@@ -38,23 +38,17 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     memberships: Mapped[list["Membership"]] = relationship("Membership", back_populates="user", cascade="all, delete-orphan")
-    expenses_paid: Mapped[list["Expense"]] = relationship("Expense", back_populates="payer")
+    expenses_paid: Mapped[list["Expense"]] = relationship("Expense", back_populates="payer", foreign_keys="Expense.payer_id")
+    expenses_added: Mapped[list["Expense"]] = relationship("Expense", back_populates="added_by_user", foreign_keys="Expense.added_by")
     splits: Mapped[list["Split"]] = relationship("Split", back_populates="user", cascade="all, delete-orphan")
     owned_groups: Mapped[list["Group"]] = relationship("Group", back_populates="owner")
-
-    friends: Mapped[list["Friend"]] = relationship(
-        "Friend",
-        foreign_keys="Friend.user_id",
-        back_populates="user",
-        cascade="all, delete-orphan"
-    )
-    friend_of: Mapped[list["Friend"]] = relationship(
-        "Friend",
-        foreign_keys="Friend.friend_id",
-        back_populates="friend",
-        cascade="all, delete-orphan"
-    )
-
+    friends: Mapped[list["Friend"]] = relationship("Friend", foreign_keys="Friend.user_id", back_populates="user", cascade="all, delete-orphan")
+    friend_of: Mapped[list["Friend"]] = relationship("Friend", foreign_keys="Friend.friend_id", back_populates="friend", cascade="all, delete-orphan")
+    
+    incomes: Mapped[list["Income"]] = relationship(back_populates="user")
+    income_types: Mapped[list["IncomeType"]] = relationship("IncomeType", back_populates="user",cascade="all, delete-orphan")
+    wallets: Mapped[list["Wallet"]] = relationship("Wallet",back_populates="user",cascade="all, delete-orphan")
+    transactions: Mapped[list["Transaction"]] = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
 
 # ======================
 # Group
@@ -103,10 +97,12 @@ class Expense(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), index=True)
     payer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    added_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     description: Mapped[str] = mapped_column(String(255))
     amount: Mapped[float] = mapped_column(Numeric(12,2))
     currency: Mapped[str] = mapped_column(String(10))
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id"), nullable=True)
     split_type: Mapped[str] = mapped_column(String(20), default="equal")
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     photo: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -114,9 +110,10 @@ class Expense(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     group: Mapped["Group"] = relationship("Group", back_populates="expenses")
-    payer: Mapped[Optional["User"]] = relationship("User", back_populates="expenses_paid")
+    payer: Mapped[Optional["User"]] = relationship("User", back_populates="expenses_paid", foreign_keys=[payer_id])
+    added_by_user: Mapped["User"] = relationship("User", back_populates="expenses_added", foreign_keys=[added_by])
     splits: Mapped[list["Split"]] = relationship("Split", back_populates="expense", cascade="all, delete-orphan")
-
+    wallet: Mapped[Optional["Wallet"]] = relationship("Wallet", back_populates="expenses")
 
 # ======================
 # Split
@@ -184,3 +181,90 @@ class ActivityLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship("User")
+
+
+
+# ======================
+# Income
+# ======================
+class Income(Base):
+    __tablename__ = "incomes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    income_type_id: Mapped[int] = mapped_column(ForeignKey("income_types.id"), nullable=False)
+    wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id"), nullable=False)
+
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(10), default="bank")
+    note: Mapped[Optional[str]] = mapped_column(String(255))
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="incomes")
+    income_type: Mapped["IncomeType"] = relationship("IncomeType", back_populates="incomes")
+    wallet: Mapped["Wallet"] = relationship("Wallet", back_populates="incomes")
+    
+
+
+# ======================
+# IncomeType
+# ======================
+class IncomeType(Base):
+    __tablename__ = "income_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g. Salary, Gift, Freelance
+    category: Mapped[Optional[str]] = mapped_column(String(50))
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+        # if user_id is null → global (shared)
+        # if user_id is set → custom type created by that user
+
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="income_types")
+    incomes: Mapped[list["Income"]] = relationship("Income", back_populates="income_type")
+
+# ======================
+# Wallet
+# ======================
+class Wallet(Base):
+    __tablename__ = "wallets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    category: Mapped[str] = mapped_column(String(20), default="cash")  # cash, bank, credit_card, other
+    balance: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="wallets")
+    incomes: Mapped[list["Income"]] = relationship("Income", back_populates="wallet", cascade="all, delete-orphan")
+    expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="wallet", cascade="all, delete-orphan")
+    transactions_from: Mapped[list["Transaction"]] = relationship("Transaction", foreign_keys="Transaction.from_wallet_id", back_populates="from_wallet", cascade="all, delete-orphan")
+    transactions_to: Mapped[list["Transaction"]] = relationship("Transaction", foreign_keys="Transaction.to_wallet_id", back_populates="to_wallet", cascade="all, delete-orphan")
+
+
+# ======================
+# Transaction (Wallet Transfers)
+# ======================
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    from_wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
+    to_wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
+    
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="transactions")
+    from_wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[from_wallet_id], back_populates="transactions_from")
+    to_wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[to_wallet_id], back_populates="transactions_to")

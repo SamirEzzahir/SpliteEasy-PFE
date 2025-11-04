@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 # ======================
 # FriendStatus Enum
@@ -90,6 +91,7 @@ class GroupRead(BaseModel):
     type: str
     photo: Optional[str]
     owner_id: int
+    description: str
     owner_username: Optional[str] = None
     members_usernames: list[str] = []
     created_at: datetime
@@ -150,25 +152,33 @@ class SplitRead(SplitBase):
 class ExpenseBase(BaseModel):
     group_id: Optional[int] = None
     payer_id: Optional[int] = None
+    added_by: Optional[int] = None
     description: str
     amount: float
-    currency: str
+    currency: Optional[str] = None  # Will be set from group currency
     category: Optional[str] = None
+    wallet_id: Optional[int] = None
     split_type: Optional[str] = "equal"
     note: Optional[str] = None
     photo: Optional[str] = None
+   
 
 class ExpenseCreate(ExpenseBase):
     splits: List[SplitCreate] = []
+    created_at: datetime
+
+ 
 
 class ExpenseRead(BaseModel):
     id: int
     group_id: int
     payer_id: int
+    added_by: int
     description: str
     amount: float
     currency: str
     category: str | None = None
+    wallet_id: int | None = None
     split_type: str | None = None
     note: str | None = None
     photo: str | None = None
@@ -176,6 +186,9 @@ class ExpenseRead(BaseModel):
     updated_at: datetime 
     splits: list[SplitRead] = []
     payer_username: str | None = None
+    added_by_username: str | None = None
+    group_name: str | None = None
+    payer_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -185,6 +198,7 @@ class ExpenseUpdate(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
     category: Optional[str] = None
+    wallet_id: Optional[int] = None
     split_type: Optional[str] = None
     note: Optional[str] = None
     photo: Optional[str] = None
@@ -243,3 +257,125 @@ class ActivityLogOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+
+# ======================
+# INCOME SCHEMAS
+# ======================
+class IncomeBase(BaseModel):
+    amount: float = Field(..., example=1000.0)
+    source_type: Optional[str] = Field("bank", example="cash")
+    note: Optional[str] = Field(None, example="October salary")
+    date: Optional[datetime] = None
+    income_type_id: int
+    wallet_id: int
+
+class IncomeReadWithNames(BaseModel):
+    id: int
+    user_id: int
+    amount: float
+    date: datetime
+    note: str | None
+    wallet_id: int
+    wallet_name: str
+    income_type_id: int
+    category_name: str
+    created_at: datetime
+    updated_at: datetime    
+
+class IncomeCreate(BaseModel):
+    amount: Decimal
+    income_type_id: int
+    wallet_id: int
+    note: str | None = None
+    source_type: str | None = None  # now this exists
+    date: datetime | None = None  # <-- add this
+
+class IncomeUpdate(BaseModel):
+    amount: Optional[float] = None
+    source_type: Optional[str] = None
+    note: Optional[str] = None
+    date: Optional[datetime] = None
+    income_type_id: Optional[int] = None
+    wallet_id: Optional[int] = None
+
+class IncomeRead(IncomeBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ======================
+# WALLET SCHEMAS
+# ======================
+class WalletBase(BaseModel):
+    name: str = Field(..., example="Main Wallet")
+    category: str = Field(..., example="bank")  # cash, bank, credit_card, other
+    balance: float = Field(0.0, example=500.00)
+
+class WalletCreate(WalletBase):
+    pass
+
+class WalletUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    balance: Optional[float] = None
+
+class WalletRead(WalletBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ======================
+# INCOME TYPE SCHEMAS
+# ======================
+class IncomeTypeBase(BaseModel):
+    name: str = Field(..., example="Salary")
+    category: Optional[str] = Field(None, example="Work")
+
+class IncomeTypeCreate(IncomeTypeBase):
+    pass
+
+class IncomeTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+
+class IncomeTypeRead(IncomeTypeBase):
+    id: int
+    user_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+# ======================
+# TRANSACTION SCHEMAS
+# ======================
+class TransactionBase(BaseModel):
+    from_wallet_id: int
+    to_wallet_id: int
+    amount: float
+    note: Optional[str] = None
+
+class TransactionCreate(TransactionBase):
+    pass
+
+class TransactionRead(TransactionBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    from_wallet_name: Optional[str] = None
+    to_wallet_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+

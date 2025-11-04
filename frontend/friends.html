@@ -1,62 +1,149 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Friends - SplitEasy</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SplitEasy - Friends</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-<link href="css/style.css" rel="stylesheet">
-<style>
-#toastContainer { position: fixed; top: 1rem; right: 1rem; z-index: 1055; }
-</style>
+  <link href="css/friends.css" rel="stylesheet">
 </head>
+
 <body>
-  <!-- ✅ Navbar -->
+  <!-- Navbar -->
   <div id="navbar" class="d-none d-md-block"></div>
-    <!-- ✅ Mobile Navbar -->
   <div id="navbarMobile" class="d-md-none"></div>
 
-
-<div class="container my-4">
-  <h3>Friends</h3>
-  <!-- Search -->
-  <div class="input-group mb-3">
-    <input id="friendSearch" class="form-control" placeholder="Search by username or email">
-    <button id="friendSearchBtn" class="btn btn-primary">Search</button>
-  </div>
-
-  <!-- Search results -->
-  <ul id="searchResults" class="list-group mb-3"></ul>
-
-  <div class="row">
-    <!-- My friends -->
-    <div class="col-md-6">
-      <h5>My Friends</h5>
-      <ul id="myFriends" class="list-group mb-3"></ul>
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h1 class="mb-2 text-primary">
+                  <i class="bi bi-people-fill me-2"></i>Friends
+                </h1>
+                <p class="text-muted mb-0 fs-5">Connect with friends and manage your relationships</p>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-lg" onclick="loadFriends()" title="Refresh">
+                  <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Requests -->
-    <div class="col-md-6">
-      <h5>Requests Received</h5>
-      <ul id="requestsReceived" class="list-group mb-3"></ul>
-      <h5 class="mt-3">Requests Sent</h5>
-      <ul id="requestsSent" class="list-group mb-3"></ul>
+    <!-- Search Section -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-search me-2"></i>Find Friends
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label fw-semibold">
+                  <i class="bi bi-person-plus me-1"></i>Search by Email
+                </label>
+                <input type="email" id="searchEmail" class="form-control form-control-lg" 
+                       placeholder="Enter friend's email address">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">&nbsp;</label>
+                <button class="btn btn-primary btn-lg w-100" onclick="searchFriend()">
+                  <i class="bi bi-search me-2"></i>Search
+                </button>
+              </div>
+            </div>
+            <div id="searchResults" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Friends Lists -->
+    <div class="row g-4">
+      <!-- My Friends -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-people me-2"></i>My Friends
+              <span class="badge bg-light text-dark ms-2" id="friendsCount">0</span>
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <div id="friendsList" class="friends-list">
+              <div class="text-center py-4">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="text-muted mt-2">Loading friends...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Friend Requests Received -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+              <i class="bi bi-person-check me-2"></i>Requests Received
+              <span class="badge bg-light text-dark ms-2" id="receivedCount">0</span>
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <div id="receivedRequests" class="friends-list">
+              <div class="text-center py-4">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="text-muted mt-2">Loading requests...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Friend Requests Sent -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-person-plus me-2"></i>Requests Sent
+              <span class="badge bg-light text-dark ms-2" id="sentCount">0</span>
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <div id="sentRequests" class="friends-list">
+              <div class="text-center py-4">
+                <div class="spinner-border text-info" role="status"></div>
+                <p class="text-muted mt-2">Loading requests...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Toast container -->
-<div id="toastContainer"></div>
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
 
-
-
-<script src="js/config.js"></script>
-<script src="js/friends.js"></script>
-<script src="js/navbar.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
- if (!localStorage.getItem("token")) window.location.href = "login.html";
- </script>
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/friends.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
