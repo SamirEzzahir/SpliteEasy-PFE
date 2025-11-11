@@ -1,6 +1,7 @@
 // frontend/js/auth.js
 // Requires config.js (global API_URL, token)
 //C:\Users\samir\Desktop\coding\python\SplitEasy\.venv\Scripts\activate.bat
+//C:\Users\samir\Desktop\coding\python\SplitEasy\.venv\Scripts\savegit.bat
 async function loginUser() {
   const data = new URLSearchParams();
   data.append("username", document.getElementById("loginUsername").value.trim());

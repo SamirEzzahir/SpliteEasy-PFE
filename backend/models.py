@@ -268,3 +268,4 @@ class Transaction(Base):
     user: Mapped["User"] = relationship("User", back_populates="transactions")
     from_wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[from_wallet_id], back_populates="transactions_from")
     to_wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[to_wallet_id], back_populates="transactions_to")
+

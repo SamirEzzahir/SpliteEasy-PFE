@@ -8,6 +8,15 @@ let currentGroup = null;
 let userWallets = []; // Store all wallets for filtering by payer
 let allExpenses = [];
 
+// Pagination state
+let expensesPagination = {
+  currentOffset: 0,
+  pageSize: 20,
+  hasMore: true,
+  isLoading: false,
+  totalExpenses: 0
+};
+
 // -----------------------------
 // Load group information
 // -----------------------------
@@ -284,9 +293,10 @@ function deselectAllMembers() {
 function updateExpensePreview() {
   try {
     const amount = parseFloat(document.getElementById('expenseAmount')?.value || 0);
-    const category = document.getElementById('expenseCategory')?.value || '';
     const selectedMembers = document.querySelectorAll('#membersListForExpense input[type="checkbox"]:checked');
-
+    const categorySelect = document.getElementById("expenseCategory");
+    const category = categorySelect?.selectedOptions[0]?.textContent || "";
+    console.log("jsamkslaksjamsa",selectedMembers);
     const memberCount = selectedMembers.length;
     const perPerson = memberCount > 0 ? (amount / memberCount).toFixed(2) : 0;
 
@@ -300,6 +310,17 @@ function updateExpensePreview() {
       document.getElementById('previewPerPerson').textContent = `${perPerson} ${currentGroup?.currency || 'MAD'}`;
       document.getElementById('previewMemberCount').textContent = memberCount;
       document.getElementById('previewCategory').textContent = category || '-';
+
+      // 🧩 Get usernames (the <h6> text inside the same .member-card)
+      const memberNames = Array.from(selectedMembers).map(cb => {
+        const card = cb.closest('.member-card');
+        const nameEl = card?.querySelector('h6');
+        return nameEl ? nameEl.textContent.trim() : '';
+      });
+
+      document.getElementById('previewParticipate').textContent = memberNames || '-';
+
+
     } else {
       previewCard.style.display = 'none';
     }
@@ -404,7 +425,7 @@ async function saveGroupChanges(event) {
     // Refresh the group info and expenses
     await Promise.all([
       loadGroupInfo(),
-      loadExpenses()
+      loadExpenses(true) // Reset pagination
     ]);
 
   } catch (err) {
@@ -776,21 +797,29 @@ async function loadWallets() {
 
 
 // -----------------------------
-// Fetch expenses for group
+// Fetch expenses for group (with pagination)
 // -----------------------------
-async function fetchExpensesForGroup(groupId) {
-  if (!groupId) return [];
-  const res = await fetch(`${API_URL}/expenses/${groupId}`, { headers: getHeaders() });
-  if (!res.ok) return [];
-  return await res.json();
+async function fetchExpensesForGroup(groupId, limit = 20, offset = 0) {
+  if (!groupId) return { expenses: [], total: 0, has_more: false };
+  
+  const url = `${API_URL}/expenses/${groupId}?limit=${limit}&offset=${offset}`;
+  const res = await fetch(url, { headers: getHeaders() });
+  
+  if (!res.ok) {
+    console.error("Failed to fetch expenses:", res.status);
+    return { expenses: [], total: 0, has_more: false };
+  }
+  
+  const data = await res.json();
+  return data;
 }
 
 // -----------------------------
-// Load and render expenses
+// Load and render expenses (initial load or reset)
 // -----------------------------
-async function loadExpenses() {
+async function loadExpenses(reset = false) {
   try {
-    console.log("🔄 Loading expenses...");
+    console.log("🔄 Loading expenses...", reset ? "(reset)" : "");
     const url = new URL(window.location.href);
     const groupId = url.searchParams.get("id");
     console.log("📁 Group ID:", groupId);
@@ -809,53 +838,144 @@ async function loadExpenses() {
       return;
     }
 
-    showLoadingState();
-
-    // Fetch both expenses and settlements
-    const [expenses, settlements] = await Promise.all([
-      fetchExpensesForGroup(groupId),
-      fetchSettlementsForGroup(groupId)
-    ]);
-
-    console.log("💰 Expenses loaded:", expenses.length, "items");
-    console.log("💰 Settlements loaded:", settlements.length, "items");
-
-    // Store settlements globally for detail modal
-    window.currentSettlements = settlements;
-
-    // Merge expenses and settlements into one array
-    const allItems = [];
-
-    // Add expenses with type marker
-    expenses.forEach(expense => {
-      allItems.push({ ...expense, itemType: 'expense' });
-    });
-
-    // Add settlements with type marker
-    settlements.forEach(settlement => {
-      allItems.push({ ...settlement, itemType: 'settlement' });
-    });
-
-    // Sort by date (newest first)
-    allItems.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    console.log("📋 Total items to render:", allItems.length);
-    allExpenses = allItems;
-
-    // Pass currentGroup info to rendering functions
-    if (window.innerWidth >= 992) {
-      renderDesktopTable(allItems, user, currentGroup);
-    } else {
-      renderMobileCards(allItems, user, currentGroup);
+    // Reset pagination if needed
+    if (reset) {
+      expensesPagination.currentOffset = 0;
+      expensesPagination.hasMore = true;
+      expensesPagination.isLoading = false;
+      allExpenses = [];
     }
 
-    await checkIfAllSettled();
+    // Prevent duplicate requests
+    if (expensesPagination.isLoading) {
+      console.log("⏳ Already loading, skipping...");
+      return;
+    }
+
+    // Check if there are more expenses to load
+    if (!expensesPagination.hasMore && !reset) {
+      console.log("✅ All expenses loaded");
+      return;
+    }
+
+    expensesPagination.isLoading = true;
+
+    // Show loading state only on initial load
+    if (expensesPagination.currentOffset === 0) {
+      showLoadingState();
+    } else {
+      showLoadMoreIndicator();
+    }
+
+    // Fetch expenses with pagination
+    const expensesData = await fetchExpensesForGroup(
+      groupId, 
+      expensesPagination.pageSize, 
+      expensesPagination.currentOffset
+    );
+
+    console.log("💰 Expenses loaded:", expensesData.expenses.length, "items");
+    console.log("📊 Total expenses:", expensesData.total);
+    console.log("📄 Has more:", expensesData.has_more);
+
+    // Fetch settlements (only once, at initial load)
+    let settlements = [];
+    const isInitialLoad = expensesPagination.currentOffset === 0;
+    if (isInitialLoad) {
+      settlements = await fetchSettlementsForGroup(groupId);
+      console.log("💰 Settlements loaded:", settlements.length, "items");
+      window.currentSettlements = settlements;
+    } else {
+      settlements = window.currentSettlements || [];
+    }
+
+    // Add new expenses with type marker
+    const newExpenses = expensesData.expenses.map(expense => ({
+      ...expense,
+      itemType: 'expense'
+    }));
+
+    // Merge with existing expenses
+    allExpenses = [...allExpenses, ...newExpenses];
+
+    // Add settlements with type marker (only on initial load)
+    if (isInitialLoad) {
+      settlements.forEach(settlement => {
+        allExpenses.push({ ...settlement, itemType: 'settlement' });
+      });
+    }
+
+    // Update pagination state after merging
+    expensesPagination.totalExpenses = expensesData.total;
+    expensesPagination.hasMore = expensesData.has_more;
+    // Update offset based on number of expenses loaded (not including settlements)
+    expensesPagination.currentOffset += expensesData.expenses.length;
+
+    // Sort by date (newest first)
+    allExpenses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    console.log("📋 Total items to render:", allExpenses.length);
+
+    // Render all expenses
+    if (window.innerWidth >= 992) {
+      renderDesktopTable(allExpenses, user, currentGroup);
+    } else {
+      renderMobileCards(allExpenses, user, currentGroup);
+    }
+
+    // Hide loading indicators
+    hideLoadMoreIndicator();
+
+    if (isInitialLoad) {
+      await checkIfAllSettled();
+    }
     attachViewButtonEvents();
+
+    expensesPagination.isLoading = false;
 
   } catch (err) {
     console.error("Error loading expenses:", err);
     showError("Failed to load expenses");
-    showEmptyState();
+    expensesPagination.isLoading = false;
+    hideLoadMoreIndicator();
+    
+    if (expensesPagination.currentOffset === 0) {
+      showEmptyState();
+    }
+  }
+}
+
+// -----------------------------
+// Load more expenses (for infinite scroll)
+// -----------------------------
+async function loadMoreExpenses() {
+  if (expensesPagination.isLoading || !expensesPagination.hasMore) {
+    return;
+  }
+  await loadExpenses(false);
+}
+
+// -----------------------------
+// Handle scroll for infinite loading
+// -----------------------------
+function handleScroll() {
+  // Don't load if already loading or no more items
+  if (expensesPagination.isLoading || !expensesPagination.hasMore) {
+    return;
+  }
+
+  // Calculate scroll position
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  const windowHeight = window.innerHeight;
+  const documentHeight = document.documentElement.scrollHeight;
+
+  // Load more when user is 200px from bottom
+  const threshold = 200;
+  const distanceFromBottom = documentHeight - (scrollTop + windowHeight);
+
+  if (distanceFromBottom < threshold) {
+    console.log("📜 Near bottom, loading more expenses...");
+    loadMoreExpenses();
   }
 }
 
@@ -916,6 +1036,53 @@ function showEmptyState() {
         </div>
       </div>
     `;
+  }
+}
+
+// -----------------------------
+// Loading indicators for pagination
+// -----------------------------
+function showLoadMoreIndicator() {
+  // Remove existing indicator if any
+  hideLoadMoreIndicator();
+  
+  const table = document.getElementById("expensesTable");
+  const mobileList = document.getElementById("expensesList");
+  
+  // Add loading row to table
+  if (table) {
+    const loadingRow = document.createElement("tr");
+    loadingRow.id = "loadMoreIndicator";
+    loadingRow.innerHTML = `
+      <td colspan="7" class="text-center py-3">
+        <div class="d-flex align-items-center justify-content-center">
+          <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+          <span class="text-muted">Loading more expenses...</span>
+        </div>
+      </td>
+    `;
+    table.appendChild(loadingRow);
+  }
+  
+  // Add loading card to mobile list
+  if (mobileList) {
+    const loadingCard = document.createElement("div");
+    loadingCard.id = "loadMoreIndicator";
+    loadingCard.className = "text-center py-3";
+    loadingCard.innerHTML = `
+      <div class="d-flex align-items-center justify-content-center">
+        <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+        <span class="text-muted">Loading more expenses...</span>
+      </div>
+    `;
+    mobileList.appendChild(loadingCard);
+  }
+}
+
+function hideLoadMoreIndicator() {
+  const indicator = document.getElementById("loadMoreIndicator");
+  if (indicator) {
+    indicator.remove();
   }
 }
 
@@ -1453,7 +1620,7 @@ async function addExpenseModalSubmit() {
 
     // Refresh expenses and wallets
     await Promise.all([
-      loadExpenses(),
+      loadExpenses(true), // Reset pagination
       loadWallets(),
       initializeExpenseModal()
     ]);
@@ -1529,7 +1696,7 @@ async function deleteExpense(expenseId) {
   if (!confirm("Delete this expense?")) return;
   const res = await fetch(`${API_URL}/expenses/${expenseId}`, { method: "DELETE", headers: getHeaders() });
   if (res.ok) {
-    await loadExpenses(); // reload
+    await loadExpenses(true); // Reset pagination and reload
   } else {
     const e = await res.json().catch(() => null);
     alert(e?.detail || "Delete failed");
@@ -2142,7 +2309,7 @@ async function submitEditExpense() {
     }, 100);
 
     // Refresh data
-    await loadExpenses();
+    await loadExpenses(true); // Reset pagination
     await loadWallets();
 
     // Show success message
@@ -2303,7 +2470,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const refreshBtn = document.getElementById('refreshExpenses');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
-      loadExpenses();
+      loadExpenses(true); // Reset pagination
       loadWallets();
     });
   }
@@ -2343,6 +2510,16 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+
+  // Infinite scroll detection
+  let scrollTimeout;
+  window.addEventListener('scroll', () => {
+    // Debounce scroll events
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      handleScroll();
+    }, 100);
+  }, { passive: true });
 
   // "Show Expenses" button inside All Settled card
   const btn = document.getElementById("showExpensesBtn");
@@ -2499,7 +2676,7 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
         }
         showSuccess(data.message || "Expenses uploaded successfully!");
         fileInput.value = ""; // Clear file input
-        await loadExpenses(); // Reload expenses
+        await loadExpenses(true); // Reset pagination and reload expenses
         
         // Clear status after 3 seconds
         setTimeout(() => {

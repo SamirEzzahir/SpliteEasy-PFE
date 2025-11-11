@@ -204,6 +204,14 @@ class ExpenseUpdate(BaseModel):
     photo: Optional[str] = None
     splits: Optional[List[SplitCreate]] = None
 
+
+class ExpensePaginatedResponse(BaseModel):
+    expenses: List[ExpenseRead]
+    total: int
+    offset: int
+    limit: int
+    has_more: bool
+
 # ======================
 # Friend Schemas
 # ======================
@@ -378,4 +386,5 @@ class TransactionRead(TransactionBase):
 
     class Config:
         from_attributes = True
+
 

@@ -79,11 +79,30 @@ async def get_all_user_expenses(
 
 
 
-@router.get("/{group_id}", response_model=list[schemas.ExpenseRead])
-async def get_group_expenses(group_id: int, session: AsyncSession = Depends(get_session),current: User = Depends(get_current_user)):
+@router.get("/{group_id}", response_model=schemas.ExpensePaginatedResponse)
+async def get_group_expenses(
+    group_id: int, 
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user),
+    limit: int = 20,
+    offset: int = 0
+):
     # ✅ Check membership
     await ensure_user_in_group(session, current.id, group_id)
-    return await get_expenses_for_group(session, group_id, current)
+    
+    # Get paginated expenses
+    expenses, total = await get_expenses_for_group(session, group_id, current, limit=limit, offset=offset)
+    
+    # Calculate if there are more expenses
+    has_more = (offset + len(expenses)) < total
+    
+    return schemas.ExpensePaginatedResponse(
+        expenses=expenses,
+        total=total,
+        offset=offset,
+        limit=limit,
+        has_more=has_more
+    )
 
 
 
@@ -96,7 +115,7 @@ async def get_expense(expense_id: int,
     return await get_expense_ById(session, expense_id, current)
 
 
-
+ 
 
 # ✅ Update Expense
 @router.put("/{expense_id}", response_model=schemas.ExpenseRead)
@@ -160,12 +179,12 @@ async def delete_expense(
 
     # Log the deletion
     await log_activity(
-        session,
-        user_id=current.id,
-        action=f"deleted '{expense.description}' in '{expense.group.title}'",
-        target_type="expense",
-        target_id=expense.id
-    )
+    session,
+    user_id=current.id,
+    action=f"deleted '{expense.description}' in '{expense.group.title}'",
+    target_type="expense",
+    target_id=expense.id
+)
 
     # Delete the expense (splits will be deleted via cascade)
     await session.delete(expense)
@@ -315,15 +334,17 @@ async def upload_expenses(
                 errors.append(f"Row {idx+2}: Payer '{payer_username}' not found")
                 continue
             
-            # Parse amount - handle numeric or string with currency symbols
+            # Parse amount - handle numeric or string with currency symbols or comma decimal
             amount_value = row["Paid"]
             if pd.isna(amount_value):
                 errors.append(f"Row {idx+2}: Amount is empty")
                 continue
             
-            # Convert to float, handling strings
+            # Convert to float, handling strings with comma or dot as decimal separator
             try:
-                amount = float(str(amount_value).replace(',', '.'))
+                # Replace comma with dot for decimal separator (European format)
+                amount_str = str(amount_value).replace(',', '.').replace(' ', '')
+                amount = float(amount_str)
             except ValueError:
                 errors.append(f"Row {idx+2}: Invalid amount '{amount_value}'")
                 continue
@@ -368,18 +389,40 @@ async def upload_expenses(
                     participants.append(participant)
             
             if participants:
-                # Get user IDs for all participants
-                share = expense.amount / len(participants)
+                # Calculate shares with proper rounding adjustment
+                # Use Decimal for precision
+                expense_amount_decimal = round_amount(Decimal(str(amount)))
+                num_participants = len(participants)
                 
-                for participant_username in participants:
+                # Calculate base share per person
+                base_share = round_amount(expense_amount_decimal / num_participants)
+                
+                # Calculate total if all shares are equal
+                total_shares = base_share * num_participants
+                
+                # Adjust for rounding differences (add/subtract from first participant)
+                rounding_diff = expense_amount_decimal - total_shares
+                
+                # Get user IDs for all participants and create splits
+                split_objs = []
+                for split_idx, participant_username in enumerate(participants):
                     user_obj = await get_user_by_username(session, participant_username)
                     if user_obj:
-                        session.add(Split(
+                        # First participant gets the rounding adjustment
+                        if split_idx == 0:
+                            share_amount = float(round_amount(base_share + rounding_diff))
+                        else:
+                            share_amount = float(base_share)
+                        
+                        split_objs.append(Split(
                             expense_id=expense.id, 
                             user_id=user_obj.id, 
-                            share_amount=share
+                            share_amount=share_amount
                         ))
                         added_count += 1
+                
+                # Add all splits at once
+                session.add_all(split_objs)
             else:
                 errors.append(f"Row {idx+2}: No participants selected")
         except Exception as e:

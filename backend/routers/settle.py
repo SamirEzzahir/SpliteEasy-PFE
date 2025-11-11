@@ -49,6 +49,15 @@ async def suggested_settlements(
 ):
     await ensure_user_in_group(session, current.id, group_id)
     balances = await compute_group_balances(session, group_id)
+    
+    # Round balances to ensure consistency (balances are already rounded in compute_group_balances,
+    # but we round again here to ensure exact match with displayed values)
+    from decimal import Decimal, ROUND_HALF_UP
+    def round_balance(val):
+        return float(Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    
+    balances = {uid: round_balance(bal) for uid, bal in balances.items()}
+    
     raw_settlements = minimize_cash_flow(balances)
 
     if not raw_settlements:

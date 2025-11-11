@@ -1,5 +1,6 @@
 # backend/app/crud.py
 from datetime import datetime
+from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, func
@@ -503,12 +504,32 @@ async def update_expense(session: AsyncSession, expense_id: int, payload: Expens
 
 
 # Get expenses for a group, newest first
-async def get_expenses_for_group(session: AsyncSession, group_id: int, current_user) -> list[ExpenseRead]:
-    result = await session.execute(
+async def get_expenses_for_group(session: AsyncSession, group_id: int, current_user, limit: int = None, offset: int = 0) -> tuple[list[ExpenseRead], int]:
+    """
+    Get expenses for a group with optional pagination.
+    Returns: (expenses_list, total_count)
+    """
+    from sqlalchemy import func
+    
+    # Get total count
+    count_result = await session.execute(
+        select(func.count(Expense.id))
+        .where(Expense.group_id == group_id)
+    )
+    total_count = count_result.scalar() or 0
+    
+    # Build query with pagination
+    query = (
         select(Expense)
         .where(Expense.group_id == group_id)
         .order_by(Expense.created_at.desc())  # <-- newest first
     )
+    
+    # Apply pagination if limit is provided
+    if limit is not None:
+        query = query.limit(limit).offset(offset)
+    
+    result = await session.execute(query)
     expenses = result.scalars().all()
 
     expenses_out = []
@@ -563,7 +584,7 @@ async def get_expenses_for_group(session: AsyncSession, group_id: int, current_u
             )
         )
 
-    return expenses_out
+    return expenses_out, total_count
 
 
 # ------------------------
@@ -750,12 +771,12 @@ async def compute_group_balances(session: AsyncSession, group_id: int) -> dict[i
     for uid, val in balances.items():
         val = round_amount(val)
         # avoid showing -0.00
-        if val == Decimal("-0.00"):
+        if abs(val) < Decimal("0.01"):  # Treat values less than 0.01 as zero
             val = Decimal("0.00")
         balances[uid] = val
 
-    # convert to float for JSON response
-    return {uid: float(val) for uid, val in balances.items()}
+    # convert to float for JSON response (with proper rounding)
+    return {uid: float(round_amount(val)) for uid, val in balances.items()}
 
 
 # ------------------------

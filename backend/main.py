@@ -6,6 +6,9 @@ from backend.routers import dashboard, econome, income_types, incomes, wallets, 
 from backend.db import engine, Base, get_session
 from backend.routers import memberships, notifications
 
+# Import models to ensure they are registered with Base.metadata
+from backend import models  # This ensures all models are registered
+
 # Routers
 from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity
 

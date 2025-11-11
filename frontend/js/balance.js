@@ -155,15 +155,18 @@ async function loadCurrentUser() {
 function updateSummaryStats(balances) {
   console.log("📊 Updating summary stats with balances:", balances);
   
-  const totalLent = balances.filter(b => b.net > 0).reduce((sum, b) => sum + b.net, 0);
-  const totalOwed = Math.abs(balances.filter(b => b.net < 0).reduce((sum, b) => sum + b.net, 0));
-  const netBalance = balances.reduce((sum, b) => sum + b.net, 0);
+  // Use proper rounding to avoid floating-point errors
+  const round = (num) => Math.round(num * 100) / 100;
+  
+  const totalLent = round(balances.filter(b => b.net > 0).reduce((sum, b) => sum + b.net, 0));
+  const totalOwed = round(Math.abs(balances.filter(b => b.net < 0).reduce((sum, b) => sum + b.net, 0)));
+  const netBalance = round(balances.reduce((sum, b) => sum + b.net, 0));
   
   console.log("📊 Calculated stats:", { totalLent, totalOwed, netBalance });
   
   document.getElementById('totalLent').textContent = `${formatCurrency(totalLent)} MAD`;
   document.getElementById('totalOwed').textContent = `${formatCurrency(totalOwed)} MAD`;
-  document.getElementById('netBalance').textContent = `${formatCurrency(netBalance)} MAD`;
+  document.getElementById('netBalance').textContent = `${formatCurrency(Math.abs(netBalance) < 0.01 ? 0 : netBalance)} MAD`;
 }
 
 // -----------------------------
