@@ -1248,7 +1248,7 @@ async function initializeExpenseModal() {
   try {
     // ✅ Run only on expenses page
     const path = window.location.pathname.toLowerCase();
-    console.log("path:", path);
+
     if (!(path.includes('groups.html') || path.includes('home.html'))) {
       console.log("⚠️ Not on target page, skipping initializeExpenseModal");
       return;
@@ -1402,29 +1402,25 @@ function updateGroupPreview() {
 }
 
 function updateExpensePreview() {
-  try {
-    const amount = parseFloat(document.getElementById("expenseAmount")?.value) || 0;
-    const groupSelect = document.getElementById("groupsListForExpenses");
-    const groupName = groupSelect?.selectedOptions[0]?.textContent || "";
-    const categorySelect = document.getElementById("expenseCategory");
-    const category = categorySelect?.selectedOptions[0]?.textContent || "";
-    const checked = document.querySelectorAll("#membersListForGroups input[type=checkbox]:checked");
-    const memberCount = checked.length;
+  const amount = parseFloat(document.getElementById("expenseAmount")?.value) || 0;
+  const groupSelect = document.getElementById("groupsListForExpenses");
+  const groupName = groupSelect?.selectedOptions[0]?.textContent || "";
+  const categorySelect = document.getElementById("expenseCategory");
+  const category = categorySelect?.selectedOptions[0]?.textContent || "";
+  const checked = document.querySelectorAll("#membersListForGroups input[type=checkbox]:checked");
+  const memberCount = checked.length;
 
-    const preview = document.getElementById("expensePreview");
-    if (preview) {
-      if (amount > 0 && memberCount > 0 && groupName) {
-        preview.style.display = "block";
-        document.getElementById("previewAmount").textContent = `${amount.toFixed(2)} MAD`;
-        document.getElementById("previewPerPerson").textContent = `${(amount / memberCount).toFixed(2)} MAD`;
-        document.getElementById("previewMemberCount").textContent = memberCount;
-        document.getElementById("previewCategory").textContent = category;
-      } else {
-        preview.style.display = "none";
-      }
+  const preview = document.getElementById("expensePreview");
+  if (preview) {
+    if (amount > 0 && memberCount > 0 && groupName) {
+      preview.style.display = "block";
+      document.getElementById("previewAmount").textContent = `${amount.toFixed(2)} MAD`;
+      document.getElementById("previewPerPerson").textContent = `${(amount / memberCount).toFixed(2)} MAD`;
+      document.getElementById("previewMemberCount").textContent = memberCount;
+      document.getElementById("previewCategory").textContent = category;
+    } else {
+      preview.style.display = "none";
     }
-  } catch (err) {
-    console.error("❌ Error updating expense preview:", err);
   }
 }
 
