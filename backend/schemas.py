@@ -189,6 +189,7 @@ class ExpenseRead(BaseModel):
     added_by_username: str | None = None
     group_name: str | None = None
     payer_name: str | None = None
+    wallet_name: str | None = None
 
     class Config:
         from_attributes = True

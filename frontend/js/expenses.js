@@ -742,13 +742,65 @@ function formatDate(dateString) {
 }
 
 function getRelativeTime(dateString) {
+  // Parse the date string - JavaScript handles ISO strings with timezone correctly
   const date = new Date(dateString);
   const now = new Date();
-  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    console.error("Invalid date string:", dateString);
+    return formatDate(dateString);
+  }
+  
+  // Calculate difference in milliseconds
+  // Both Date objects are in the same timezone context (JavaScript Date is timezone-aware)
+  // getTime() returns milliseconds since epoch (UTC), so comparison is correct
+  const diffMs = now.getTime() - date.getTime();
+  
+  // Debug logging for recent expenses (within 2 hours)
+  if (Math.abs(diffMs) < 7200000) {
+    const dateLocal = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+    const nowLocal = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+    
+    console.log("🕐 Time calculation:", {
+      dateString: dateString,
+      dateParsed: date.toString(),
+      dateLocalTime: date.toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      dateUTC: date.toISOString(),
+      nowLocalTime: now.toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      nowUTC: now.toISOString(),
+      diffMs: diffMs,
+      diffSeconds: Math.floor(diffMs / 1000),
+      diffMinutes: Math.floor(diffMs / (1000 * 60)),
+      diffHours: Math.floor(diffMs / (1000 * 60 * 60)),
+      timezoneOffset: date.getTimezoneOffset()
+    });
+  }
+  
+  // Handle negative differences (future dates) - shouldn't happen but just in case
+  if (diffMs < 0) {
+    console.warn("⚠️ Future date detected:", dateString);
+    return 'Just now';
+  }
+  
+  const diffInSeconds = Math.floor(diffMs / 1000);
+  const diffInMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffInHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffInHours < 1) return 'Just now';
+  // Show "Just now" for expenses less than 1 minute old
+  if (diffInSeconds < 60) return 'Just now';
+  
+  // Show minutes for expenses less than 1 hour old
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  
+  // Show hours for expenses less than 24 hours old
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+  
+  // Show days for expenses less than 7 days old
+  if (diffInDays < 7) return `${diffInDays}d ago`;
+  
+  // Otherwise show formatted date
   return formatDate(dateString);
 }
 async function loadWallets() {
@@ -1169,8 +1221,7 @@ function renderDesktopTable(items, user, currentGroup = null) {
         </td>
         <td>
           <span class="text-muted small">
-            <i class="bi bi-wallet me-1"></i>
-            ${expense.wallet_name || 'Unknown'}
+            ${expense.wallet_name ? `<i class="bi bi-wallet me-1"></i>${expense.wallet_name}` : '<span class="text-muted">—</span>'}
           </span>
         </td>
         <td>
@@ -1574,8 +1625,39 @@ async function addExpenseModalSubmit() {
     const share = amount / selectedMembers.length;
     const splits = selectedMembers.map(id => ({ user_id: id, share_amount: share }));
 
-    // Combine date and time
-    const expenseDate = new Date(`${date}T${time}`);
+    // Combine date and time - create in LOCAL timezone explicitly
+    // Parse date components and create Date object in local timezone
+    let expenseDate;
+    try {
+      // Parse date components
+      const [year, month, day] = date.split('-').map(Number);
+      const [hours, minutes] = time.split(':').map(Number);
+      
+      // Create date in LOCAL timezone (not UTC)
+      // This ensures the date/time you enter is what gets stored
+      expenseDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      
+      // Validate the date
+      if (isNaN(expenseDate.getTime())) {
+        showError("Invalid date or time");
+        return;
+      }
+      
+      // Debug: Log the date conversion
+      console.log("📅 Date creation:", {
+        input: `${date} ${time}`,
+        parsed: { year, month: month - 1, day, hours, minutes },
+        localTime: expenseDate.toLocaleString(),
+        localTimeString: expenseDate.toString(),
+        utcTime: expenseDate.toISOString(),
+        timestamp: expenseDate.getTime(),
+        timezoneOffset: expenseDate.getTimezoneOffset()
+      });
+    } catch (err) {
+      console.error("❌ Error creating date:", err);
+      showError("Invalid date or time format");
+      return;
+    }
 
     const expenseData = {
       group_id: parseInt(groupId),
@@ -1587,7 +1669,7 @@ async function addExpenseModalSubmit() {
       category: category,
       wallet_id: walletId ? parseInt(walletId) : null,
       split_type: "equal",
-      created_at: expenseDate.toISOString(),
+      created_at: expenseDate.toISOString(), // Send as UTC ISO string
       splits
     };
 
@@ -1644,16 +1726,32 @@ async function initializeExpenseModal() {
       return;
     }
 
-    // ✅ Set current date and time
+    // ✅ Set current date and time (using LOCAL timezone, not UTC)
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    // Get local date in YYYY-MM-DD format
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+    
+    // Get local time in HH:MM format (24-hour)
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hours}:${minutes}`;
 
     const dateInput = document.getElementById('expenseDate');
     const timeInput = document.getElementById('expenseTime');
 
     if (dateInput) dateInput.value = today;
     if (timeInput) timeInput.value = currentTime;
+    
+    console.log("🕐 Initialized expense modal with local time:", {
+      localDate: today,
+      localTime: currentTime,
+      localFull: now.toLocaleString(),
+      utcFull: now.toISOString()
+    });
 
     // ✅ Add preview listeners
     const amountInput = document.getElementById('expenseAmount');

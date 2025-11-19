@@ -306,10 +306,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 setQuickFilter(parseInt(e.target.value));
             });
         }
-          // Apply filter button
-        if (dateFilter) {
-            dateFilter.addEventListener("change", loadStats);
-        }
+          // Date filter change is handled outside DOMContentLoaded to set dates first
+          // Then loadStats will be called automatically via the apply button or the external handler
 
         // Apply filter button
         if (applyFilterBtn) {
@@ -370,12 +368,18 @@ for (let i = 0; i < 3; i++) {
 
 // Event listener for filter changes
 dateFilter.addEventListener("change", function() {
-
-    
   const val = this.value;
   let from, to;
 
   if (!val) return;
+  
+  // Helper function to format date in local time (YYYY-MM-DD)
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   switch(val) {
     // Quick Ranges
@@ -412,25 +416,37 @@ dateFilter.addEventListener("change", function() {
     default:
       if (val.startsWith("year_")) {
         const year = parseInt(val.split("_")[1]);
+        // January 1st of the year at 00:00:00
         from = new Date(year, 0, 1);
-        to = new Date(year, 11, 31);
+        // December 31st of the year at 23:59:59 (or use year+1, 0, 0 which gives last day of December)
+        to = new Date(year, 11, 31, 23, 59, 59);
       } else if (val.startsWith("month_")) {
         const parts = val.split("_");
         const month = parseInt(parts[1]);
         const year = parseInt(parts[2]);
-        from = new Date(year, month, 1,1);
-        to = new Date(year, month + 1, 1); // last day of month
+        // First day of the month
+        from = new Date(year, month, 1);
+        // Last day of the month (using next month, day 0 gives last day of current month)
+        to = new Date(year, month + 1, 0, 23, 59, 59);
       } else if (val === "custom") {
         return; // user selects manually
       }
   }
 
-  // Set the date inputs
+  // Set the date inputs - format in local time to avoid timezone issues
   if (from && to) {
-    fromDate.value = from.toISOString().split("T")[0];
-    toDate.value = to.toISOString().split("T")[0];
-    filterDataByDate(from, to);
-
+    fromDate.value = formatDateLocal(from);
+    toDate.value = formatDateLocal(to);
+    
+    // Trigger the apply button to load stats with the new dates
+    // This ensures loadStats is called after dates are set
+    const applyBtn = document.getElementById("applyFilter");
+    if (applyBtn) {
+      // Small delay to ensure date inputs are updated
+      setTimeout(() => {
+        applyBtn.click();
+      }, 10);
+    }
   }
 
 });

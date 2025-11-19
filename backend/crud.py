@@ -342,13 +342,21 @@ async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[i
 
     payer_user = await session.get(User, exp.payer_id)
     added_by_user = await session.get(User, exp.added_by)
+    
+    # Get wallet name
+    wallet_name = None
+    if exp.wallet_id:
+        wallet = await session.get(Wallet, exp.wallet_id)
+        wallet_name = wallet.name if wallet else None
+    
     return ExpenseRead(
         **expense_data.model_dump(exclude={"splits"}),
         id=exp.id,
         updated_at=exp.created_at,
         splits=split_reads,
         payer_username=payer_user.username if payer_user else "Unknown",
-        added_by_username=added_by_user.username if added_by_user else "Unknown"
+        added_by_username=added_by_user.username if added_by_user else "Unknown",
+        wallet_name=wallet_name
     )
 
 
@@ -404,6 +412,12 @@ async def get_expense_ById(session: AsyncSession, expense_id: int, current_user:
     if exp.added_by:
         added_by_user = await session.get(User, exp.added_by)
 
+    # Get wallet name
+    wallet_name = None
+    if exp.wallet_id:
+        wallet = await session.get(Wallet, exp.wallet_id)
+        wallet_name = wallet.name if wallet else None
+
     return ExpenseRead(
         id=exp.id,
         group_id=exp.group_id,
@@ -422,6 +436,7 @@ async def get_expense_ById(session: AsyncSession, expense_id: int, current_user:
         splits=split_reads,
         payer_username=payer_user.username if payer_user else "Unknown",
         added_by_username=added_by_user.username if added_by_user else "Unknown",
+        wallet_name=wallet_name
     )
 
 
@@ -543,6 +558,12 @@ async def get_expenses_for_group(session: AsyncSession, group_id: int, current_u
         added_by_user = await session.get(User, exp.added_by)
         added_by_username = added_by_user.username if added_by_user else "Unknown"
 
+        # wallet name
+        wallet_name = None
+        if exp.wallet_id:
+            wallet = await session.get(Wallet, exp.wallet_id)
+            wallet_name = wallet.name if wallet else None
+
         # splits
         split_result = await session.execute(
             select(Split, User.username)
@@ -580,7 +601,8 @@ async def get_expenses_for_group(session: AsyncSession, group_id: int, current_u
                 updated_at=exp.updated_at,
                 splits=split_reads,
                 payer_username=payer_username,
-                added_by_username=added_by_username
+                added_by_username=added_by_username,
+                wallet_name=wallet_name
             )
         )
 

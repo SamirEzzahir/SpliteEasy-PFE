@@ -480,12 +480,22 @@ async def download_expenses(
         expense_participants = {s.user.username for s in e.splits if s.user}
         category = getattr(e, "category", "") or ""
         note = getattr(e, "note", "") or ""
+        
+        # Format created_at date
+        added_at = ""
+        if e.created_at:
+            if isinstance(e.created_at, str):
+                added_at = e.created_at
+            else:
+                # Format as YYYY-MM-DD HH:MM
+                added_at = e.created_at.strftime("%Y-%m-%d %H:%M")
 
         base = {
             "ID": e.id,
             "Name": e.description,
             "Paid": float(e.amount),  # Just the number, no currency symbol
             "Payer": payer_username or "",
+            "Added At": added_at,
             "Category": category,
             "Note": note
         }
@@ -500,7 +510,7 @@ async def download_expenses(
     df = pd.DataFrame(
         rows,
         columns=[
-            "ID", "Name", "Paid", "Payer", "Category", "Note", *all_participants
+            "ID", "Name", "Paid", "Payer", "Added At", "Category", "Note", *all_participants
         ]
     )
 

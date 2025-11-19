@@ -81,6 +81,9 @@ function buildNavHTML() {
             <i class="bi bi-bar-chart me-1"></i>Analytics
           </a>
           <ul class="dropdown-menu">
+            <li><a class="dropdown-item ${isActivePage('dashboard.html') ? 'active' : ''}" href="dashboard.html">
+              <i class="bi bi-speedometer2 me-2"></i>Dashboard
+            </a></li>
             <li><a class="dropdown-item ${isActivePage('stats.html') ? 'active' : ''}" href="stats.html">
               <i class="bi bi-bar-chart-line me-2"></i>Statistics
             </a></li>
