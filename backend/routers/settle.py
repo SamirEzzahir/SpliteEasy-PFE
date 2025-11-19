@@ -5,11 +5,13 @@ from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 from backend.db import get_session
-from backend.models import Expense, Group, User, Settlement, Split
-from backend.schemas import BalanceItem, SettlementCreate, SettlementOut
+from backend.models import Expense, Group, User, Settlement, Split, SettlementStatus
+from backend.schemas import BalanceItem, SettlementCreate, SettlementOut, SettlementAction, SettlementStatus as SettlementStatusSchema
 from backend.auth import get_current_user
 from backend.crud import compute_group_balances, ensure_user_in_group, log_activity
 from backend.debt import minimize_cash_flow
+from backend.routers.notifications import send_notification
+from typing import Optional
 
 router = APIRouter(prefix="/settle", tags=["Settle"])
 
@@ -74,6 +76,7 @@ async def suggested_settlements(
             to_user_id=s["to_user"],
             to_username=users.get(s["to_user"], f"User {s['to_user']}"),
             amount=s["amount"],
+            status=SettlementStatusSchema.pending,
             created_at=datetime.utcnow()
         )
         for s in raw_settlements
@@ -86,6 +89,7 @@ async def suggested_settlements(
 @router.get("/{group_id}/history", response_model=list[SettlementOut])
 async def settlement_history(
     group_id: int,
+    status: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -93,17 +97,25 @@ async def settlement_history(
     await ensure_user_in_group(session, current.id, group_id)
 
     # ✅ Fetch settlements only for the current group
-    result = await session.execute(
-        select(Settlement)
-        .where(
-            (Settlement.group_id == group_id) & (   # <--- FILTER BY GROUP
+    # ✅ Include ALL statuses (accepted, pending, rejected) for history page
+    query = select(Settlement).where(
+        (Settlement.group_id == group_id) & (
                 (Settlement.from_user_id == current.id) |
                 (Settlement.to_user_id == current.id)
             )
         )
-        .order_by(Settlement.created_at.desc())
-    )
-
+    
+    # Filter by status if provided
+    if status:
+        try:
+            status_enum = SettlementStatus[status]
+            query = query.where(Settlement.status == status_enum)
+        except KeyError:
+            pass  # Invalid status, ignore filter
+    
+    query = query.order_by(Settlement.created_at.desc())
+    
+    result = await session.execute(query)
     settlements = result.scalars().all()
 
     # ✅ Fetch usernames for all involved users
@@ -116,7 +128,7 @@ async def settlement_history(
     )
     users = dict(res_users.all())
 
-    # ✅ Format output
+    # ✅ Format output with status
     return [
         SettlementOut(
             id=s.id,
@@ -125,7 +137,12 @@ async def settlement_history(
             to_user_id=s.to_user_id,
             to_username=users.get(s.to_user_id, "Unknown"),
             amount=s.amount,
-            created_at=s.created_at
+            status=SettlementStatusSchema(s.status.value),
+            message=s.message,
+            proof_photo=s.proof_photo,
+            rejected_reason=s.rejected_reason,
+            created_at=s.created_at,
+            updated_at=s.updated_at
         )
         for s in settlements
     ]
@@ -169,28 +186,37 @@ async def record_settlement(
 
     amount = round_amount(payload.amount)
     # -------------------------------
-    # 1️⃣ Create settlement record
+    # 1️⃣ Create settlement record with PENDING status
     # -------------------------------
     settlement = Settlement(
         group_id=group_id,
         from_user_id=current.id,
         to_user_id=payload.to_user_id,
         amount=float(amount),
+        status=SettlementStatus.pending,
+        message=payload.message,
         created_at=datetime.utcnow()
     )
 
-        # ✅ Add and commit before refresh
     session.add(settlement)
     await session.commit()
     await session.refresh(settlement)
 
+    # ✅ Send notification to User B
+    notification_msg = (
+        f"{from_username} recorded a settlement of {amount} {group_currency or 'MAD'}. "
+        f"Please review and confirm."
+    )
+    await send_notification(payload.to_user_id, notification_msg)
 
-
-
-    # Commit everything
-    await session.commit()
-    await session.refresh(settlement)
-    await log_activity(session, user_id=current.id, action=f"settled up with {payload.to_user_id}", target_type="settlement", target_id=settlement.id)
+    # ✅ Log activity
+    await log_activity(
+        session,
+        user_id=current.id,
+        action=f"requested settlement with {to_username} for {amount} {group_currency or 'MAD'}",
+        target_type="settlement",
+        target_id=settlement.id
+    )
 
     return SettlementOut(
         id=settlement.id,
@@ -199,5 +225,271 @@ async def record_settlement(
         to_user_id=payload.to_user_id,  
         to_username=to_username,
         amount=payload.amount,
-        created_at=settlement.created_at
+        status=SettlementStatusSchema.pending,
+        message=settlement.message,
+        created_at=settlement.created_at,
+        updated_at=settlement.updated_at
     )
+
+
+# -----------------------------
+# Accept a settlement
+# -----------------------------
+@router.post("/{settlement_id}/accept", response_model=SettlementOut)
+async def accept_settlement(
+    settlement_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    """
+    User B accepts a pending settlement from User A.
+    """
+    settlement = await session.get(Settlement, settlement_id)
+    if not settlement:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+    
+    if settlement.to_user_id != current.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the recipient can accept this settlement"
+        )
+    
+    if settlement.status != SettlementStatus.pending:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Settlement is already {settlement.status.value}"
+        )
+    
+    settlement.status = SettlementStatus.accepted
+    settlement.updated_at = datetime.utcnow()
+    
+    await session.commit()
+    await session.refresh(settlement)
+    
+    # Send notification to User A
+    from_user = await session.get(User, settlement.from_user_id)
+    await send_notification(
+        settlement.from_user_id,
+        f"{current.username} accepted your settlement of {settlement.amount}"
+    )
+    
+    await log_activity(
+        session,
+        user_id=current.id,
+        action=f"accepted settlement from {from_user.username if from_user else 'Unknown'}",
+        target_type="settlement",
+        target_id=settlement.id
+    )
+    
+    from_user = await session.get(User, settlement.from_user_id)
+    to_user = await session.get(User, settlement.to_user_id)
+    
+    return SettlementOut(
+        id=settlement.id,
+        from_user_id=settlement.from_user_id,
+        from_username=from_user.username if from_user else "Unknown",
+        to_user_id=settlement.to_user_id,
+        to_username=to_user.username if to_user else "Unknown",
+        amount=settlement.amount,
+        status=SettlementStatusSchema(settlement.status.value),
+        message=settlement.message,
+        proof_photo=settlement.proof_photo,
+        created_at=settlement.created_at,
+        updated_at=settlement.updated_at
+    )
+
+
+# -----------------------------
+# Reject a settlement
+# -----------------------------
+@router.post("/{settlement_id}/reject", response_model=SettlementOut)
+async def reject_settlement(
+    settlement_id: int,
+    payload: SettlementAction,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    """
+    User B rejects a pending settlement from User A.
+    """
+    settlement = await session.get(Settlement, settlement_id)
+    if not settlement:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+    
+    if settlement.to_user_id != current.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the recipient can reject this settlement"
+        )
+    
+    if settlement.status != SettlementStatus.pending:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Settlement is already {settlement.status.value}"
+        )
+    
+    settlement.status = SettlementStatus.rejected
+    settlement.rejected_reason = payload.reason
+    settlement.updated_at = datetime.utcnow()
+    
+    await session.commit()
+    await session.refresh(settlement)
+    
+    # Send notification to User A
+    from_user = await session.get(User, settlement.from_user_id)
+    reason_text = f" Reason: {payload.reason}" if payload.reason else ""
+    await send_notification(
+        settlement.from_user_id,
+        f"{current.username} rejected your settlement of {settlement.amount}.{reason_text}"
+    )
+    
+    await log_activity(
+        session,
+        user_id=current.id,
+        action=f"rejected settlement from {from_user.username if from_user else 'Unknown'}",
+        target_type="settlement",
+        target_id=settlement.id
+    )
+    
+    from_user = await session.get(User, settlement.from_user_id)
+    to_user = await session.get(User, settlement.to_user_id)
+    
+    return SettlementOut(
+        id=settlement.id,
+        from_user_id=settlement.from_user_id,
+        from_username=from_user.username if from_user else "Unknown",
+        to_user_id=settlement.to_user_id,
+        to_username=to_user.username if to_user else "Unknown",
+        amount=settlement.amount,
+        status=SettlementStatusSchema(settlement.status.value),
+        message=settlement.message,
+        rejected_reason=settlement.rejected_reason,
+        created_at=settlement.created_at,
+        updated_at=settlement.updated_at
+    )
+
+
+# -----------------------------
+# Resend/Reopen a rejected settlement
+# -----------------------------
+@router.post("/{settlement_id}/resend", response_model=SettlementOut)
+async def resend_settlement(
+    settlement_id: int,
+    payload: SettlementCreate,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    """
+    User A resends/reopens a rejected settlement.
+    """
+    original = await session.get(Settlement, settlement_id)
+    if not original:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+    
+    if original.from_user_id != current.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the sender can resend this settlement"
+        )
+    
+    if original.status != SettlementStatus.rejected:
+        raise HTTPException(
+            status_code=400,
+            detail="Can only resend rejected settlements"
+        )
+    
+    # Update existing settlement
+    original.status = SettlementStatus.pending
+    original.amount = float(round_amount(payload.amount))
+    original.message = payload.message
+    original.rejected_reason = None
+    original.updated_at = datetime.utcnow()
+    
+    await session.commit()
+    await session.refresh(original)
+    
+    # Send notification to User B
+    to_user = await session.get(User, original.to_user_id)
+    await send_notification(
+        original.to_user_id,
+        f"{current.username} resent the settlement request for {original.amount}"
+    )
+    
+    await log_activity(
+        session,
+        user_id=current.id,
+        action=f"resent settlement to {to_user.username if to_user else 'Unknown'}",
+        target_type="settlement",
+        target_id=original.id
+    )
+    
+    from_user = await session.get(User, original.from_user_id)
+    to_user = await session.get(User, original.to_user_id)
+    
+    return SettlementOut(
+        id=original.id,
+        from_user_id=original.from_user_id,
+        from_username=from_user.username if from_user else "Unknown",
+        to_user_id=original.to_user_id,
+        to_username=to_user.username if to_user else "Unknown",
+        amount=original.amount,
+        status=SettlementStatusSchema(original.status.value),
+        message=original.message,
+        created_at=original.created_at,
+        updated_at=original.updated_at
+    )
+
+
+# -----------------------------
+# Get pending settlements
+# -----------------------------
+@router.get("/pending", response_model=list[SettlementOut])
+async def get_pending_settlements(
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    """
+    Get all pending settlements where current user is the recipient (needs to accept/reject).
+    """
+    result = await session.execute(
+        select(Settlement)
+        .where(
+            (Settlement.to_user_id == current.id) &
+            (Settlement.status == SettlementStatus.pending)
+        )
+        .order_by(Settlement.created_at.desc())
+    )
+    
+    settlements = result.scalars().all()
+    
+    user_ids = {s.from_user_id for s in settlements}
+    if not user_ids:
+        return []
+    
+    res_users = await session.execute(
+        select(User.id, User.username).where(User.id.in_(user_ids))
+    )
+    users = dict(res_users.all())
+    
+    res_groups = await session.execute(
+        select(Group.id, Group.title).where(
+            Group.id.in_({s.group_id for s in settlements})
+        )
+    )
+    groups = dict(res_groups.all())
+    
+    return [
+        SettlementOut(
+            id=s.id,
+            from_user_id=s.from_user_id,
+            from_username=users.get(s.from_user_id, "Unknown"),
+            to_user_id=s.to_user_id,
+            to_username=current.username,
+            amount=s.amount,
+            status=SettlementStatusSchema(s.status.value),
+            message=s.message,
+            created_at=s.created_at,
+            updated_at=s.updated_at
+        )
+        for s in settlements
+    ]

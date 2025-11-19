@@ -451,8 +451,11 @@ async function fetchSettlementsForGroup(groupId) {
     }
 
     const settlements = await res.json();
-    console.log("✅ Settlements fetched:", settlements.length);
-    return settlements;
+    // Filter out rejected settlements - only show accepted and pending in expenses page
+    // (Rejected settlements still appear in settlement history on balance page)
+    const filtered = settlements.filter(s => s.status !== 'rejected');
+    console.log("✅ Settlements fetched:", filtered.length, "(rejected filtered out)");
+    return filtered;
   } catch (err) {
     console.error("❌ Error fetching settlements:", err);
     return [];
@@ -511,9 +514,7 @@ function renderSettlementDesktopTable(settlement, user, index) {
       </div>
     </td>
     <td>
-      <span class="badge bg-info fs-6">
-        ${isFromUser ? 'Paid' : (isToUser ? 'Received' : 'Settlement')}
-      </span>
+      ${getSettlementStatusBadge(settlement.status)}
     </td>
     <td>
       <span class="text-muted small">
@@ -593,7 +594,7 @@ function renderSettlementMobileCard(settlement, user, index) {
           ${formatCurrency(settlement.amount, currentGroup?.currency || 'MAD')}
         </div>
         <div style="font-size: 11px; color: #28a745;">
-          ${isFromUser ? 'Paid' : (isToUser ? 'Received' : 'Settlement')}
+          ${getSettlementStatusBadge(settlement.status, true)}
         </div>
       </div>
     </div>
@@ -608,17 +609,32 @@ function showSettlementDetail(settlementId) {
   // Find settlement in current data
   const settlement = window.currentSettlements?.find(s => s.id === settlementId);
   if (!settlement) return;
+  
+  // Don't show rejected settlements
+  if (settlement.status === 'rejected') {
+    showError("This settlement was rejected and is no longer active.");
+    return;
+  }
 
+  // Determine header color based on status
+  const statusColors = {
+    'accepted': 'bg-success',
+    'pending': 'bg-warning',
+    'rejected': 'bg-danger'
+  };
+  const headerColor = statusColors[settlement.status?.toLowerCase()] || 'bg-success';
+  const headerTextColor = settlement.status?.toLowerCase() === 'pending' ? 'text-dark' : 'text-white';
+  
   const modal = document.createElement('div');
   modal.className = 'modal fade';
   modal.innerHTML = `
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header ${headerColor} ${headerTextColor}">
           <h5 class="modal-title">
             <i class="bi bi-cash-coin me-2"></i>Settlement Details
           </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close ${settlement.status?.toLowerCase() === 'pending' ? '' : 'btn-close-white'}" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="row mb-3">
@@ -647,6 +663,12 @@ function showSettlementDetail(settlementId) {
               <div class="h5 text-success mt-1">${formatCurrency(settlement.amount, currentGroup?.currency || 'MAD')}</div>
             </div>
             <div class="col-6">
+              <strong>Status:</strong>
+              <div class="mt-1">${getSettlementStatusBadge(settlement.status)}</div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-12">
               <strong>Date:</strong>
               <div class="mt-1">${new Date(settlement.created_at).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -656,8 +678,25 @@ function showSettlementDetail(settlementId) {
   })}</div>
             </div>
           </div>
+          ${settlement.message ? `
+          <div class="row mb-3">
+            <div class="col-12">
+              <strong>Message:</strong>
+              <div class="mt-1 text-muted">${settlement.message}</div>
+            </div>
+          </div>
+          ` : ''}
+          ${settlement.rejected_reason ? `
+          <div class="row mb-3">
+            <div class="col-12">
+              <strong>Rejection Reason:</strong>
+              <div class="mt-1 text-danger">${settlement.rejected_reason}</div>
+            </div>
+          </div>
+          ` : ''}
         </div>
         <div class="modal-footer">
+          ${getSettlementActionButtons(settlement)}
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
@@ -668,9 +707,108 @@ function showSettlementDetail(settlementId) {
   const bsModal = new bootstrap.Modal(modal);
   bsModal.show();
 
+  // Store modal reference for closing after actions
+  modal.bsModal = bsModal;
+
   modal.addEventListener('hidden.bs.modal', () => {
     modal.remove();
   });
+}
+
+// -----------------------------
+// Accept/Reject Settlement from Expenses Page
+// -----------------------------
+async function acceptSettlementFromExpenses(settlementId, fromUsername) {
+  if (!confirm(`Are you sure you want to accept this settlement from ${fromUsername}?`)) {
+    return;
+  }
+
+  try {
+    if (typeof loadAuth === 'function') {
+      loadAuth();
+    }
+    
+    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
+      throw new Error("API configuration not loaded. Please refresh the page.");
+    }
+    
+    const url = `${API_URL}/settle/${settlementId}/accept`;
+    console.log("🌐 POST to:", url);
+    
+    const res = await fetch(url, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || "Failed to accept settlement");
+    }
+
+    showSuccess("Settlement accepted successfully!");
+    
+    // Close all modals
+    const modals = document.querySelectorAll('.modal.show');
+    modals.forEach(m => {
+      const bsModal = bootstrap.Modal.getInstance(m);
+      if (bsModal) bsModal.hide();
+    });
+    
+    // Reload expenses to refresh the list (reset pagination)
+    await loadExpenses(true);
+  } catch (err) {
+    console.error("Error accepting settlement:", err);
+    showError(err.message || "Failed to accept settlement");
+  }
+}
+
+async function rejectSettlementFromExpenses(settlementId, fromUsername) {
+  const reason = prompt(`Please provide a reason for rejecting this settlement from ${fromUsername} (optional):`);
+  
+  if (reason === null) {
+    return; // User cancelled
+  }
+
+  try {
+    if (typeof loadAuth === 'function') {
+      loadAuth();
+    }
+    
+    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
+      throw new Error("API configuration not loaded. Please refresh the page.");
+    }
+    
+    const url = `${API_URL}/settle/${settlementId}/reject`;
+    console.log("🌐 POST to:", url);
+    
+    const res = await fetch(url, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        reason: reason || null
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || "Failed to reject settlement");
+    }
+
+    showSuccess("Settlement rejected.");
+    
+    // Close all modals
+    const modals = document.querySelectorAll('.modal.show');
+    modals.forEach(m => {
+      const bsModal = bootstrap.Modal.getInstance(m);
+      if (bsModal) bsModal.hide();
+    });
+    
+    // Reload expenses to refresh the list (rejected will be filtered out, reset pagination)
+    await loadExpenses(true);
+  } catch (err) {
+    console.error("Error rejecting settlement:", err);
+    showError(err.message || "Failed to reject settlement");
+  }
 }
 
 // -----------------------------
@@ -720,6 +858,49 @@ function showSuccess(message) {
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
   });
+}
+
+function getSettlementActionButtons(settlement) {
+  if (!settlement || !currentUser) return '';
+  
+  const isToCurrentUser = settlement.to_user_id === currentUser.id;
+  const isPending = settlement.status === 'pending';
+  
+  // Only show accept/reject buttons if user is recipient and settlement is pending
+  if (isToCurrentUser && isPending) {
+    return `
+      <button type="button" class="btn btn-success me-2" onclick="acceptSettlementFromExpenses(${settlement.id}, '${settlement.from_username}')">
+        <i class="bi bi-check-circle me-1"></i>Accept
+      </button>
+      <button type="button" class="btn btn-danger me-2" onclick="rejectSettlementFromExpenses(${settlement.id}, '${settlement.from_username}')">
+        <i class="bi bi-x-circle me-1"></i>Reject
+      </button>
+    `;
+  }
+  
+  return '';
+}
+
+function getSettlementStatusBadge(status, textOnly = false) {
+  if (!status) return textOnly ? 'Unknown' : '<span class="badge bg-secondary">Unknown</span>';
+  
+  const statusLower = status.toLowerCase();
+  
+  if (statusLower === 'accepted') {
+    return textOnly 
+      ? 'Accepted' 
+      : '<span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Accepted</span>';
+  } else if (statusLower === 'pending') {
+    return textOnly 
+      ? 'Pending' 
+      : '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-clock me-1"></i>Pending</span>';
+  } else if (statusLower === 'rejected') {
+    return textOnly 
+      ? 'Rejected' 
+      : '<span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Rejected</span>';
+  }
+  
+  return textOnly ? status : `<span class="badge bg-secondary">${status}</span>`;
 }
 
 function formatCurrency(amount, currency = 'MAD') {

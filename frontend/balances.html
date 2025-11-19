@@ -270,13 +270,14 @@
                 <th><i class="bi bi-person me-1"></i>From</th>
                 <th><i class="bi bi-person-check me-1"></i>To</th>
                 <th><i class="bi bi-currency-exchange me-1"></i>Amount</th>
+                <th><i class="bi bi-info-circle me-1"></i>Status</th>
                 <th><i class="bi bi-calendar me-1"></i>Date</th>
-                <th><i class="bi bi-gear me-1"></i>Status</th>
+                <th><i class="bi bi-gear me-1"></i>Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td colspan="5" class="text-center text-muted py-4">
+                <td colspan="6" class="text-center text-muted py-4">
                   <div class="spinner-border text-info" role="status">
                     <span class="visually-hidden">Loading...</span>
                   </div>
@@ -332,6 +333,13 @@
                   </div>
                 </div>
               </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="settlementMessage" class="form-label fw-semibold">
+                <i class="bi bi-chat-left-text me-1"></i>Message (Optional)
+              </label>
+              <textarea class="form-control" id="settlementMessage" rows="3" placeholder="Add a note or message about this settlement..."></textarea>
             </div>
             
             <!-- Settlement Preview -->

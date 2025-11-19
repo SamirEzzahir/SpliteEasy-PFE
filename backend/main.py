@@ -69,6 +69,14 @@ async def on_startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("✅ Database initialized.")
+    
+    # Run migrations
+    try:
+        from backend.migrations import migrate_settlements_table
+        await migrate_settlements_table()
+    except Exception as e:
+        print(f"⚠️  Migration warning: {e}")
+        print("   You may need to run migrations manually.")
 
 
 @app.on_event("shutdown")

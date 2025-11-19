@@ -768,10 +768,14 @@ async def compute_group_balances(session: AsyncSession, group_id: int) -> dict[i
         for uid, total in split_rows.all() if uid
     }
 
-    # --- 3️⃣ Settlements: adjust recorded payments ---
+    # --- 3️⃣ Settlements: adjust recorded payments (only accepted) ---
+    from .models import SettlementStatus
     settlement_rows = await session.execute(
         select(Settlement.from_user_id, Settlement.to_user_id, func.sum(Settlement.amount))
-        .where(Settlement.group_id == group_id)
+        .where(
+            (Settlement.group_id == group_id) &
+            (Settlement.status == SettlementStatus.accepted)
+        )
         .group_by(Settlement.from_user_id, Settlement.to_user_id)
     )
 
