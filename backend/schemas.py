@@ -12,6 +12,12 @@ class FriendStatus(str, Enum):
     accepted = "Accepted"
     rejected = "Rejected"
 
+
+class GlobalSettlementMode(str, Enum):
+    separate = "separate"  # Option 1: Keep separate (current behavior)
+    auto_adjust = "auto_adjust"  # Option 2: Auto-adjust groups
+    hybrid = "hybrid"  # Option 3: Show both original and adjusted
+
 # ======================
 # User Schemas
 # ======================
@@ -45,6 +51,7 @@ class UserRead(BaseModel):
     profile_photo: Optional[str] = None
     is_active: Optional[bool] = True
     is_admin: Optional[bool] = False
+    global_settlement_mode: Optional[GlobalSettlementMode] = GlobalSettlementMode.separate
 
 
     class Config:
@@ -238,6 +245,8 @@ class BalanceItem(BaseModel):
     user_id: int
     username: str
     net: float
+    original_net: Optional[float] = None  # For hybrid mode: original balance before global settlements
+    global_adjustment: Optional[float] = None  # For hybrid mode: amount adjusted by global settlements
 
 class SettlementStatus(str, Enum):
     pending = "pending"
@@ -253,6 +262,25 @@ class SettlementAction(BaseModel):
     reason: Optional[str] = None
 
 class SettlementOut(BaseModel):
+    id: Optional[int] = None
+    from_user_id: int
+    from_username: str
+    to_user_id: int
+    to_username: str
+    amount: float
+    status: SettlementStatus
+    message: Optional[str] = None
+    proof_photo: Optional[str] = None
+    rejected_reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class GlobalSettlementCreate(BaseModel):
+    to_user_id: int
+    amount: float
+    message: Optional[str] = None
+
+class GlobalSettlementOut(BaseModel):
     id: Optional[int] = None
     from_user_id: int
     from_username: str

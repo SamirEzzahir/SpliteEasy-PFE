@@ -72,8 +72,9 @@ async def on_startup():
     
     # Run migrations
     try:
-        from backend.migrations import migrate_settlements_table
+        from backend.migrations import migrate_settlements_table, migrate_global_settlement_mode
         await migrate_settlements_table()
+        await migrate_global_settlement_mode()
     except Exception as e:
         print(f"⚠️  Migration warning: {e}")
         print("   You may need to run migrations manually.")

@@ -79,3 +79,47 @@ async def migrate_settlements_table():
         
         print("✅ Settlements table migration check completed!")
 
+
+async def migrate_global_settlement_mode():
+    """Add global_settlement_mode column to users table if it doesn't exist."""
+    async with engine.begin() as conn:
+        print("🔄 Checking global_settlement_mode migration...")
+        try:
+            # Check if column exists (MySQL syntax)
+            check_query = text("""
+                SELECT COUNT(*) as count
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'users'
+                AND COLUMN_NAME = 'global_settlement_mode'
+            """)
+            
+            result = await conn.execute(check_query)
+            row = result.fetchone()
+            column_exists = row and row[0] > 0
+            
+            if not column_exists:
+                print("➕ Adding column: global_settlement_mode...")
+                alter_query = text("""
+                    ALTER TABLE users
+                    ADD COLUMN global_settlement_mode VARCHAR(20) DEFAULT 'separate'
+                """)
+                await conn.execute(alter_query)
+                print("✅ Added column: global_settlement_mode")
+            else:
+                print("✅ Column global_settlement_mode already exists.")
+                
+        except Exception as e:
+            print(f"⚠️  Could not add column global_settlement_mode: {e}")
+            # Column might already exist, which is fine
+            if "Duplicate column name" not in str(e):
+                raise
+        
+        print("✅ Global settlement mode migration check completed!")
+
+
+async def run_migrations():
+    """Run all migrations."""
+    await migrate_settlements_table()
+    await migrate_global_settlement_mode()
+

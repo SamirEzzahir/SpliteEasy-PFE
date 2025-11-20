@@ -19,6 +19,12 @@ class SettlementStatus(enum.Enum):
     rejected = "rejected"
 
 
+class GlobalSettlementMode(enum.Enum):
+    separate = "separate"  # Option 1: Keep separate (current behavior)
+    auto_adjust = "auto_adjust"  # Option 2: Auto-adjust groups
+    hybrid = "hybrid"  # Option 3: Show both original and adjusted
+
+
 class GenderEnum(enum.Enum):
     male = "Male"
     female = "Female"
@@ -40,6 +46,10 @@ class User(Base):
     gender: Mapped[GenderEnum | None] = mapped_column(Enum(GenderEnum), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    global_settlement_mode: Mapped[GlobalSettlementMode] = mapped_column(
+        Enum(GlobalSettlementMode), 
+        default=GlobalSettlementMode.separate
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

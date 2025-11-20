@@ -76,6 +76,11 @@ function buildNavHTML() {
             <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; padding: 0.25em 0.4em; min-width: 1.2em; display: none;">0</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link ${isActivePage('global-settle.html') ? 'active' : ''}" href="global-settle.html">
+            <i class="bi bi-globe me-1"></i>Global Settlements
+          </a>
+        </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-bar-chart me-1"></i>Analytics
@@ -89,6 +94,10 @@ function buildNavHTML() {
             </a></li>
             <li><a class="dropdown-item ${isActivePage('overview.html') ? 'active' : ''}" href="overview.html">
               <i class="bi bi-pie-chart me-2"></i>Overview
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item ${isActivePage('global-settle.html') ? 'active' : ''}" href="global-settle.html">
+              <i class="bi bi-globe me-2"></i>Global Settlements
             </a></li>
           </ul>
         </li>
