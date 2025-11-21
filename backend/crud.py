@@ -144,6 +144,9 @@ async def get_group(session: AsyncSession, group_id: int) -> GroupRead:
 
 # Get all groups
 async def get_groups(session: AsyncSession, currentuser: User) -> list[GroupRead]:
+    from .models import Expense, Settlement, SettlementStatus
+    from sqlalchemy import func
+    
     # Fetch all groups where currentuser is a member
     result = await session.execute(
         select(Group)
@@ -162,11 +165,35 @@ async def get_groups(session: AsyncSession, currentuser: User) -> list[GroupRead
         members_usernames = [m.user.username for m in group.memberships]
         owner_username = group.owner.username if group.owner else None
         
+        # Count expenses in this group
+        expense_count_result = await session.execute(
+            select(func.count(Expense.id))
+            .where(Expense.group_id == group.id)
+        )
+        expenses_count = expense_count_result.scalar() or 0
+        
+        # Check if group has unsettled balances
+        # A group is unsettled if it has expenses and non-zero balances
+        has_unsettled = False
+        if expenses_count > 0:
+            # Calculate balances for this group to check if any are non-zero
+            # This is the most accurate way to determine if a group is settled
+            try:
+                balances = await compute_group_balances(session, group.id)
+                # Check if any balance is non-zero (absolute value >= 0.01)
+                has_unsettled = any(abs(balance) >= 0.01 for balance in balances.values())
+            except Exception as e:
+                # If balance calculation fails, assume unsettled if there are expenses
+                print(f"⚠️ Warning: Could not calculate balances for group {group.id}: {e}")
+                has_unsettled = True  # Conservative: if we can't calculate, assume unsettled
+        
         output.append(
             GroupRead.model_validate({
                 **group.__dict__,
                 "owner_username": owner_username,
-                "members_usernames": members_usernames
+                "members_usernames": members_usernames,
+                "expenses_count": expenses_count,
+                "has_unsettled_balance": has_unsettled
             })
         )
     return output

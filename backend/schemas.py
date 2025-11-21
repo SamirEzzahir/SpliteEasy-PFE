@@ -101,6 +101,8 @@ class GroupRead(BaseModel):
     description: str
     owner_username: Optional[str] = None
     members_usernames: list[str] = []
+    expenses_count: Optional[int] = 0  # Number of expenses in this group
+    has_unsettled_balance: Optional[bool] = False  # Whether group has unsettled balances
     created_at: datetime
 
     class Config:

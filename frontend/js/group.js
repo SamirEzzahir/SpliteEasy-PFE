@@ -127,19 +127,20 @@ async function fetchGroupStats() {
       fetchFriends()
     ]);
 
-    // Calculate unsettled groups (groups with expenses but no settlements)
-    const unsettledGroups = groups.filter(g => {
-      return g.expenses?.length > 0 && (!g.settlements || g.settlements.length === 0);
-    }).length;
+    // Calculate stats using data from groups
+    // Groups now include expenses_count and has_unsettled_balance from backend
+    const totalExpenses = groups.reduce((sum, g) => sum + (g.expenses_count || 0), 0);
+    const unsettledGroups = groups.filter(g => g.has_unsettled_balance === true).length;
 
     const stats = {
       totalGroups: groups.length,
       totalFriends: friends.length,
-      totalExpenses: groups.reduce((sum, g) => sum + (g.expenses?.length || 0), 0),
+      totalExpenses: totalExpenses,
       unsettledGroups: unsettledGroups
     };
 
     console.log("📈 Group stats:", stats);
+    console.log("📊 Groups data:", groups.map(g => ({ id: g.id, title: g.title, expenses_count: g.expenses_count, has_unsettled: g.has_unsettled_balance })));
     return stats;
   } catch (err) {
     console.error("❌ Error calculating stats:", err);

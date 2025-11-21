@@ -2,6 +2,18 @@
       background-color: #f8f9fa;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin-bottom: 5.3rem !important;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .container {
+      flex: 1;
+    }
+    
+    footer {
+      margin-top: auto;
+      width: 100%;
     }
 
     .welcome-banner {
