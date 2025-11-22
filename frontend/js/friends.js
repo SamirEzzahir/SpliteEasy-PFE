@@ -85,23 +85,31 @@ async function searchFriend() {
             return;
         }
         
-        searchResults.innerHTML = results.map(user => `
-            <div class="search-result">
-                <div class="friend-header">
-                    <div class="friend-avatar">${(user.username || user.email || 'U').charAt(0).toUpperCase()}</div>
-                    <div class="friend-info">
-                        <div class="friend-name">${user.username || 'Unknown User'}</div>
-                        <div class="friend-status">${user.email || 'No email'}</div>
-                        ${user.phone ? `<div class="friend-status">${user.phone}</div>` : ''}
+        searchResults.innerHTML = results.map(user => {
+            const userName = user.username || 'Unknown User';
+            const userEmail = user.email || '';
+            const userId = user.id;
+            
+            return `
+                <div class="search-result-card fade-in">
+                    <div class="search-result-header">
+                        <div class="search-result-avatar">
+                            ${getFriendAvatarHtml(user, 60)}
+                        </div>
+                        <div class="search-result-info">
+                            <div class="search-result-name">${userName}</div>
+                            <div class="search-result-email">${userEmail}</div>
+                            ${user.phone ? `<div class="search-result-email"><i class="bi bi-telephone me-1"></i>${user.phone}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="friend-actions">
+                        <button class="btn btn-primary btn-sm w-100" onclick="sendFriendRequest(${userId})">
+                            <i class="bi bi-person-plus me-1"></i>Add Friend
+                        </button>
                     </div>
                 </div>
-                <div class="friend-actions">
-                    <button class="btn btn-primary btn-sm" onclick="sendFriendRequest(${user.id})">
-                        <i class="bi bi-person-plus me-1"></i>Add Friend
-                    </button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
     } catch (error) {
         console.error("❌ Search error:", error);
@@ -140,6 +148,50 @@ async function sendFriendRequest(friendId) {
         console.error("❌ Send request error:", error);
         showToast(error.message, "danger");
     }
+}
+
+// View friend profile (placeholder for future feature)
+function viewFriendProfile(friendId) {
+    showToast("Profile view feature coming soon!", "info");
+    // TODO: Implement friend profile view
+}
+
+// Cancel friend request
+async function cancelRequest(requestId) {
+    if (!confirm("Are you sure you want to cancel this friend request?")) {
+        return;
+    }
+    
+    try {
+        const res = await fetch(`${API_URL}/friends/request/${requestId}/cancel`, {
+            method: "POST",
+            headers: getHeaders()
+        });
+        
+        if (!res.ok) {
+            const error = await res.json().catch(() => null);
+            throw new Error(error?.detail || "Failed to cancel request");
+        }
+        
+        showToast("Friend request cancelled", "info");
+        loadFriends();
+    } catch (error) {
+        console.error("❌ Cancel request error:", error);
+        showToast(error.message, "danger");
+    }
+}
+
+// Filter friends by search query
+function filterFriends(query) {
+    const friendCards = document.querySelectorAll('#friendsList .friend-card');
+    const lowerQuery = query.toLowerCase();
+    
+    friendCards.forEach(card => {
+        const name = card.querySelector('.friend-name')?.textContent.toLowerCase() || '';
+        const email = card.querySelector('.friend-email')?.textContent.toLowerCase() || '';
+        const matches = name.includes(lowerQuery) || email.includes(lowerQuery);
+        card.style.display = matches ? 'block' : 'none';
+    });
 }
 
 // Enhanced friend removal
@@ -201,9 +253,13 @@ async function loadFriends() {
         console.log("📊 Friends data loaded:", { myFriends, received, sent });
         
         // Update counts
-        document.getElementById("friendsCount").textContent = myFriends.length;
-        document.getElementById("receivedCount").textContent = received.length;
-        document.getElementById("sentCount").textContent = sent.length;
+        const friendsCountEl = document.getElementById("friendsCount");
+        const receivedCountEl = document.getElementById("receivedCount");
+        const sentCountEl = document.getElementById("sentCount");
+        
+        if (friendsCountEl) friendsCountEl.textContent = myFriends.length;
+        if (receivedCountEl) receivedCountEl.textContent = received.length;
+        if (sentCountEl) sentCountEl.textContent = sent.length;
         
         // Render my friends
         renderMyFriends(myFriends);
@@ -217,7 +273,20 @@ async function loadFriends() {
     }
 }
 
-// Render my friends
+// Helper function to get avatar HTML with gradient
+function getFriendAvatarHtml(user, size = 100) {
+    const name = user.username || user.friend_email || user.user_email || 'User';
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+    const colorIndex = (name.charCodeAt(0) % 6) + 1;
+    
+    if (user.profile_photo) {
+        return `<img src="${user.profile_photo}" class="friend-avatar" alt="${name}" style="width: ${size}px; height: ${size}px;">`;
+    } else {
+        return `<div class="friend-avatar friend-avatar-gradient" data-color="${colorIndex}" style="width: ${size}px; height: ${size}px; font-size: ${size * 0.4}px;">${initials}</div>`;
+    }
+}
+
+// Render my friends in Facebook-like grid
 function renderMyFriends(friends) {
     const container = document.getElementById("friendsList");
     
@@ -232,25 +301,36 @@ function renderMyFriends(friends) {
         return;
     }
     
-    container.innerHTML = friends.map(friend => `
-        <div class="friend-item">
-            <div class="friend-header">
-                <div class="friend-avatar">${(friend.username || friend.friend_email || 'U').charAt(0).toUpperCase()}</div>
-                <div class="friend-info">
-                    <div class="friend-name">${friend.username || friend.friend_email}</div>
-                    <div class="friend-status">${friend.friend_email}</div>
+    container.innerHTML = friends.map(friend => {
+        const friendName = friend.username || friend.friend_email || 'Unknown User';
+        const friendEmail = friend.friend_email || friend.email || '';
+        const friendId = friend.friendship_id || friend.id;
+        
+        return `
+            <div class="friend-card fade-in">
+                <div class="friend-avatar-container">
+                    ${getFriendAvatarHtml(friend, 100)}
+                </div>
+                <div class="friend-name">${friendName}</div>
+                <div class="friend-email">${friendEmail}</div>
+                <div class="friend-actions">
+                    <button class="btn btn-primary btn-sm" onclick="viewFriendProfile(${friendId})" title="View Profile">
+                        <i class="bi bi-person me-1"></i>View
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="removeFriend(${friendId})" title="Remove Friend">
+                        <i class="bi bi-person-dash me-1"></i>Remove
+                    </button>
                 </div>
             </div>
-            <div class="friend-actions">
-                <button class="btn btn-outline-danger btn-sm" onclick="removeFriend(${friend.friendship_id})">
-                    <i class="bi bi-person-dash me-1"></i>Remove
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+    
+    // Update badge count
+    const badge = document.getElementById('friendsCountBadge');
+    if (badge) badge.textContent = friends.length;
 }
 
-// Render friend requests
+// Render friend requests in Facebook-like grid
 function renderRequests(received, sent) {
     const receivedContainer = document.getElementById("receivedRequests");
     const sentContainer = document.getElementById("sentRequests");
@@ -265,26 +345,34 @@ function renderRequests(received, sent) {
             </div>
         `;
     } else {
-        receivedContainer.innerHTML = received.map(request => `
-            <div class="friend-item">
-                <div class="friend-header">
-                    <div class="friend-avatar">${(request.user_email || 'U').charAt(0).toUpperCase()}</div>
-                    <div class="friend-info">
-                        <div class="friend-name">${request.user_email || 'Unknown User'}</div>
-                        <div class="friend-status">Wants to be your friend</div>
+        receivedContainer.innerHTML = received.map(request => {
+            const userName = request.username || request.user_email || 'Unknown User';
+            const userEmail = request.user_email || '';
+            const requestId = request.id || request.friendship_id;
+            
+            return `
+                <div class="friend-card fade-in">
+                    <div class="friend-avatar-container">
+                        ${getFriendAvatarHtml(request, 100)}
+                    </div>
+                    <div class="friend-name">${userName}</div>
+                    <div class="friend-email">${userEmail}</div>
+                    <div class="friend-actions">
+                        <button class="btn btn-success btn-sm" onclick="respondRequest(${requestId}, true)">
+                            <i class="bi bi-check me-1"></i>Accept
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="respondRequest(${requestId}, false)">
+                            <i class="bi bi-x me-1"></i>Reject
+                        </button>
                     </div>
                 </div>
-                <div class="friend-actions">
-                    <button class="btn btn-success btn-sm" onclick="respondRequest(${request.id}, true)">
-                        <i class="bi bi-check me-1"></i>Accept
-                    </button>
-                    <button class="btn btn-outline-danger btn-sm" onclick="respondRequest(${request.id}, false)">
-                        <i class="bi bi-x me-1"></i>Reject
-                    </button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
+    
+    // Update badge count
+    const receivedBadge = document.getElementById('receivedCountBadge');
+    if (receivedBadge) receivedBadge.textContent = received.length;
     
     // Render sent requests
     if (sent.length === 0) {
@@ -296,21 +384,34 @@ function renderRequests(received, sent) {
             </div>
         `;
     } else {
-        sentContainer.innerHTML = sent.map(request => `
-            <div class="friend-item">
-                <div class="friend-header">
-                    <div class="friend-avatar">${(request.friend_email || 'U').charAt(0).toUpperCase()}</div>
-                    <div class="friend-info">
-                        <div class="friend-name">${request.friend_email || 'Unknown User'}</div>
-                        <div class="friend-status">Request sent - waiting for response</div>
+        sentContainer.innerHTML = sent.map(request => {
+            const friendName = request.username || request.friend_email || 'Unknown User';
+            const friendEmail = request.friend_email || '';
+            const requestId = request.id || request.friendship_id;
+            
+            return `
+                <div class="friend-card fade-in">
+                    <div class="friend-avatar-container">
+                        ${getFriendAvatarHtml(request, 100)}
+                    </div>
+                    <div class="friend-name">${friendName}</div>
+                    <div class="friend-email">${friendEmail}</div>
+                    <div class="friend-actions">
+                        <span class="badge bg-info">
+                            <i class="bi bi-clock me-1"></i>Pending
+                        </span>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="cancelRequest(${requestId})" title="Cancel Request">
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                        </button>
                     </div>
                 </div>
-                <div class="friend-actions">
-                    <span class="badge bg-secondary">Pending</span>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
+    
+    // Update badge count
+    const sentBadge = document.getElementById('sentCountBadge');
+    if (sentBadge) sentBadge.textContent = sent.length;
 }
 
 // Enhanced request response

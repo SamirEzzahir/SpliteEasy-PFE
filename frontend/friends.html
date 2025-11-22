@@ -17,75 +17,107 @@
   <div id="navbarMobile" class="d-md-none"></div>
 
   <!-- Main Content -->
-  <div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="row mb-4">
-      <div class="col-12">
+  <div class="container my-4">
+    <!-- Welcome Banner -->
+    <div class="welcome-banner text-center mb-4">
+      <h1 class="fw-bold mb-3">
+        <i class="bi bi-people-fill me-2"></i>Friends
+      </h1>
+      <p class="lead mb-4">Connect with friends and manage your relationships</p>
+      <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <button class="btn btn-light" onclick="loadFriends()" title="Refresh">
+          <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+        </button>
+        <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#searchFriendModal">
+          <i class="bi bi-person-plus me-2"></i>Find Friends
+        </button>
+      </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mb-4 g-3">
+      <div class="col-6 col-md-4">
+        <div class="stat-card card h-100 text-center">
+          <div class="stat-card-body">
+            <div class="stat-icon bg-success mx-auto mb-2 mb-md-3">
+              <i class="bi bi-people"></i>
+            </div>
+            <h3 class="mb-1 text-success stat-number" id="friendsCount">0</h3>
+            <p class="text-muted mb-0 stat-label">Total Friends</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="stat-card card h-100 text-center">
+          <div class="stat-card-body">
+            <div class="stat-icon bg-warning mx-auto mb-2 mb-md-3">
+              <i class="bi bi-person-check"></i>
+            </div>
+            <h3 class="mb-1 text-warning stat-number" id="receivedCount">0</h3>
+            <p class="text-muted mb-0 stat-label">Requests Received</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="stat-card card h-100 text-center">
+          <div class="stat-card-body">
+            <div class="stat-icon bg-info mx-auto mb-2 mb-md-3">
+              <i class="bi bi-person-plus"></i>
+            </div>
+            <h3 class="mb-1 text-info stat-number" id="sentCount">0</h3>
+            <p class="text-muted mb-0 stat-label">Requests Sent</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-body p-0">
+        <div class="tabs-wrapper">
+          <ul class="nav nav-tabs nav-tabs-custom" id="friendsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="all-friends-tab" data-bs-toggle="tab" data-bs-target="#all-friends" type="button" role="tab">
+                <i class="bi bi-people me-1 me-md-2"></i><span class="d-none d-sm-inline">All </span>Friends
+                <span class="badge bg-success ms-1 ms-md-2" id="friendsCountBadge">0</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="received-tab" data-bs-toggle="tab" data-bs-target="#received" type="button" role="tab">
+                <i class="bi bi-person-check me-1 me-md-2"></i><span class="d-none d-sm-inline">Requests </span>Received
+                <span class="badge bg-warning ms-1 ms-md-2" id="receivedCountBadge">0</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="sent-tab" data-bs-toggle="tab" data-bs-target="#sent" type="button" role="tab">
+                <i class="bi bi-person-plus me-1 me-md-2"></i><span class="d-none d-sm-inline">Requests </span>Sent
+                <span class="badge bg-info ms-1 ms-md-2" id="sentCountBadge">0</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="friendsTabContent">
+      <!-- All Friends Tab -->
+      <div class="tab-pane fade show active" id="all-friends" role="tabpanel">
         <div class="card shadow-sm border-0">
-          <div class="card-body p-4">
+          <div class="card-header bg-light">
             <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h1 class="mb-2 text-primary">
-                  <i class="bi bi-people-fill me-2"></i>Friends
-                </h1>
-                <p class="text-muted mb-0 fs-5">Connect with friends and manage your relationships</p>
-              </div>
-              <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-lg" onclick="loadFriends()" title="Refresh">
-                  <i class="bi bi-arrow-clockwise me-2"></i>Refresh
-                </button>
+              <h5 class="mb-0 fw-bold">
+                <i class="bi bi-people me-2 text-success"></i>My Friends
+              </h5>
+              <div class="search-container-small">
+                <i class="bi bi-search search-icon-small"></i>
+                <input type="text" class="form-control form-control-sm" id="friendsSearch" placeholder="Search friends...">
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Search Section -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-              <i class="bi bi-search me-2"></i>Find Friends
-            </h5>
-          </div>
           <div class="card-body p-4">
-            <div class="row g-3">
-              <div class="col-md-8">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-person-plus me-1"></i>Search by Email
-                </label>
-                <input type="email" id="searchEmail" class="form-control form-control-lg" 
-                       placeholder="Enter friend's email address">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">&nbsp;</label>
-                <button class="btn btn-primary btn-lg w-100" onclick="searchFriend()">
-                  <i class="bi bi-search me-2"></i>Search
-                </button>
-              </div>
-            </div>
-            <div id="searchResults" class="mt-4"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Friends Lists -->
-    <div class="row g-4">
-      <!-- My Friends -->
-      <div class="col-lg-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-success text-white">
-            <h5 class="mb-0">
-              <i class="bi bi-people me-2"></i>My Friends
-              <span class="badge bg-light text-dark ms-2" id="friendsCount">0</span>
-            </h5>
-          </div>
-          <div class="card-body p-4">
-            <div id="friendsList" class="friends-list">
-              <div class="text-center py-4">
+            <div id="friendsList" class="friends-grid">
+              <div class="text-center py-5">
                 <div class="spinner-border text-success" role="status"></div>
                 <p class="text-muted mt-2">Loading friends...</p>
               </div>
@@ -94,18 +126,17 @@
         </div>
       </div>
 
-      <!-- Friend Requests Received -->
-      <div class="col-lg-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">
-              <i class="bi bi-person-check me-2"></i>Requests Received
-              <span class="badge bg-light text-dark ms-2" id="receivedCount">0</span>
+      <!-- Requests Received Tab -->
+      <div class="tab-pane fade" id="received" role="tabpanel">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-light">
+            <h5 class="mb-0 fw-bold">
+              <i class="bi bi-person-check me-2 text-warning"></i>Friend Requests Received
             </h5>
           </div>
           <div class="card-body p-4">
-            <div id="receivedRequests" class="friends-list">
-              <div class="text-center py-4">
+            <div id="receivedRequests" class="friends-grid">
+              <div class="text-center py-5">
                 <div class="spinner-border text-warning" role="status"></div>
                 <p class="text-muted mt-2">Loading requests...</p>
               </div>
@@ -114,23 +145,58 @@
         </div>
       </div>
 
-      <!-- Friend Requests Sent -->
-      <div class="col-lg-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-info text-white">
-            <h5 class="mb-0">
-              <i class="bi bi-person-plus me-2"></i>Requests Sent
-              <span class="badge bg-light text-dark ms-2" id="sentCount">0</span>
+      <!-- Requests Sent Tab -->
+      <div class="tab-pane fade" id="sent" role="tabpanel">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-light">
+            <h5 class="mb-0 fw-bold">
+              <i class="bi bi-person-plus me-2 text-info"></i>Friend Requests Sent
             </h5>
           </div>
           <div class="card-body p-4">
-            <div id="sentRequests" class="friends-list">
-              <div class="text-center py-4">
+            <div id="sentRequests" class="friends-grid">
+              <div class="text-center py-5">
                 <div class="spinner-border text-info" role="status"></div>
                 <p class="text-muted mt-2">Loading requests...</p>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Friend Modal -->
+  <div class="modal fade" id="searchFriendModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-search me-2"></i>Find Friends
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-4">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-person-plus me-1"></i>Search by Email, Username, or Phone
+            </label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" id="searchEmail" class="form-control form-control-lg" 
+                     placeholder="Enter email, username, or phone number">
+            </div>
+            <div class="form-text">Search for friends to connect with</div>
+          </div>
+          <div id="searchResults" class="search-results-container"></div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Close
+          </button>
+          <button type="button" class="btn btn-primary" onclick="searchFriend()">
+            <i class="bi bi-search me-1"></i>Search
+          </button>
         </div>
       </div>
     </div>
@@ -145,5 +211,20 @@
   <script src="js/navbar.js"></script>
   <script src="js/friends.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    if (!localStorage.getItem("token")) window.location.href = "login.html";
+    
+    // Search on Enter key
+    document.getElementById('searchEmail')?.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        searchFriend();
+      }
+    });
+    
+    // Filter friends on search
+    document.getElementById('friendsSearch')?.addEventListener('input', function(e) {
+      filterFriends(e.target.value);
+    });
+  </script>
 </body>
 </html>

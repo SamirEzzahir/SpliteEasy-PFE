@@ -119,6 +119,9 @@ function buildNavHTML() {
             <li><a class="dropdown-item" href="income.html">
               <i class="bi bi-wallet2 me-2"></i>Income & Wallets
             </a></li>
+            <li><a class="dropdown-item ${isActivePage('debts-loans.html') ? 'active' : ''}" href="debts-loans.html">
+              <i class="bi bi-bank me-2"></i>Debts & Loans
+            </a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item text-danger" href="#" id="logoutBtnHeader">
               <i class="bi bi-box-arrow-right me-2"></i>Logout

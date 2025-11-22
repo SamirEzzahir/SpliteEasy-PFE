@@ -1222,7 +1222,7 @@ async def compute_group_balances(
                     balances[current_user_id] = round_amount(balances[current_user_id] + adjustment)
                 if friend_id in balances:
                     balances[friend_id] = round_amount(balances[friend_id] - adjustment)
-    
+
     # --- Final rounding cleanup ---
     for uid, val in balances.items():
         val = round_amount(val)
@@ -1230,7 +1230,7 @@ async def compute_group_balances(
         if abs(val) < Decimal("0.01"):  # Treat values less than 0.01 as zero
             val = Decimal("0.00")
         balances[uid] = val
-    
+
     # For hybrid mode, we need to return additional info
     # But since this function returns dict[int, float], we'll handle hybrid mode in the API layer
     # For now, return adjusted balances if mode is auto_adjust or hybrid, original if separate

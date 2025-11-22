@@ -584,20 +584,20 @@ async def group_balances(
 
         # Fetch usernames
         result = await session.execute(
-            select(User.id, User.username).where(User.id.in_(balances_to_show.keys()))
+                select(User.id, User.username).where(User.id.in_(balances_to_show.keys()))
         )
         users = dict(result.all())
 
         return [
-            BalanceItem(
-                user_id=uid,
-                username=users.get(uid, f"User {uid}"),
-                net=balances_to_show[uid],
-                original_net=original_balances.get(uid) if mode == "hybrid" else None,
-                global_adjustment=adjustments.get(uid) if mode == "hybrid" else None
-            )
-            for uid in balances_to_show.keys()
-        ]
+                BalanceItem(
+                    user_id=uid,
+                    username=users.get(uid, f"User {uid}"),
+                    net=balances_to_show[uid],
+                    original_net=original_balances.get(uid) if mode == "hybrid" else None,
+                    global_adjustment=adjustments.get(uid) if mode == "hybrid" else None
+                )
+                for uid in balances_to_show.keys()
+            ]
     except Exception as e:
         print(f"❌ Error in group_balances endpoint: {e}")
         import traceback

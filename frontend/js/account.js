@@ -77,6 +77,7 @@ function getActivityColor(action) {
     return 'text-muted';
 }
 
+
 // Load account data
 async function loadAccount() {
     console.log("🔄 Loading account data...");
@@ -122,12 +123,33 @@ function updateProfileDisplay(user) {
         ? `${user.first_name} ${user.last_name}` 
         : user.username || 'Unknown User';
     
+    // Update banner
     document.getElementById("profileName").textContent = fullName;
     document.getElementById("profileEmail").textContent = user.email || "No email";
     document.getElementById("profilePhone").textContent = user.phone || "No phone";
     
     const profilePhoto = user.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random&color=fff`;
     document.getElementById("profilePhoto").src = profilePhoto;
+    
+    // Update profile info section
+    const profileFullNameEl = document.getElementById("profileFullName");
+    const profileEmailInfoEl = document.getElementById("profileEmailInfo");
+    const profilePhoneInfoEl = document.getElementById("profilePhoneInfo");
+    const profileGenderEl = document.getElementById("profileGender");
+    const profileCreatedAtEl = document.getElementById("profileCreatedAt");
+    
+    if (profileFullNameEl) profileFullNameEl.textContent = fullName;
+    if (profileEmailInfoEl) profileEmailInfoEl.textContent = user.email || "Not provided";
+    if (profilePhoneInfoEl) profilePhoneInfoEl.textContent = user.phone || "Not provided";
+    if (profileGenderEl) profileGenderEl.textContent = user.gender || "Not specified";
+    if (profileCreatedAtEl && user.created_at) {
+        const date = new Date(user.created_at);
+        profileCreatedAtEl.textContent = date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+    }
     
     // Update modal form fields
     updateModalForm(user);
@@ -401,6 +423,72 @@ document.getElementById("logoutBtnAccount").addEventListener("click", () => {
         setTimeout(() => {
     window.location.href = "index.html";
         }, 1000);
+    }
+});
+
+// Change Password Form Handler
+document.getElementById("changePasswordForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    console.log("🔐 Changing password...");
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // Get form values
+        const oldPassword = document.getElementById("old_password").value;
+        const newPassword = document.getElementById("new_password").value;
+        const confirmPassword = document.getElementById("confirm_password").value;
+        
+        // Validate passwords match
+        if (newPassword !== confirmPassword) {
+            throw new Error("New passwords do not match");
+        }
+        
+        // Validate password length
+        if (newPassword.length < 6) {
+            throw new Error("New password must be at least 6 characters long");
+        }
+        
+        // Show loading state
+        submitBtn.innerHTML = '<div class="loading-spinner me-2"></div>Changing...';
+        submitBtn.disabled = true;
+        
+        // Send request
+        const res = await fetch(`${API_URL}/users/user/me/change-password`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+                old_password: oldPassword,
+                new_password: newPassword
+            })
+        });
+        
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Failed to change password: ${res.status}`);
+        }
+        
+        const result = await res.json();
+        console.log("✅ Password changed successfully:", result);
+        
+        // Show success message
+        showToast("Password changed successfully!", 'success');
+        
+        // Reset form
+        e.target.reset();
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById("changePasswordModal"));
+        modal.hide();
+        
+    } catch (err) {
+        console.error("❌ Error changing password:", err);
+        showToast(err.message || "Error changing password", 'danger');
+    } finally {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
     }
 });
 

@@ -10,7 +10,7 @@ from backend.routers import memberships, notifications
 from backend import models  # This ensures all models are registered
 
 # Routers
-from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity
+from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity, debts_loans
 
 app = FastAPI(title="SplitApp API", version="1.0")
 
@@ -72,9 +72,8 @@ async def on_startup():
     
     # Run migrations
     try:
-        from backend.migrations import migrate_settlements_table, migrate_global_settlement_mode
-        await migrate_settlements_table()
-        await migrate_global_settlement_mode()
+        from backend.migrations import run_migrations
+        await run_migrations()
     except Exception as e:
         print(f"⚠️  Migration warning: {e}")
         print("   You may need to run migrations manually.")
@@ -106,6 +105,7 @@ app.include_router(transactions.router, tags=["Transactions"])
 app.include_router(dashboard.router, tags=["Dashboard"])
 app.include_router(income_types.router, tags=["incomeType"])
 app.include_router(wallets.router, tags=["Wallets"])
+app.include_router(debts_loans.router, tags=["Debts & Loans"])
 app.include_router(econome.router)
 
  

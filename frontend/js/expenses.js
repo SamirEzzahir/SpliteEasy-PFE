@@ -1502,7 +1502,7 @@ function renderMobileCards(items, user, currentGroup = null) {
           <!-- Description and Amount -->
           <div style="flex: 1; margin-right: 12px;">
             <div style="font-size: 14px; color: #333; font-weight: 500; margin-bottom: 2px;">${expense.description}</div>
-            <div style="font-size: 12px; color: #666;">You paid ${Number(expense.amount).toFixed(2)} ${expense.currency}</div>
+            <div style="font-size: 12px; color: #666;">${isPayer ? `You paid` : `${expense.payer_username || 'Someone'} paid`} ${Number(expense.amount).toFixed(2)} ${expense.currency}</div>
               </div>
           
           <!-- Lent/Owed Amount -->

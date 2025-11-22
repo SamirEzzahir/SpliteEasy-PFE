@@ -4,6 +4,7 @@ from backend.db import get_session
 from backend import schemas, crud
 from backend.auth import get_current_user
 from backend.models import User, GlobalSettlementMode
+from backend.utils import verify_password, hash_password
 
 router = APIRouter(prefix="/users")
 
@@ -45,6 +46,29 @@ async def update_global_settlement_mode(
 async def edit_user(user_id: int, payload: schemas.UserUpdate, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     updated = await crud.update_user(session, user_id, payload.dict(exclude_unset=True))
     return schemas.UserRead.model_validate(updated)
+
+
+@router.post("/user/me/change-password", response_model=dict)
+async def change_password(
+    payload: schemas.ChangePassword,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    """Change the current user's password."""
+    # Verify old password
+    if not verify_password(payload.old_password, current.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Check if new password is different from old password
+    if verify_password(payload.new_password, current.password_hash):
+        raise HTTPException(status_code=400, detail="New password must be different from current password")
+    
+    # Update password
+    current.password_hash = hash_password(payload.new_password)
+    await session.commit()
+    await session.refresh(current)
+    
+    return {"detail": "Password changed successfully"}
 
 
 

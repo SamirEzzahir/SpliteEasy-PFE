@@ -3,7 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from pydantic import BaseModel
 from decimal import Decimal
-from backend.models import Wallet, Transaction
+from datetime import datetime
+from typing import Optional
+from backend.models import Wallet, Transaction, TransactionType
 from backend.db import get_session
 from backend.auth import get_current_user
 from backend.schemas import WalletCreate, WalletRead, WalletUpdate
@@ -15,6 +17,7 @@ class WalletTransfer(BaseModel):
     to_wallet_id: int
     amount: float
     note: str = ""
+
 
 @router.post("", response_model=WalletRead)
 async def create_wallet(wallet_data: WalletCreate, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
@@ -83,11 +86,12 @@ async def transfer_between_wallets(
     from_wallet.balance -= transfer_amount
     to_wallet.balance += transfer_amount
     
-    # Create transaction record
+    # Create transaction record with transfer type
     transaction = Transaction(
         user_id=user.id,
         from_wallet_id=from_wallet.id,
         to_wallet_id=to_wallet.id,
+        transaction_type=TransactionType.transfer,
         amount=float(transfer_amount),
         note=transfer_data.note or f"Transfer from {from_wallet.name} to {to_wallet.name}"
     )

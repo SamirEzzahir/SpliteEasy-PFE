@@ -5,6 +5,13 @@ let types = [];
 
 // =================== DOMContentLoaded ===================
 document.addEventListener("DOMContentLoaded", async () => {
+    // Check if config.js is loaded
+    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined' || typeof fetchWithAuth === 'undefined') {
+        console.error("❌ Config.js not loaded! Make sure config.js is loaded before income.js");
+        alert("Configuration error. Please refresh the page.");
+        return;
+    }
+    
     // Simple auth check - just check if token exists
     const tokenExists = localStorage.getItem("token");
     
@@ -15,7 +22,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     // Load auth
-    loadAuth();
+    if (typeof loadAuth === 'function') {
+        loadAuth();
+    } else {
+        console.error("loadAuth function not found");
+        return;
+    }
     
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
@@ -42,7 +54,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Button events
-    document.getElementById("addIncomeBtn").addEventListener("click", addIncome);
+    document.getElementById("addIncomeForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        addIncome();
+    });
     document.getElementById("saveIncomeChangesBtn").addEventListener("click", saveIncomeChanges);
     document.getElementById("saveTypeBtn").addEventListener("click", saveType);
     document.getElementById("saveWalletBtn").addEventListener("click", addWallet);
@@ -54,16 +69,41 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("editIncomeCategory").addEventListener("change", checkAddNewType);
     document.getElementById("incomeWallet").addEventListener("change", checkAddNewWallet);
     document.getElementById("editIncomeWallet").addEventListener("change", checkAddNewWallet);
+    
 });
 
 // =================== LOAD DATA ===================
 
 async function loadTypes() {
     console.log("Loading income types...");
-    types = await fetchWithAuth(`${API_URL}/incometype/`).catch((err) => {
-        console.error("Failed to load income types:", err);
-        return [];
-    }) || [];
+    const typesContainer = document.getElementById("incomeTypesList");
+    if (!typesContainer) {
+        console.error("Income types container not found");
+        return;
+    }
+    
+    try {
+        const response = await fetchWithAuth(`${API_URL}/incometype/`);
+        if (response === null) {
+            // User was redirected to login
+            return;
+        }
+        types = response || [];
+        console.log("✅ Loaded income types:", types.length);
+    } catch (err) {
+        console.error("❌ Failed to load income types:", err);
+        types = [];
+        typesContainer.innerHTML = `
+            <div class="col-12 text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+                <h5>Error Loading Income Types</h5>
+                <p class="mb-0">${err.message || "Failed to load income types"}</p>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadTypes()">Retry</button>
+            </div>
+        `;
+        return;
+    }
+    
     const selects = [document.getElementById("incomeCategory"), document.getElementById("editIncomeCategory")];
 
     selects.forEach(sel => {
@@ -75,34 +115,69 @@ async function loadTypes() {
     });
 
     // Display income types with edit/delete buttons
-    const typesContainer = document.getElementById("incomeTypesList");
+    if (!typesContainer) return;
     typesContainer.innerHTML = "";
     
-    types.forEach(type => {
-        const div = document.createElement("div");
-        div.className = "col-md-3";
-        div.innerHTML = `
-            <div class="card shadow-sm p-3 text-center">
-                <h6>${type.name}</h6>
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-warning me-1" onclick="editIncomeType(${type.id})"><i class="bi bi-pencil-fill"></i></button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteIncomeType(${type.id})"><i class="bi bi-trash-fill"></i></button>
-                </div>
+    if (types.length === 0) {
+        typesContainer.innerHTML = `
+            <div class="col-12 text-center text-muted py-5">
+                <i class="bi bi-tags fs-1 mb-3"></i>
+                <h5>No Income Types Yet</h5>
+                <p class="mb-0">Add income types to categorize your income!</p>
             </div>
         `;
-        typesContainer.appendChild(div);
-    });
+    } else {
+        types.forEach(type => {
+            const div = document.createElement("div");
+            div.className = "col-md-3 mb-3";
+            div.innerHTML = `
+                <div class="income-type-card">
+                    <h6 class="mb-3">${type.name}</h6>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-warning" onclick="editIncomeType(${type.id})" title="Edit type">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteIncomeType(${type.id})" title="Delete type">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            typesContainer.appendChild(div);
+        });
+    }
 }
 
 async function loadWallets() {
     console.log("Loading wallets...");
-    console.log("Token:", token ? "Present" : "Missing");
-    wallets = await fetchWithAuth(`${API_URL}/wallets`).catch((err) => {
-        console.error("Failed to load wallets:", err);
-        return [];
-    }) || [];
-    console.log("Loaded wallets:", wallets);
     const walletContainer = document.getElementById("walletList");
+    if (!walletContainer) {
+        console.error("Wallet container not found");
+        return;
+    }
+    
+    try {
+        const response = await fetchWithAuth(`${API_URL}/wallets`);
+        if (response === null) {
+            // User was redirected to login
+            return;
+        }
+        wallets = response || [];
+        console.log("✅ Loaded wallets:", wallets.length);
+    } catch (err) {
+        console.error("❌ Failed to load wallets:", err);
+        wallets = [];
+        walletContainer.innerHTML = `
+            <div class="col-12 text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+                <h5>Error Loading Wallets</h5>
+                <p class="mb-0">${err.message || "Failed to load wallets"}</p>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadWallets()">Retry</button>
+            </div>
+        `;
+        return;
+    }
+    
     walletContainer.innerHTML = "";
 
     const selects = [document.getElementById("incomeWallet"), document.getElementById("editIncomeWallet")];
@@ -118,110 +193,261 @@ async function loadWallets() {
     });
 
     // Wallet cards
-    wallets.forEach(w => {
-        const div = document.createElement("div");
-        div.className = "col-md-3";
-        div.innerHTML = `
-            <div class="card shadow-sm p-3 text-center">
-                <h6>${w.name}</h6>
-                <p class="text-muted mb-1">${w.category || ''}</p>
-                <h4 class="text-success">${w.balance.toFixed(2)}</h4>
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-info me-1" onclick="transferFromWallet(${w.id})" title="Transfer from this wallet"><i class="bi bi-arrow-right"></i></button>
-                    <button class="btn btn-sm btn-warning me-1" onclick="editWallet(${w.id})"><i class="bi bi-pencil-fill"></i></button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteWallet(${w.id})"><i class="bi bi-trash-fill"></i></button>
-                </div>
+    if (wallets.length === 0) {
+        walletContainer.innerHTML = `
+            <div class="col-12 text-center text-muted py-5">
+                <i class="bi bi-wallet2 fs-1 mb-3"></i>
+                <h5>No Wallets Yet</h5>
+                <p class="mb-0">Start by adding your first wallet!</p>
             </div>
         `;
-        walletContainer.appendChild(div);
-    });
+    } else {
+        wallets.forEach(w => {
+            const div = document.createElement("div");
+            div.className = "col-md-3 mb-3";
+            div.innerHTML = `
+                <div class="wallet-card">
+                    <h6>${w.name}</h6>
+                    <p class="text-muted mb-1">${w.category || ''}</p>
+                    <h4 class="text-success">${w.balance.toFixed(2)} MAD</h4>
+                    <div class="mt-2 d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-info" onclick="transferFromWallet(${w.id})" title="Transfer from this wallet">
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="editWallet(${w.id})" title="Edit wallet">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteWallet(${w.id})" title="Delete wallet">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            walletContainer.appendChild(div);
+        });
+    }
 }
 
 // =================== ADD / EDIT INCOME ===================
 let incomes = []; // Store globally for caching
 
 async function loadIncomes() {
-    const tbody = document.getElementById("incomeTableBody");
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>';
+    const incomesList = document.getElementById("incomesList");
+    
+    if (!incomesList) {
+        console.error("Incomes list container not found");
+        return;
+    }
+    
+    incomesList.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border text-success"></div><p class="mt-2 mb-0">Loading incomes...</p></div>';
     
     try {
-        incomes = await fetchWithAuth(`${API_URL}/incomes`) || [];
+        const response = await fetchWithAuth(`${API_URL}/incomes`);
+        if (response === null) {
+            // User was redirected to login
+            return;
+        }
+        incomes = response || [];
+        console.log("✅ Loaded incomes:", incomes.length);
     } catch (err) {
-        console.warn("⚠️ GET /incomes failed:", err);
+        console.error("❌ GET /incomes failed:", err);
         incomes = [];
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load incomes</td></tr>';
+        incomesList.innerHTML = `
+            <div class="text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+                <h5>Error Loading Incomes</h5>
+                <p class="mb-0">${err.message || "Failed to load incomes"}</p>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadIncomes()">Retry</button>
+            </div>
+        `;
         return;
     }
     
-    const summary = await fetchWithAuth(`${API_URL}/incomes/summary`).catch(() => ({ bank: 0, cash: 0, total: 0 }));
+    let summary = { bank: 0, cash: 0, total: 0 };
+    try {
+        const summaryResponse = await fetchWithAuth(`${API_URL}/incomes/summary`);
+        if (summaryResponse !== null) {
+            summary = summaryResponse || summary;
+        }
+    } catch (err) {
+        console.warn("⚠️ GET /incomes/summary failed:", err);
+    }
 
-    document.getElementById("bankBalance").innerText = (summary.bank || 0).toFixed(2);
-    document.getElementById("cashBalance").innerText = (summary.cash || 0).toFixed(2);
-    document.getElementById("totalBalance").innerText = (summary.total || 0).toFixed(2);
+    const bankBalanceEl = document.getElementById("bankBalance");
+    const cashBalanceEl = document.getElementById("cashBalance");
+    const totalBalanceEl = document.getElementById("totalBalance");
+    
+    if (bankBalanceEl) bankBalanceEl.innerText = (summary.bank || 0).toFixed(2) + " MAD";
+    if (cashBalanceEl) cashBalanceEl.innerText = (summary.cash || 0).toFixed(2) + " MAD";
+    if (totalBalanceEl) totalBalanceEl.innerText = (summary.total || 0).toFixed(2) + " MAD";
 
-    tbody.innerHTML = "";
+    // Update count badge
+    const incomesCountBadge = document.getElementById("incomesCountBadge");
+    if (incomesCountBadge) {
+        incomesCountBadge.textContent = incomes.length;
+    }
 
     if (incomes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No income records found</td></tr>';
+        incomesList.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-receipt fs-1 mb-3"></i>
+                <h5>No Income Records</h5>
+                <p class="mb-0">Start by adding your first income!</p>
+            </div>
+        `;
         return;
     }
 
-    incomes.forEach(i => {
-        const tr = document.createElement("tr");
+    incomesList.innerHTML = incomes.map(i => {
         const date = i.date ? new Date(i.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 
                   (i.created_at ? new Date(i.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "");
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${i.category_name || ""}</td>
-            <td><strong class="text-success">${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</strong></td>
-            <td>${i.wallet_name || ""}</td>
-            <td>${i.note || ""}</td>
-            <td>
-                <button class="btn btn-sm btn-warning me-1" onclick="editIncome(${i.id})" title="Edit">
-                    <i class="bi bi-pencil-fill"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="deleteIncome(${i.id})" title="Delete">
-                    <i class="bi bi-trash-fill"></i>
-                </button>
-            </td>
+        
+        return `
+            <div class="debt-loan-card card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="mb-1">${i.category_name || "Income"}</h5>
+                            <p class="text-muted mb-0 small"><i class="bi bi-calendar me-1"></i>${date}</p>
+                        </div>
+                        <span class="badge bg-success fs-6">${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</span>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6 col-12 mb-2 mb-md-0">
+                            <small class="text-muted">Wallet</small>
+                            <p class="mb-0 fw-bold">${i.wallet_name || "N/A"}</p>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <small class="text-muted">Amount</small>
+                            <p class="mb-0 fw-bold text-success">${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</p>
+                        </div>
+                    </div>
+                    
+                    ${i.note ? `<p class="text-muted small mb-2"><i class="bi bi-sticky me-1"></i>${i.note}</p>` : ''}
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-warning" onclick="editIncome(${i.id})">
+                            <i class="bi bi-pencil-fill me-1"></i>Edit
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteIncome(${i.id})">
+                            <i class="bi bi-trash-fill me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
         `;
-        tbody.appendChild(tr);
-    });
+    }).join('');
 }
 
 // =================== LOAD TRANSACTIONS ===================
 async function loadTransactions() {
-    const tbody = document.getElementById("transactionsTableBody");
-    if (!tbody) return;
+    const transactionsList = document.getElementById("transactionsList");
     
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>';
+    if (!transactionsList) {
+        console.error("Transactions list container not found");
+        return;
+    }
+    
+    transactionsList.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border text-info"></div><p class="mt-2 mb-0">Loading transactions...</p></div>';
     
     try {
-        const transactions = await fetchWithAuth(`${API_URL}/transactions`) || [];
+        const response = await fetchWithAuth(`${API_URL}/transactions`);
+        if (response === null) {
+            // User was redirected to login
+            return;
+        }
+        const transactions = response || [];
+        console.log("✅ Loaded transactions:", transactions.length);
         
-        tbody.innerHTML = "";
+        // Update count badge
+        const transactionsCountBadge = document.getElementById("transactionsCountBadge");
+        if (transactionsCountBadge) {
+            transactionsCountBadge.textContent = transactions.length;
+        }
         
         if (transactions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No transactions found</td></tr>';
+            transactionsList.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-arrow-left-right fs-1 mb-3"></i>
+                    <h5>No Transactions</h5>
+                    <p class="mb-0">No wallet transfers yet!</p>
+                </div>
+            `;
             return;
         }
         
-        transactions.forEach(t => {
-            const tr = document.createElement("tr");
+        transactionsList.innerHTML = transactions.map(t => {
             const date = t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
-            tr.innerHTML = `
-                <td><code>#${t.id}</code></td>
-                <td>${date}</td>
-                <td><span class="badge bg-danger">${t.from_wallet_name || ""}</span></td>
-                <td><span class="badge bg-success">${t.to_wallet_name || ""}</span></td>
-                <td><strong class="text-primary">${t.amount ? t.amount.toFixed(2) : "0.00"} MAD</strong></td>
-                <td>${t.note || ""}</td>
+            
+            // Determine transaction type and display
+            const isDebt = t.transaction_type === 'debt';
+            const isCredit = t.transaction_type === 'credit';
+            const isTransfer = t.transaction_type === 'transfer';
+            
+            let typeBadge;
+            let typeColor;
+            let toWalletDisplay;
+            
+            if (isDebt) {
+                typeBadge = 'Debt';
+                typeColor = 'success';
+                toWalletDisplay = 'External';
+            } else if (isCredit) {
+                typeBadge = 'Credit';
+                typeColor = 'danger';
+                toWalletDisplay = 'External';
+            } else {
+                typeBadge = 'Transfer';
+                typeColor = 'info';
+                toWalletDisplay = t.to_wallet_name || 'N/A';
+            }
+            
+            return `
+                <div class="debt-loan-card card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h5 class="mb-1">Transaction #${t.id}</h5>
+                                <p class="text-muted mb-0 small"><i class="bi bi-calendar me-1"></i>${date}</p>
+                            </div>
+                            <span class="badge bg-${typeColor} fs-6">${typeBadge}</span>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4 col-12 mb-2 mb-md-0">
+                                <small class="text-muted">From Wallet</small>
+                                <p class="mb-0 fw-bold"><span class="badge bg-danger">${t.from_wallet_name || "N/A"}</span></p>
+                            </div>
+                            <div class="col-md-4 col-12 mb-2 mb-md-0">
+                                <small class="text-muted">To Wallet</small>
+                                <p class="mb-0 fw-bold">
+                                    ${isDebt || isCredit 
+                                        ? '<span class="badge bg-secondary">External</span>'
+                                        : `<span class="badge bg-success">${toWalletDisplay}</span>`}
+                                </p>
+                            </div>
+                            <div class="col-md-4 col-12">
+                                <small class="text-muted">Amount</small>
+                                <p class="mb-0 fw-bold text-primary">${t.amount ? t.amount.toFixed(2) : "0.00"} MAD</p>
+                            </div>
+                        </div>
+                        
+                        ${t.note ? `<p class="text-muted small mb-2"><i class="bi bi-sticky me-1"></i>${t.note}</p>` : ''}
+                    </div>
+                </div>
             `;
-            tbody.appendChild(tr);
-        });
+        }).join('');
     } catch (err) {
         console.error("Failed to load transactions:", err);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load transactions</td></tr>';
+        transactionsList.innerHTML = `
+            <div class="text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+                <h5>Error Loading Transactions</h5>
+                <p class="mb-0">${err.message || "Failed to load transactions"}</p>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadTransactions()">Retry</button>
+            </div>
+        `;
     }
 }
 
@@ -286,6 +512,10 @@ async function addIncome() {
         dateInput.value = new Date().toISOString().split('T')[0];
         categoryInput.value = "";
         walletInput.value = "";
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById("addIncomeModal"));
+        if (modal) modal.hide();
         
         // Show success
         alert("✅ Income added!");
@@ -619,6 +849,7 @@ async function executeTransfer() {
         executeBtn.innerHTML = "💸 Transfer";
     }
 }
+
 
 
 

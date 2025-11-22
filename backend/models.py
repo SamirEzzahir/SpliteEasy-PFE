@@ -29,6 +29,18 @@ class GenderEnum(enum.Enum):
     male = "Male"
     female = "Female"
 
+
+class TransactionType(enum.Enum):
+    transfer = "transfer"  # Transfer between wallets
+    debt = "debt"  # Money borrowed from someone (increases wallet balance)
+    credit = "credit"  # Money lent/given to someone (decreases wallet balance)
+
+
+class DebtLoanStatus(enum.Enum):
+    active = "active"
+    partially_paid = "partially_paid"
+    fully_paid = "fully_paid"
+
 # ======================
 # User
 # ======================
@@ -65,6 +77,8 @@ class User(Base):
     income_types: Mapped[list["IncomeType"]] = relationship("IncomeType", back_populates="user",cascade="all, delete-orphan")
     wallets: Mapped[list["Wallet"]] = relationship("Wallet",back_populates="user",cascade="all, delete-orphan")
     transactions: Mapped[list["Transaction"]] = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
+    debts: Mapped[list["Debt"]] = relationship("Debt", back_populates="user", cascade="all, delete-orphan")
+    loans: Mapped[list["Loan"]] = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
 
 # ======================
 # Group
@@ -299,8 +313,9 @@ class Transaction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     from_wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
-    to_wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
+    to_wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=True)  # Nullable for debts
     
+    transaction_type: Mapped[TransactionType] = mapped_column(Enum(TransactionType), default=TransactionType.transfer)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     note: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -309,4 +324,88 @@ class Transaction(Base):
     user: Mapped["User"] = relationship("User", back_populates="transactions")
     from_wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[from_wallet_id], back_populates="transactions_from")
     to_wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[to_wallet_id], back_populates="transactions_to")
+
+
+# ======================
+# Debt (Money you owe)
+# ======================
+class Debt(Base):
+    __tablename__ = "debts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    lender_name: Mapped[str] = mapped_column(String(200), nullable=False)  # Who you borrowed from
+    original_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    remaining_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    status: Mapped[DebtLoanStatus] = mapped_column(Enum(DebtLoanStatus), default=DebtLoanStatus.active)
+    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)  # Wallet where money was added
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="debts")
+    wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[wallet_id])
+    repayments: Mapped[list["DebtRepayment"]] = relationship("DebtRepayment", back_populates="debt", cascade="all, delete-orphan")
+
+
+# ======================
+# Loan (Money others owe you)
+# ======================
+class Loan(Base):
+    __tablename__ = "loans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    borrower_name: Mapped[str] = mapped_column(String(200), nullable=False)  # Who you lent to
+    original_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    remaining_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    status: Mapped[DebtLoanStatus] = mapped_column(Enum(DebtLoanStatus), default=DebtLoanStatus.active)
+    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)  # Wallet where money was taken from
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="loans")
+    wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[wallet_id])
+    repayments: Mapped[list["LoanRepayment"]] = relationship("LoanRepayment", back_populates="loan", cascade="all, delete-orphan")
+
+
+# ======================
+# Debt Repayment (Paying back a debt)
+# ======================
+class DebtRepayment(Base):
+    __tablename__ = "debt_repayments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    debt_id: Mapped[int] = mapped_column(ForeignKey("debts.id", ondelete="CASCADE"), nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)  # Wallet where money was taken from
+    note: Mapped[Optional[str]] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    debt: Mapped["Debt"] = relationship("Debt", back_populates="repayments")
+    wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[wallet_id])
+
+
+# ======================
+# Loan Repayment (Receiving back a loan)
+# ======================
+class LoanRepayment(Base):
+    __tablename__ = "loan_repayments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    loan_id: Mapped[int] = mapped_column(ForeignKey("loans.id", ondelete="CASCADE"), nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)  # Wallet where money was added
+    note: Mapped[Optional[str]] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    loan: Mapped["Loan"] = relationship("Loan", back_populates="repayments")
+    wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[wallet_id])
 
