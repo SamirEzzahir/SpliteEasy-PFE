@@ -185,21 +185,36 @@ function renderWallets(container) {
     } else {
         wallets.forEach(w => {
             const div = document.createElement("div");
-            div.className = "col-md-3 mb-3";
+            div.className = "col-md-3 col-10 mb-3";
+
+            // Determine icon and color based on category
+            let iconClass = "bi-wallet2";
+            let bgClass = "bg-info";
+            let textClass = "text-info";
+            const cat = (w.category || "").toLowerCase();
+
+            if (cat.includes("bank")) { iconClass = "bi-bank"; bgClass = "bg-primary"; textClass = "text-primary"; }
+            else if (cat.includes("cash")) { iconClass = "bi-cash-stack"; bgClass = "bg-success"; textClass = "text-success"; }
+            else if (cat.includes("credit")) { iconClass = "bi-credit-card"; bgClass = "bg-danger"; textClass = "text-danger"; }
+
             div.innerHTML = `
-                <div class="wallet-card">
-                    <h6>${w.name}</h6>
-                    <p class="text-muted mb-1">${w.category || ''}</p>
-                    <h4 class="text-success">${w.balance.toFixed(2)} MAD</h4>
-                    <div class="mt-2 d-flex justify-content-center gap-2">
-                        <button class="btn btn-sm btn-info" onclick="transferFromWallet(${w.id})" title="Transfer">
+                <div class="wallet-card" data-type="${w.category || 'Other'}">
+                    <div class="stat-icon ${bgClass} mx-auto mb-3">
+                        <i class="bi ${iconClass}"></i>
+                    </div>
+                    <h6 class="text-muted mb-1 text-uppercase small ls-1">${w.category || 'Wallet'}</h6>
+                    <h5 class="fw-bold mb-1 text-dark">${w.name}</h5>
+                    <h3 class="fw-bold mb-3 ${textClass}">${w.balance.toFixed(2)} MAD</h3>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-light border" onclick="transferFromWallet(${w.id})" title="Transfer">
                             <i class="bi bi-arrow-right"></i>
                         </button>
-                        <button class="btn btn-sm btn-warning" onclick="editWallet(${w.id})" title="Edit">
-                            <i class="bi bi-pencil-fill"></i>
+                        <button class="btn btn-sm btn-light border" onclick="editWallet(${w.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteWallet(${w.id})" title="Delete">
-                            <i class="bi bi-trash-fill"></i>
+                        <button class="btn btn-sm btn-light border" onclick="deleteWallet(${w.id})" title="Delete">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -238,6 +253,7 @@ function updateWalletSelects() {
         });
     });
 }
+
 
 async function loadTypes() {
     const typesContainer = document.getElementById("incomeTypesList");
@@ -312,31 +328,66 @@ async function loadIncomes() {
             return;
         }
 
-        incomesList.innerHTML = incomes.map(i => {
-            const date = i.date ? new Date(i.date).toLocaleDateString() : (i.created_at ? new Date(i.created_at).toLocaleDateString() : "");
-            return `
-                <div class="debt-loan-card card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <h5 class="mb-1">${i.category_name || "Income"}</h5>
-                                <p class="text-muted mb-0 small"><i class="bi bi-calendar me-1"></i>${date}</p>
+        incomesList.innerHTML = `
+            <!-- Desktop Table -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover finance-table align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="border-0 rounded-start">Date</th>
+                            <th class="border-0">Category</th>
+                            <th class="border-0">Wallet</th>
+                            <th class="border-0">Note</th>
+                            <th class="text-end border-0">Amount</th>
+                            <th class="text-end border-0 rounded-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${incomes.map(i => `
+                            <tr>
+                                <td class="text-muted">${i.date ? new Date(i.date).toLocaleDateString() : (i.created_at ? new Date(i.created_at).toLocaleDateString() : "")}</td>
+                                <td><span class="fw-semibold text-dark">${i.category_name || "Income"}</span></td>
+                                <td><span class="badge bg-light text-dark border">${i.wallet_name || "N/A"}</span></td>
+                                <td><small class="text-muted text-truncate d-inline-block" style="max-width: 150px;">${i.note || "-"}</small></td>
+                                <td class="text-end fw-bold text-success">+${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-light text-warning" onclick="editIncome(${i.id})" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                                    <button class="btn btn-sm btn-light text-danger" onclick="deleteIncome(${i.id})" title="Delete"><i class="bi bi-trash-fill"></i></button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="d-md-none">
+                ${incomes.map(i => `
+                    <div class="debt-loan-card card mb-3 shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="mb-1 fw-bold text-dark">${i.category_name || "Income"}</h6>
+                                    <p class="text-muted mb-0 small"><i class="bi bi-calendar me-1"></i>${i.date ? new Date(i.date).toLocaleDateString() : ""}</p>
+                                </div>
+                                <span class="badge bg-success-subtle text-success fs-6">+${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</span>
                             </div>
-                            <span class="badge bg-success fs-6">${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</span>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-6 col-12"><small class="text-muted">Wallet</small><p class="fw-bold">${i.wallet_name || "N/A"}</p></div>
-                            <div class="col-md-6 col-12"><small class="text-muted">Amount</small><p class="fw-bold text-success">${i.amount ? i.amount.toFixed(2) : "0.00"} MAD</p></div>
-                        </div>
-                        ${i.note ? `<p class="text-muted small mb-2"><i class="bi bi-sticky me-1"></i>${i.note}</p>` : ''}
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-warning" onclick="editIncome(${i.id})"><i class="bi bi-pencil-fill me-1"></i>Edit</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteIncome(${i.id})"><i class="bi bi-trash-fill me-1"></i>Delete</button>
+                            <div class="row mb-3 g-2">
+                                <div class="col-6">
+                                    <small class="text-muted d-block mb-1">Wallet</small>
+                                    <span class="badge bg-light text-dark border">${i.wallet_name || "N/A"}</span>
+                                </div>
+                            </div>
+                            ${i.note ? `<div class="bg-light p-2 rounded mb-3"><small class="text-muted"><i class="bi bi-sticky me-1"></i>${i.note}</small></div>` : ''}
+                            <div class="d-flex gap-2 justify-content-end border-top pt-3">
+                                <button class="btn btn-sm btn-outline-warning" onclick="editIncome(${i.id})"><i class="bi bi-pencil-fill me-1"></i>Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteIncome(${i.id})"><i class="bi bi-trash-fill me-1"></i>Delete</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                `).join('')}
+            </div>
+        `;
     } catch (err) {
         console.error(err);
         incomesList.innerHTML = `<div class="text-center text-danger py-4"><p>Error loading incomes</p></div>`;
@@ -536,30 +587,81 @@ async function loadTransactions() {
             return;
         }
 
-        list.innerHTML = transactions.map(t => {
+        list.innerHTML = `
+            <!-- Desktop Table -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover finance-table align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="border-0 rounded-start">ID</th>
+                            <th class="border-0">Date</th>
+                            <th class="border-0">Type</th>
+                            <th class="border-0">From</th>
+                            <th class="border-0">To</th>
+                            <th class="text-end border-0 rounded-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(t => {
             const date = t.created_at ? new Date(t.created_at).toLocaleDateString() : "";
             const isDebt = t.transaction_type === 'debt';
             const isCredit = t.transaction_type === 'credit';
             const typeBadge = isDebt ? 'Debt' : isCredit ? 'Credit' : 'Transfer';
-            const typeColor = isDebt ? 'success' : isCredit ? 'danger' : 'info';
+            const typeColor = isDebt ? 'danger' : isCredit ? 'success' : 'info';
             const toWallet = isDebt || isCredit ? 'External' : (t.to_wallet_name || 'N/A');
 
             return `
-                <div class="debt-loan-card card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div><h5 class="mb-1">Transaction #${t.id}</h5><p class="text-muted small">${date}</p></div>
-                            <span class="badge bg-${typeColor}">${typeBadge}</span>
+                            <tr>
+                                <td class="text-muted">#${t.id}</td>
+                                <td>${date}</td>
+                                <td><span class="badge bg-${typeColor}-subtle text-${typeColor} border border-${typeColor}">${typeBadge}</span></td>
+                                <td><span class="fw-medium">${t.from_wallet_name || "N/A"}</span></td>
+                                <td><span class="fw-medium">${toWallet}</span></td>
+                                <td class="text-end fw-bold text-primary">${t.amount.toFixed(2)} MAD</td>
+                            </tr>
+                            `;
+        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="d-md-none">
+                ${transactions.map(t => {
+            const date = t.created_at ? new Date(t.created_at).toLocaleDateString() : "";
+            const isDebt = t.transaction_type === 'debt';
+            const isCredit = t.transaction_type === 'credit';
+            const typeBadge = isDebt ? 'Debt' : isCredit ? 'Credit' : 'Transfer';
+            const typeColor = isDebt ? 'danger' : isCredit ? 'success' : 'info';
+            const toWallet = isDebt || isCredit ? 'External' : (t.to_wallet_name || 'N/A');
+
+            return `
+                        <div class="debt-loan-card card mb-3 shadow-sm border-0">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div><span class="text-muted small">#${t.id}</span> <span class="text-muted small ms-2">${date}</span></div>
+                                    <span class="badge bg-${typeColor}-subtle text-${typeColor}">${typeBadge}</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">From</small>
+                                        <span class="fw-medium">${t.from_wallet_name || "N/A"}</span>
+                                    </div>
+                                    <i class="bi bi-arrow-right text-muted"></i>
+                                    <div class="text-center">
+                                        <small class="text-muted d-block">To</small>
+                                        <span class="fw-medium">${toWallet}</span>
+                                    </div>
+                                </div>
+                                <div class="text-center border-top pt-2">
+                                    <h5 class="text-primary fw-bold mb-0">${t.amount.toFixed(2)} MAD</h5>
+                                </div>
+                            </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-4"><small>From</small><p class="fw-bold">${t.from_wallet_name || "N/A"}</p></div>
-                            <div class="col-4"><small>To</small><p class="fw-bold">${toWallet}</p></div>
-                            <div class="col-4"><small>Amount</small><p class="fw-bold text-primary">${t.amount.toFixed(2)} MAD</p></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+                    `;
+        }).join('')}
+            </div>
+        `;
     } catch (e) { console.error(e); }
 }
 

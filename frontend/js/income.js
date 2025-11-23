@@ -11,16 +11,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         alert("Configuration error. Please refresh the page.");
         return;
     }
-    
+
     // Simple auth check - just check if token exists
     const tokenExists = localStorage.getItem("token");
-    
+
     if (!tokenExists) {
         console.log("No token found, redirecting to login");
         window.location.href = "login.html";
         return;
     }
-    
+
     // Load auth
     if (typeof loadAuth === 'function') {
         loadAuth();
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("loadAuth function not found");
         return;
     }
-    
+
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     const incomeDateInput = document.getElementById("incomeDate");
@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("editIncomeCategory").addEventListener("change", checkAddNewType);
     document.getElementById("incomeWallet").addEventListener("change", checkAddNewWallet);
     document.getElementById("editIncomeWallet").addEventListener("change", checkAddNewWallet);
-    
+
 });
 
 // =================== LOAD DATA ===================
@@ -81,7 +81,7 @@ async function loadTypes() {
         console.error("Income types container not found");
         return;
     }
-    
+
     try {
         const response = await fetchWithAuth(`${API_URL}/incometype/`);
         if (response === null) {
@@ -103,7 +103,7 @@ async function loadTypes() {
         `;
         return;
     }
-    
+
     const selects = [document.getElementById("incomeCategory"), document.getElementById("editIncomeCategory")];
 
     selects.forEach(sel => {
@@ -117,7 +117,7 @@ async function loadTypes() {
     // Display income types with edit/delete buttons
     if (!typesContainer) return;
     typesContainer.innerHTML = "";
-    
+
     if (types.length === 0) {
         typesContainer.innerHTML = `
             <div class="col-12 text-center text-muted py-5">
@@ -155,7 +155,7 @@ async function loadWallets() {
         console.error("Wallet container not found");
         return;
     }
-    
+
     try {
         const response = await fetchWithAuth(`${API_URL}/wallets`);
         if (response === null) {
@@ -177,7 +177,7 @@ async function loadWallets() {
         `;
         return;
     }
-    
+
     walletContainer.innerHTML = "";
 
     const selects = [document.getElementById("incomeWallet"), document.getElementById("editIncomeWallet")];
@@ -204,21 +204,36 @@ async function loadWallets() {
     } else {
         wallets.forEach(w => {
             const div = document.createElement("div");
-            div.className = "col-md-3 mb-3";
+            div.className = "col-md-3 col-10 mb-3";
+
+            // Determine icon and color based on category
+            let iconClass = "bi-wallet2";
+            let bgClass = "bg-info";
+            let textClass = "text-info";
+            const cat = (w.category || "").toLowerCase();
+
+            if (cat.includes("bank")) { iconClass = "bi-bank"; bgClass = "bg-primary"; textClass = "text-primary"; }
+            else if (cat.includes("cash")) { iconClass = "bi-cash-stack"; bgClass = "bg-success"; textClass = "text-success"; }
+            else if (cat.includes("credit")) { iconClass = "bi-credit-card"; bgClass = "bg-danger"; textClass = "text-danger"; }
+
             div.innerHTML = `
-                <div class="wallet-card">
-                    <h6>${w.name}</h6>
-                    <p class="text-muted mb-1">${w.category || ''}</p>
-                    <h4 class="text-success">${w.balance.toFixed(2)} MAD</h4>
-                    <div class="mt-2 d-flex justify-content-center gap-2">
-                        <button class="btn btn-sm btn-info" onclick="transferFromWallet(${w.id})" title="Transfer from this wallet">
+                <div class="wallet-card" data-type="${w.category || 'Other'}">
+                    <div class="stat-icon ${bgClass} mx-auto mb-3">
+                        <i class="bi ${iconClass}"></i>
+                    </div>
+                    <h6 class="text-muted mb-1 text-uppercase small ls-1">${w.category || 'Wallet'}</h6>
+                    <h5 class="fw-bold mb-1 text-dark">${w.name}</h5>
+                    <h3 class="fw-bold mb-3 ${textClass}">${w.balance.toFixed(2)} MAD</h3>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-sm btn-light border" onclick="transferFromWallet(${w.id})" title="Transfer">
                             <i class="bi bi-arrow-right"></i>
                         </button>
-                        <button class="btn btn-sm btn-warning" onclick="editWallet(${w.id})" title="Edit wallet">
-                            <i class="bi bi-pencil-fill"></i>
+                        <button class="btn btn-sm btn-light border" onclick="editWallet(${w.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteWallet(${w.id})" title="Delete wallet">
-                            <i class="bi bi-trash-fill"></i>
+                        <button class="btn btn-sm btn-light border" onclick="deleteWallet(${w.id})" title="Delete">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -233,14 +248,14 @@ let incomes = []; // Store globally for caching
 
 async function loadIncomes() {
     const incomesList = document.getElementById("incomesList");
-    
+
     if (!incomesList) {
         console.error("Incomes list container not found");
         return;
     }
-    
+
     incomesList.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border text-success"></div><p class="mt-2 mb-0">Loading incomes...</p></div>';
-    
+
     try {
         const response = await fetchWithAuth(`${API_URL}/incomes`);
         if (response === null) {
@@ -262,7 +277,7 @@ async function loadIncomes() {
         `;
         return;
     }
-    
+
     let summary = { bank: 0, cash: 0, total: 0 };
     try {
         const summaryResponse = await fetchWithAuth(`${API_URL}/incomes/summary`);
@@ -276,7 +291,7 @@ async function loadIncomes() {
     const bankBalanceEl = document.getElementById("bankBalance");
     const cashBalanceEl = document.getElementById("cashBalance");
     const totalBalanceEl = document.getElementById("totalBalance");
-    
+
     if (bankBalanceEl) bankBalanceEl.innerText = (summary.bank || 0).toFixed(2) + " MAD";
     if (cashBalanceEl) cashBalanceEl.innerText = (summary.cash || 0).toFixed(2) + " MAD";
     if (totalBalanceEl) totalBalanceEl.innerText = (summary.total || 0).toFixed(2) + " MAD";
@@ -299,9 +314,9 @@ async function loadIncomes() {
     }
 
     incomesList.innerHTML = incomes.map(i => {
-        const date = i.date ? new Date(i.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 
-                  (i.created_at ? new Date(i.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "");
-        
+        const date = i.date ? new Date(i.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) :
+            (i.created_at ? new Date(i.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "");
+
         return `
             <div class="debt-loan-card card mb-3">
                 <div class="card-body">
@@ -343,14 +358,14 @@ async function loadIncomes() {
 // =================== LOAD TRANSACTIONS ===================
 async function loadTransactions() {
     const transactionsList = document.getElementById("transactionsList");
-    
+
     if (!transactionsList) {
         console.error("Transactions list container not found");
         return;
     }
-    
+
     transactionsList.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border text-info"></div><p class="mt-2 mb-0">Loading transactions...</p></div>';
-    
+
     try {
         const response = await fetchWithAuth(`${API_URL}/transactions`);
         if (response === null) {
@@ -359,13 +374,13 @@ async function loadTransactions() {
         }
         const transactions = response || [];
         console.log("✅ Loaded transactions:", transactions.length);
-        
+
         // Update count badge
         const transactionsCountBadge = document.getElementById("transactionsCountBadge");
         if (transactionsCountBadge) {
             transactionsCountBadge.textContent = transactions.length;
         }
-        
+
         if (transactions.length === 0) {
             transactionsList.innerHTML = `
                 <div class="text-center text-muted py-5">
@@ -376,19 +391,19 @@ async function loadTransactions() {
             `;
             return;
         }
-        
+
         transactionsList.innerHTML = transactions.map(t => {
             const date = t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
-            
+
             // Determine transaction type and display
             const isDebt = t.transaction_type === 'debt';
             const isCredit = t.transaction_type === 'credit';
             const isTransfer = t.transaction_type === 'transfer';
-            
+
             let typeBadge;
             let typeColor;
             let toWalletDisplay;
-            
+
             if (isDebt) {
                 typeBadge = 'Debt';
                 typeColor = 'success';
@@ -402,7 +417,7 @@ async function loadTransactions() {
                 typeColor = 'info';
                 toWalletDisplay = t.to_wallet_name || 'N/A';
             }
-            
+
             return `
                 <div class="debt-loan-card card mb-3">
                     <div class="card-body">
@@ -422,9 +437,9 @@ async function loadTransactions() {
                             <div class="col-md-4 col-12 mb-2 mb-md-0">
                                 <small class="text-muted">To Wallet</small>
                                 <p class="mb-0 fw-bold">
-                                    ${isDebt || isCredit 
-                                        ? '<span class="badge bg-secondary">External</span>'
-                                        : `<span class="badge bg-success">${toWalletDisplay}</span>`}
+                                    ${isDebt || isCredit
+                    ? '<span class="badge bg-secondary">External</span>'
+                    : `<span class="badge bg-success">${toWalletDisplay}</span>`}
                                 </p>
                             </div>
                             <div class="col-md-4 col-12">
@@ -461,7 +476,7 @@ async function addIncome() {
     const addBtn = document.getElementById("addIncomeBtn");
     const spinner = document.getElementById("addIncomeSpinner");
     const btnText = document.getElementById("addIncomeText");
-    
+
     const amount = parseFloat(amountInput.value);
     const date = dateInput.value || null;
     const income_type_id = categoryInput.value;
@@ -472,11 +487,11 @@ async function addIncome() {
     if (!amount || amount <= 0) {
         return alert("Please enter a valid amount greater than 0");
     }
-    
+
     if (!income_type_id || income_type_id === "add_new_type") {
         return alert("Please select a valid income type");
     }
-    
+
     if (!wallet_id || wallet_id === "add_new_wallet") {
         return alert("Please select a valid wallet");
     }
@@ -486,10 +501,10 @@ async function addIncome() {
     spinner.classList.remove("d-none");
     btnText.textContent = "";
 
-    const data = { 
-        amount, 
-        income_type_id: parseInt(income_type_id), 
-        wallet_id: parseInt(wallet_id), 
+    const data = {
+        amount,
+        income_type_id: parseInt(income_type_id),
+        wallet_id: parseInt(wallet_id),
         note: note || null,
         date: date ? new Date(date).toISOString() : null
     };
@@ -500,23 +515,23 @@ async function addIncome() {
             headers: getHeaders(),
             body: JSON.stringify(data)
         });
-        
+
         if (!res.ok) {
             const errorText = await res.text();
             throw new Error(errorText || `HTTP ${res.status}`);
         }
-        
+
         // Clear form
         amountInput.value = "";
         noteInput.value = "";
         dateInput.value = new Date().toISOString().split('T')[0];
         categoryInput.value = "";
         walletInput.value = "";
-        
+
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById("addIncomeModal"));
         if (modal) modal.hide();
-        
+
         // Show success
         alert("✅ Income added!");
         await loadIncomes();
@@ -537,18 +552,18 @@ async function editIncome(id) {
     try {
         // Try to get from already loaded incomes first (cached)
         let income = incomes?.find(i => i.id === id);
-        
+
         if (!income) {
             // If not found, fetch all incomes (fallback)
             const allIncomes = await fetchWithAuth(`${API_URL}/incomes`);
             income = allIncomes.find(i => i.id === id);
         }
-        
+
         if (!income) throw new Error("Income not found");
 
         document.getElementById("editIncomeId").value = income.id;
         document.getElementById("editIncomeAmount").value = income.amount;
-        
+
         // Set date (convert from date string or created_at)
         const incomeDate = document.getElementById("editIncomeDate");
         if (incomeDate && income.date) {
@@ -558,7 +573,7 @@ async function editIncome(id) {
             const date = new Date(income.created_at);
             incomeDate.value = date.toISOString().split('T')[0];
         }
-        
+
         document.getElementById("editIncomeCategory").value = income.income_type_id;
         document.getElementById("editIncomeWallet").value = income.wallet_id;
         document.getElementById("editIncomeNote").value = income.note || "";
@@ -575,13 +590,13 @@ async function saveIncomeChanges() {
     const amountInput = document.getElementById("editIncomeAmount");
     const dateInput = document.getElementById("editIncomeDate");
     const saveBtn = document.getElementById("saveIncomeChangesBtn");
-    
+
     // Validation
     const amount = parseFloat(amountInput.value);
     if (!amount || amount <= 0) {
         return alert("Please enter a valid amount greater than 0");
     }
-    
+
     const data = {
         amount: amount,
         income_type_id: parseInt(document.getElementById("editIncomeCategory").value),
@@ -589,7 +604,7 @@ async function saveIncomeChanges() {
         note: document.getElementById("editIncomeNote").value.trim() || null,
         date: dateInput.value ? new Date(dateInput.value).toISOString() : null
     };
-    
+
     // Show loading
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
@@ -648,11 +663,11 @@ async function editIncomeType(id) {
 
 async function deleteIncomeType(id) {
     if (!confirm("Are you sure you want to delete this income type? This action cannot be undone.")) return;
-    
+
     try {
-        const res = await fetch(`${API_URL}/incometype/${id}`, { 
-            method: "DELETE", 
-            headers: getHeaders() 
+        const res = await fetch(`${API_URL}/incometype/${id}`, {
+            method: "DELETE",
+            headers: getHeaders()
         });
         if (res.ok) {
             alert("✅ Income type deleted!");
@@ -690,10 +705,10 @@ async function saveType() {
     try {
         const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify({ name }) });
         if (!res.ok) throw new Error(await res.text());
-        
+
         const action = id ? "updated" : "added";
         alert(`✅ Income type ${action}!`);
-        typeModal.hide(); 
+        typeModal.hide();
         loadTypes();
     } catch (err) {
         console.error(err);
@@ -750,7 +765,7 @@ async function transferFromWallet(fromWalletId) {
     // Populate transfer modal
     const fromSelect = document.getElementById("transferFromWallet");
     const toSelect = document.getElementById("transferToWallet");
-    
+
     // Clear and populate from wallet (pre-selected)
     fromSelect.innerHTML = "";
     fromSelect.appendChild(new Option(`${fromWallet.name} (${fromWallet.category})`, fromWallet.id));
@@ -772,10 +787,10 @@ async function transferFromWallet(fromWalletId) {
 }
 
 // Reset transfer modal when closed
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const transferModalElement = document.getElementById('transferModal');
     if (transferModalElement) {
-        transferModalElement.addEventListener('hidden.bs.modal', function() {
+        transferModalElement.addEventListener('hidden.bs.modal', function () {
             // Reset the form
             document.getElementById("transferFromWallet").disabled = false;
             document.getElementById("transferFromWallet").innerHTML = '<option value="">-- Select Source Wallet --</option>';
@@ -792,7 +807,7 @@ async function executeTransfer() {
     const amountInput = document.getElementById("transferAmount");
     const noteInput = document.getElementById("transferNote");
     const executeBtn = document.getElementById("executeTransferBtn");
-    
+
     const amount = parseFloat(amountInput.value);
 
     // Validation
@@ -808,7 +823,7 @@ async function executeTransfer() {
     if (!fromWallet) {
         return alert("Source wallet not found");
     }
-    
+
     if (amount > fromWallet.balance) {
         return alert(`Insufficient balance! Available: ${fromWallet.balance.toFixed(2)}`);
     }
@@ -830,7 +845,7 @@ async function executeTransfer() {
             headers: getHeaders(),
             body: JSON.stringify(data)
         });
-        
+
         if (res.ok) {
             const result = await res.json();
             alert("✅ Transfer completed successfully! Transaction ID: #" + result.transaction_id);
