@@ -37,7 +37,7 @@ function getUserDisplayName() {
 function buildNavHTML() {
   const currentPage = getCurrentPage();
   const userDisplayName = getUserDisplayName();
-  
+
   return `
 <!-- Enhanced Responsive Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
@@ -116,10 +116,10 @@ function buildNavHTML() {
             <li><a class="dropdown-item" href="account.html">
               <i class="bi bi-person-gear me-2"></i>Account Settings
             </a></li>
-            <li><a class="dropdown-item" href="income.html">
+            <li><a class="dropdown-item" href="finance.html">
               <i class="bi bi-wallet2 me-2"></i>Income & Wallets
             </a></li>
-            <li><a class="dropdown-item ${isActivePage('debts-loans.html') ? 'active' : ''}" href="debts-loans.html">
+            <li><a class="dropdown-item ${isActivePage('finance.html') ? 'active' : ''}" href="finance.html#debts">
               <i class="bi bi-bank me-2"></i>Debts & Loans
             </a></li>
             <li><hr class="dropdown-divider"></li>
@@ -139,7 +139,7 @@ function buildNavHTML() {
 // -----------------------------
 function buildMobileNavHTML() {
   const currentPage = getCurrentPage();
-  
+
   return `
 <!-- Enhanced Bottom Navigation (Mobile) -->
 <nav class="navbar fixed-bottom navbar-light bg-white border-top d-md-none mobile-nav">
@@ -353,7 +353,7 @@ function addNavbarStyles() {
       background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2833, 37, 41, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
     }
   `;
-  
+
   document.head.appendChild(style);
 }
 
@@ -366,20 +366,20 @@ function setupEventHandlers() {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      
+
       // Show confirmation
       if (confirm("Are you sure you want to logout?")) {
         // Clear all auth data
-    localStorage.removeItem("token");
-    localStorage.removeItem("currentUser");
+        localStorage.removeItem("token");
+        localStorage.removeItem("currentUser");
         localStorage.removeItem("user");
-        
+
         // Redirect to login
-    window.location.href = "index.html";
+        window.location.href = "index.html";
       }
     });
   }
-  
+
   // Add click handlers for mobile nav
   const mobileNavLinks = document.querySelectorAll('.mobile-nav .nav-link');
   mobileNavLinks.forEach(link => {
@@ -400,27 +400,27 @@ function attachNavbar() {
   try {
     // Add styles first
     addNavbarStyles();
-    
+
     // Attach desktop navbar
     const nav = document.getElementById("navbar");
     if (nav) {
       nav.innerHTML = buildNavHTML();
     }
-    
+
     // Attach mobile navbar
     const navMobile = document.getElementById("navbarMobile");
     if (navMobile) {
       navMobile.innerHTML = buildMobileNavHTML();
     }
-    
+
     // Setup event handlers
     setupEventHandlers();
-    
+
     // Update user display name
     updateUserDisplay();
-    
+
     console.log("✅ Navbar attached successfully");
-    
+
   } catch (err) {
     console.error("❌ Error attaching navbar:", err);
   }
@@ -429,19 +429,19 @@ function attachNavbar() {
 function updateUserDisplay() {
   try {
     const userDisplayName = getUserDisplayName();
-    
+
     // Update desktop navbar
     const desktopUserElement = document.querySelector('.user-name');
     if (desktopUserElement) {
       desktopUserElement.textContent = userDisplayName;
     }
-    
+
     // Update home page welcome message
     const homeWelcomeElement = document.getElementById("currentUserHome");
     if (homeWelcomeElement) {
       homeWelcomeElement.textContent = userDisplayName;
     }
-    
+
   } catch (err) {
     console.error("❌ Error updating user display:", err);
   }

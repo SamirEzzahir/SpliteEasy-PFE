@@ -460,6 +460,10 @@
             font-size: 11px;
         }
 
+        body {
+            padding-bottom: 8rem !important; /* Ensure content clears FAB */
+        }
+
     /* Modal Z-Index Fixes */
     .modal {
         z-index: 1055 !important;

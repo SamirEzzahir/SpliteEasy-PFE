@@ -15,6 +15,16 @@ async def register(user: schemas.UserCreate, session: AsyncSession = Depends(get
     if await crud.get_user_by_email(session, user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     new_user = await crud.create_user(session, user)
+
+    # ✅ Create default "Personal Expenses" group
+    personal_group = schemas.GroupCreate(
+        title="Personal Expenses",
+        type="Personal",
+        currency="USD", 
+        member_ids=[]
+    )
+    await crud.create_group(session, personal_group, new_user)
+
     return schemas.UserRead.model_validate(new_user)
 
 @router.post("/login", response_model=schemas.Token)
@@ -22,6 +32,20 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), session: AsyncSessi
     user = await auth.authenticate(session, form.username, form.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # ✅ Check and create default "Personal Expenses" group if missing
+    user_groups = await crud.get_groups(session, user)
+    has_personal_group = any(g.type == "Personal" and g.title == "Personal Expenses" for g in user_groups)
+    
+    if not has_personal_group:
+        personal_group = schemas.GroupCreate(
+            title="Personal Expenses",
+            type="Personal",
+            currency="USD", 
+            member_ids=[]
+        )
+        await crud.create_group(session, personal_group, user)
+
     token = auth.create_access_token(user.username)
     return schemas.Token(access_token=token)
 

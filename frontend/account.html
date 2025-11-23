@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>My Account - SplitEasy</title>
@@ -22,8 +23,8 @@
         <!-- Welcome Banner -->
         <div class="welcome-banner text-center mb-4">
             <div class="profile-avatar-large mb-3">
-                <img id="profilePhoto" src="https://ui-avatars.com/api/?name=User&background=random&color=fff&size=120" 
-                     class="profile-avatar-img" alt="Profile">
+                <img id="profilePhoto" src="https://ui-avatars.com/api/?name=User&background=random&color=fff&size=120"
+                    class="profile-avatar-img" alt="Profile">
             </div>
             <h1 class="fw-bold mb-2" id="profileName">Loading...</h1>
             <p class="lead mb-3" id="profileEmail">email@example.com</p>
@@ -38,12 +39,11 @@
                 <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#activityModal">
                     <i class="bi bi-clock-history me-2"></i>View Activity
                 </button>
-                <a href="income.html" class="btn btn-outline-light">
+                <a href="finance.html" class="btn btn-outline-light">
                     <i class="bi bi-wallet2 me-2"></i>Income & Wallets
                 </a>
             </div>
         </div>
-
 
         <!-- Profile Information & Recent Activity -->
         <div class="row mb-4">
@@ -103,7 +103,8 @@
                             <h5 class="mb-0 fw-bold">
                                 <i class="bi bi-clock-history me-2 text-primary"></i>Recent Activity
                             </h5>
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#activityModal">
                                 <i class="bi bi-eye me-1"></i>View All
                             </button>
                         </div>
@@ -132,25 +133,29 @@
                     <div class="card-body p-4">
                         <div class="row g-3">
                             <div class="col-md-3 col-6">
-                                <a href="groups.html" class="action-card card h-100 p-3 text-center text-decoration-none">
+                                <a href="groups.html"
+                                    class="action-card card h-100 p-3 text-center text-decoration-none">
                                     <i class="bi bi-people-fill fs-1 text-primary mb-2"></i>
                                     <h6 class="fw-bold mb-0">My Groups</h6>
                                 </a>
                             </div>
                             <div class="col-md-3 col-6">
-                                <a href="friends.html" class="action-card card h-100 p-3 text-center text-decoration-none">
+                                <a href="friends.html"
+                                    class="action-card card h-100 p-3 text-center text-decoration-none">
                                     <i class="bi bi-heart-fill fs-1 text-success mb-2"></i>
                                     <h6 class="fw-bold mb-0">My Friends</h6>
                                 </a>
                             </div>
                             <div class="col-md-3 col-6">
-                                <a href="income.html" class="action-card card h-100 p-3 text-center text-decoration-none">
+                                <a href="finance.html"
+                                    class="action-card card h-100 p-3 text-center text-decoration-none">
                                     <i class="bi bi-wallet2 fs-1 text-info mb-2"></i>
                                     <h6 class="fw-bold mb-0">Wallets</h6>
                                 </a>
                             </div>
                             <div class="col-md-3 col-6">
-                                <button class="action-card card h-100 p-3 text-center border-0 w-100" id="logoutBtnAccount" style="background: white; cursor: pointer;">
+                                <button class="action-card card h-100 p-3 text-center border-0 w-100"
+                                    id="logoutBtnAccount" style="background: white; cursor: pointer;">
                                     <i class="bi bi-box-arrow-right fs-1 text-danger mb-2"></i>
                                     <h6 class="fw-bold mb-0">Logout</h6>
                                 </button>
@@ -176,13 +181,16 @@
                     <form id="modalAccountForm">
                         <!-- Profile Photo Section -->
                         <div class="text-center mb-4">
-                            <img id="modalPhotoPreview" src="https://ui-avatars.com/api/?name=User&background=random&color=fff&size=100" 
-                                 class="rounded-circle border border-3 border-primary mb-3" width="100" height="100" alt="Profile Preview">
+                            <img id="modalPhotoPreview"
+                                src="https://ui-avatars.com/api/?name=User&background=random&color=fff&size=100"
+                                class="rounded-circle border border-3 border-primary mb-3" width="100" height="100"
+                                alt="Profile Preview">
                             <div>
                                 <label class="form-label fw-semibold">
                                     <i class="bi bi-image me-1"></i>Profile Photo URL
                                 </label>
-                                <input type="url" id="modal_profile_photo" class="form-control" placeholder="https://example.com/photo.jpg">
+                                <input type="url" id="modal_profile_photo" class="form-control"
+                                    placeholder="https://example.com/photo.jpg">
                                 <div class="form-text">Enter a valid image URL</div>
                             </div>
                         </div>
@@ -291,23 +299,23 @@
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-lock me-1"></i>Current Password *
                             </label>
-                            <input type="password" id="old_password" class="form-control" required 
-                                   placeholder="Enter your current password">
+                            <input type="password" id="old_password" class="form-control" required
+                                placeholder="Enter your current password">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-key me-1"></i>New Password *
                             </label>
-                            <input type="password" id="new_password" class="form-control" required 
-                                   placeholder="Enter new password (min 6 characters)" minlength="6">
+                            <input type="password" id="new_password" class="form-control" required
+                                placeholder="Enter new password (min 6 characters)" minlength="6">
                             <div class="form-text">Password must be at least 6 characters long</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-key-fill me-1"></i>Confirm New Password *
                             </label>
-                            <input type="password" id="confirm_password" class="form-control" required 
-                                   placeholder="Confirm new password" minlength="6">
+                            <input type="password" id="confirm_password" class="form-control" required
+                                placeholder="Confirm new password" minlength="6">
                         </div>
                         <div class="d-flex justify-content-end gap-2 mt-4">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
@@ -363,4 +371,5 @@
         if (!localStorage.getItem("token")) window.location.href = "login.html";
     </script>
 </body>
+
 </html>

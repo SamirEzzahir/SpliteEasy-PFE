@@ -201,11 +201,11 @@
   </div>
 
   <!-- Modals -->
-  <!-- Enhanced Create Group Modal -->
+  <!-- Create Group Modal -->
   <div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-      <div class="modal-content shadow-lg border-0">
-        <div class="modal-header bg-gradient-primary text-white">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title">
             <i class="bi bi-plus-circle me-2"></i>Create New Group
           </h5>
@@ -213,186 +213,69 @@
         </div>
         <div class="modal-body p-4">
           <form id="createGroupForm">
-            <!-- Group Basic Info -->
-            <div class="row mb-4">
-              <div class="col-12">
-                <h6 class="text-primary mb-3">
-                  <i class="bi bi-info-circle me-1"></i>Basic Information
-                </h6>
-              </div>
-            </div>
-
-            <div class="row">
+            <div class="row mb-3">
               <div class="col-md-8">
-                <div class="mb-3">
-                  <label for="groupTitle" class="form-label fw-semibold">
-                    <i class="bi bi-tag me-1"></i>Group Name
-                  </label>
-                  <input type="text" class="form-control form-control-lg" id="groupTitle"
-                    placeholder="e.g. Trip to Paris, House Expenses..." required>
-                  <div class="form-text">Choose a descriptive name for your group</div>
-                </div>
+                <label for="groupTitle" class="form-label fw-semibold">
+                  <i class="bi bi-tag me-1"></i>Group Name
+                </label>
+                <input type="text" class="form-control" id="groupTitle"
+                  placeholder="e.g. Trip to Paris, House Expenses..." required>
               </div>
               <div class="col-md-4">
-                <div class="mb-3">
-                  <label for="groupType" class="form-label fw-semibold">
-                    <i class="bi bi-grid me-1"></i>Category
-                  </label>
-                  <select class="form-select form-select-lg" id="groupType" required>
-                    <option value="Home">🏠 Home</option>
-                    <option value="Couple">💕 Couple</option>
-                    <option value="Trip">✈️ Trip</option>
-                    <option value="Work">💼 Work</option>
-                    <option value="Other">📝 Other</option>
-                  </select>
-                </div>
+                <label for="groupType" class="form-label fw-semibold">
+                  <i class="bi bi-grid me-1"></i>Category
+                </label>
+                <select class="form-select" id="groupType" required>
+                  <option value="Home">🏠 Home</option>
+                  <option value="Couple">💕 Couple</option>
+                  <option value="Trip">✈️ Trip</option>
+                  <option value="Work">💼 Work</option>
+                  <option value="Other">📝 Other</option>
+                </select>
               </div>
-              <div class="col-md-4">
-                <div class="mb-3">
-                  <label for="groupCurrency" class="form-label fw-semibold">
-                    <i class="bi bi-currency-exchange me-1"></i>Currency
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="isPersonalGroup"
+                    onchange="toggleFriendSelection()">
+                  <label class="form-check-label fw-semibold" for="isPersonalGroup">
+                    <i class="bi bi-person-lock me-1"></i>Personal Group (Solo)
                   </label>
-                  <select class="form-select form-select-lg" id="groupCurrency" required="">
-                    <option value="">-- Select Currency --</option>
-                    <option value="AED">🇦🇪 AED — United Arab Emirates (Dirham)</option>
-                    <option value="AFN">🇦🇫 AFN — Afghanistan (Afghani)</option>
-                    <option value="ALL">🇦🇱 ALL — Albania (Lek)</option>
-                    <option value="AMD">🇦🇲 AMD — Armenia (Dram)</option>
-                    <option value="ANG">🇳🇱 ANG — Netherlands Antilles (Guilder)</option>
-                    <option value="AOA">🇦🇴 AOA — Angola (Kwanza)</option>
-                    <option value="ARS">🇦🇷 ARS — Argentina (Peso)</option>
-                    <option value="AUD">🇦🇺 AUD — Australia (Dollar)</option>
-                    <option value="AWG">🇦🇼 AWG — Aruba (Guilder)</option>
-                    <option value="AZN">🇦🇿 AZN — Azerbaijan (Manat)</option>
-                    <option value="BAM">🇧🇦 BAM — Bosnia and Herzegovina (Marka)</option>
-                    <option value="BBD">🇧🇧 BBD — Barbados (Dollar)</option>
-                    <option value="BDT">🇧🇩 BDT — Bangladesh (Taka)</option>
-                    <option value="BGN">🇧🇬 BGN — Bulgaria (Lev)</option>
-                    <option value="BHD">🇧🇭 BHD — Bahrain (Dinar)</option>
-                    <option value="BIF">🇧🇮 BIF — Burundi (Franc)</option>
-                    <option value="BMD">🇧🇲 BMD — Bermuda (Dollar)</option>
-                    <option value="BND">🇧🇳 BND — Brunei (Dollar)</option>
-                    <option value="BOB">🇧🇴 BOB — Bolivia (Boliviano)</option>
-                    <option value="BRL">🇧🇷 BRL — Brazil (Real)</option>
-                    <option value="BSD">🇧🇸 BSD — Bahamas (Dollar)</option>
-                    <option value="BTN">🇧🇹 BTN — Bhutan (Ngultrum)</option>
-                    <option value="BWP">🇧🇼 BWP — Botswana (Pula)</option>
-                    <option value="BYN">🇧🇾 BYN — Belarus (Ruble)</option>
-                    <option value="BZD">🇧🇿 BZD — Belize (Dollar)</option>
-                    <option value="CAD">🇨🇦 CAD — Canada (Dollar)</option>
-                    <option value="CHF">🇨🇭 CHF — Switzerland (Franc)</option>
-                    <option value="CLP">🇨🇱 CLP — Chile (Peso)</option>
-                    <option value="CNY">🇨🇳 CNY — China (Yuan Renminbi)</option>
-                    <option value="COP">🇨🇴 COP — Colombia (Peso)</option>
-                    <option value="CRC">🇨🇷 CRC — Costa Rica (Colón)</option>
-                    <option value="CUP">🇨🇺 CUP — Cuba (Peso)</option>
-                    <option value="CZK">🇨🇿 CZK — Czech Republic (Koruna)</option>
-                    <option value="DJF">🇩🇯 DJF — Djibouti (Franc)</option>
-                    <option value="DKK">🇩🇰 DKK — Denmark (Krone)</option>
-                    <option value="DOP">🇩🇴 DOP — Dominican Republic (Peso)</option>
-                    <option value="DZD">🇩🇿 DZD — Algeria (Dinar)</option>
-                    <option value="EGP">🇪🇬 EGP — Egypt (Pound)</option>
-                    <option value="EUR">🇪🇺 EUR — European Union (Euro)</option>
-                    <option value="FJD">🇫🇯 FJD — Fiji (Dollar)</option>
-                    <option value="GBP">🇬🇧 GBP — United Kingdom (Pound Sterling)</option>
-                    <option value="GHS">🇬🇭 GHS — Ghana (Cedi)</option>
-                    <option value="GIP">🇬🇮 GIP — Gibraltar (Pound)</option>
-                    <option value="GMD">🇬🇲 GMD — Gambia (Dalasi)</option>
-                    <option value="GNF">🇬🇳 GNF — Guinea (Franc)</option>
-                    <option value="GTQ">🇬🇹 GTQ — Guatemala (Quetzal)</option>
-                    <option value="HKD">🇭🇰 HKD — Hong Kong (Dollar)</option>
-                    <option value="HNL">🇭🇳 HNL — Honduras (Lempira)</option>
-                    <option value="HRK">🇭🇷 HRK — Croatia (Kuna)</option>
-                    <option value="HTG">🇭🇹 HTG — Haiti (Gourde)</option>
-                    <option value="HUF">🇭🇺 HUF — Hungary (Forint)</option>
-                    <option value="IDR">🇮🇩 IDR — Indonesia (Rupiah)</option>
-                    <option value="ILS">🇮🇱 ILS — Israel (Shekel)</option>
-                    <option value="INR">🇮🇳 INR — India (Rupee)</option>
-                    <option value="IQD">🇮🇶 IQD — Iraq (Dinar)</option>
-                    <option value="IRR">🇮🇷 IRR — Iran (Rial)</option>
-                    <option value="ISK">🇮🇸 ISK — Iceland (Krona)</option>
-                    <option value="JMD">🇯🇲 JMD — Jamaica (Dollar)</option>
-                    <option value="JOD">🇯🇴 JOD — Jordan (Dinar)</option>
-                    <option value="JPY">🇯🇵 JPY — Japan (Yen)</option>
-                    <option value="KES">🇰🇪 KES — Kenya (Shilling)</option>
-                    <option value="KGS">🇰🇬 KGS — Kyrgyzstan (Som)</option>
-                    <option value="KHR">🇰🇭 KHR — Cambodia (Riel)</option>
-                    <option value="KPW">🇰🇵 KPW — North Korea (Won)</option>
-                    <option value="KRW">🇰🇷 KRW — South Korea (Won)</option>
-                    <option value="KWD">🇰🇼 KWD — Kuwait (Dinar)</option>
-                    <option value="KZT">🇰🇿 KZT — Kazakhstan (Tenge)</option>
-                    <option value="LAK">🇱🇦 LAK — Laos (Kip)</option>
-                    <option value="LBP">🇱🇧 LBP — Lebanon (Pound)</option>
-                    <option value="LKR">🇱🇰 LKR — Sri Lanka (Rupee)</option>
-                    <option value="LYD">🇱🇾 LYD — Libya (Dinar)</option>
-                    <option value="MAD">🇲🇦 MAD — Morocco (Dirham)</option>
-                    <option value="MDL">🇲🇩 MDL — Moldova (Leu)</option>
-                    <option value="MGA">🇲🇬 MGA — Madagascar (Ariary)</option>
-                    <option value="MKD">🇲🇰 MKD — North Macedonia (Denar)</option>
-                    <option value="MMK">🇲🇲 MMK — Myanmar (Kyat)</option>
-                    <option value="MNT">🇲🇳 MNT — Mongolia (Tugrik)</option>
-                    <option value="MOP">🇲🇴 MOP — Macau (Pataca)</option>
-                    <option value="MRO">🇲🇷 MRO — Mauritania (Ouguiya)</option>
-                    <option value="MUR">🇲🇺 MUR — Mauritius (Rupee)</option>
-                    <option value="MWK">🇲🇼 MWK — Malawi (Kwacha)</option>
-                    <option value="MXN">🇲🇽 MXN — Mexico (Peso)</option>
-                    <option value="MYR">🇲🇾 MYR — Malaysia (Ringgit)</option>
-                    <option value="MZN">🇲🇿 MZN — Mozambique (Metical)</option>
-                    <option value="NAD">🇳🇦 NAD — Namibia (Dollar)</option>
-                    <option value="NGN">🇳🇬 NGN — Nigeria (Naira)</option>
-                    <option value="NOK">🇳🇴 NOK — Norway (Krone)</option>
-                    <option value="NPR">🇳🇵 NPR — Nepal (Rupee)</option>
-                    <option value="NZD">🇳🇿 NZD — New Zealand (Dollar)</option>
-                    <option value="OMR">🇴🇲 OMR — Oman (Rial)</option>
-                    <option value="PEN">🇵🇪 PEN — Peru (Sol)</option>
-                    <option value="PHP">🇵🇭 PHP — Philippines (Peso)</option>
-                    <option value="PKR">🇵🇰 PKR — Pakistan (Rupee)</option>
-                    <option value="PLN">🇵🇱 PLN — Poland (Złoty)</option>
-                    <option value="QAR">🇶🇦 QAR — Qatar (Riyal)</option>
-                    <option value="RON">🇷🇴 RON — Romania (Leu)</option>
-                    <option value="RSD">🇷🇸 RSD — Serbia (Dinar)</option>
-                    <option value="RUB">🇷🇺 RUB — Russia (Ruble)</option>
-                    <option value="SAR">🇸🇦 SAR — Saudi Arabia (Riyal)</option>
-                    <option value="SDG">🇸🇩 SDG — Sudan (Pound)</option>
-                    <option value="SEK">🇸🇪 SEK — Sweden (Krona)</option>
-                    <option value="SGD">🇸🇬 SGD — Singapore (Dollar)</option>
-                    <option value="SYP">🇸🇾 SYP — Syria (Pound)</option>
-                    <option value="THB">🇹🇭 THB — Thailand (Baht)</option>
-                    <option value="TND">🇹🇳 TND — Tunisia (Dinar)</option>
-                    <option value="TRY">🇹🇷 TRY — Türkiye (Lira)</option>
-                    <option value="TWD">🇹🇼 TWD — Taiwan (Dollar)</option>
-                    <option value="TZS">🇹🇿 TZS — Tanzania (Shilling)</option>
-                    <option value="UAH">🇺🇦 UAH — Ukraine (Hryvnia)</option>
-                    <option value="UGX">🇺🇬 UGX — Uganda (Shilling)</option>
-                    <option value="USD">🇺🇸 USD — United States (Dollar)</option>
-                    <option value="UYU">🇺🇾 UYU — Uruguay (Peso)</option>
-                    <option value="UZS">🇺🇿 UZS — Uzbekistan (Som)</option>
-                    <option value="VEF">🇻🇪 VEF — Venezuela (Bolívar)</option>
-                    <option value="VND">🇻🇳 VND — Vietnam (Dong)</option>
-                    <option value="XAF">🌍 XAF — Central Africa (CFA Franc)</option>
-                    <option value="XOF">🌍 XOF — West Africa (CFA Franc)</option>
-                    <option value="YER">🇾🇪 YER — Yemen (Rial)</option>
-                    <option value="ZAR">🇿🇦 ZAR — South Africa (Rand)</option>
-                    <option value="ZMW">🇿🇲 ZMW — Zambia (Kwacha)</option>
-                  </select>
+                  <div class="form-text">A private group for your own expenses. No other members can be added.</div>
                 </div>
               </div>
             </div>
 
-            <div class="row">
+            <div class="row mb-3">
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label fw-semibold">
-                    <i class="bi bi-calendar me-1"></i>Created Date
-                  </label>
-                  <input type="date" class="form-control form-control-lg" id="groupCreatedDate" readonly>
-                  <div class="form-text">Group creation date</div>
-                </div>
+                <label for="groupCurrency" class="form-label fw-semibold">
+                  <i class="bi bi-currency-exchange me-1"></i>Currency
+                </label>
+                <select class="form-select" id="groupCurrency" required>
+                  <option value="MAD">🇲🇦 MAD (Moroccan Dirham)</option>
+                  <option value="USD">🇺🇸 USD (US Dollar)</option>
+                  <option value="EUR">🇪🇺 EUR (Euro)</option>
+                  <option value="GBP">🇬🇧 GBP (British Pound)</option>
+                  <option value="CAD">🇨🇦 CAD (Canadian Dollar)</option>
+                  <option value="AED">🇦🇪 AED (UAE Dirham)</option>
+                  <option value="SAR">🇸🇦 SAR (Saudi Riyal)</option>
+                  <option value="EGP">🇪🇬 EGP (Egyptian Pound)</option>
+                  <option value="TND">🇹🇳 TND (Tunisian Dinar)</option>
+                  <option value="DZD">🇩🇿 DZD (Algerian Dinar)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">
+                  <i class="bi bi-calendar me-1"></i>Created Date
+                </label>
+                <input type="date" class="form-control" id="groupCreatedDate" readonly>
               </div>
             </div>
 
             <!-- Members Selection -->
-            <div class="mb-4">
+            <div class="row mb-3">
               <h6 class="text-primary mb-3">
                 <i class="bi bi-people me-1"></i>Invite Friends
               </h6>
@@ -409,41 +292,25 @@
                       </button>
                     </div>
                   </div>
+
+
                   <div id="friendsListtoCreateGroup" class="friends-grid">
                     <div class="text-center text-muted py-3">
                       <i class="bi bi-hourglass-split"></i> Loading friends...
                     </div>
 
-                  </div>
-                </div>
-              </div>
 
-              <!-- Preview Section -->
-              <div class="card bg-primary text-white" id="groupPreview" style="display: none;">
-                <div class="card-body">
-                  <h6 class="card-title">
-                    <i class="bi bi-eye me-1"></i>Group Preview
-                  </h6>
-                  <div class="row">
-                    <div class="col-6">
-                      <small>Group Name:</small>
-                      <div class="fw-bold" id="previewName">-</div>
-                    </div>
-                    <div class="col-6">
-                      <small>Members:</small>
-                      <div class="fw-bold" id="previewMembers">0</div>
-                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </form>
         </div>
-        <div class="modal-footer bg-light">
+        <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-circle me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-primary fw-bold" onclick="createGroup()">
+          <button type="button" class="btn btn-success" onclick="createGroup()">
             <i class="bi bi-plus-circle me-1"></i>Create Group
           </button>
         </div>

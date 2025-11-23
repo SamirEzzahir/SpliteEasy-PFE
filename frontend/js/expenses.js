@@ -17,9 +17,134 @@ let expensesPagination = {
   totalExpenses: 0
 };
 
-// -----------------------------
-// Load group information
-// -----------------------------
+// ----------------------------
+// Edit Group Modal Functions
+// ----------------------------
+async function openEditGroupModalFromExpenses() {
+  if (!currentGroup) {
+    showError("Group information not loaded");
+    return;
+  }
+
+  // Populate modal fields
+  document.getElementById('editGroupTitle').value = currentGroup.title || '';
+  document.getElementById('editGroupType').value = currentGroup.category || 'Other';
+  document.getElementById('editGroupCurrency').value = currentGroup.currency || 'MAD';
+  document.getElementById('editGroupPhoto').value = currentGroup.photo || '';
+  document.getElementById('editGroupDescription').value = currentGroup.description || '';
+
+  // ✅ Hide/show and disable fields based on group type
+  const titleInput = document.getElementById('editGroupTitle');
+  const categoryContainer = document.getElementById('editGroupCategoryContainer');
+  const categorySelect = document.getElementById('editGroupType');
+
+  // Check if it's the default Personal Expenses group
+  const isDefaultPersonalGroup = currentGroup.type === 'Personal' && currentGroup.title === 'Personal Expenses';
+
+  if (currentGroup.type === 'Personal') {
+    // For ALL Personal groups: HIDE category field completely
+    if (categoryContainer) {
+      categoryContainer.style.display = 'none';
+    }
+
+    // For DEFAULT Personal Expenses group ONLY: also disable title
+    if (isDefaultPersonalGroup && titleInput) {
+      titleInput.disabled = true;
+      titleInput.style.backgroundColor = '#e9ecef';
+      titleInput.title = 'Cannot edit title of default Personal Expenses group';
+    } else if (titleInput) {
+      // Other Personal groups can edit title
+      titleInput.disabled = false;
+      titleInput.style.backgroundColor = '';
+      titleInput.title = '';
+    }
+  } else {
+    // Non-Personal groups: show and enable both
+    if (categoryContainer) {
+      categoryContainer.style.display = 'block';
+    }
+    if (titleInput) {
+      titleInput.disabled = false;
+      titleInput.style.backgroundColor = '';
+      titleInput.title = '';
+    }
+    if (categorySelect) {
+      categorySelect.disabled = false;
+      categorySelect.style.backgroundColor = '';
+      categorySelect.title = '';
+    }
+  }
+
+  // Show modal
+  const modalEl = document.getElementById('editGroupModal');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+}
+
+async function saveGroupChanges(e) {
+  e.preventDefault();
+
+  const url = new URL(window.location.href);
+  const groupId = url.searchParams.get("id");
+  if (!groupId) {
+    showError("No group selected");
+    return;
+  }
+
+  const title = document.getElementById('editGroupTitle').value.trim();
+  const category = document.getElementById('editGroupType').value;
+  const currency = document.getElementById('editGroupCurrency').value;
+  const photo = document.getElementById('editGroupPhoto').value.trim();
+  const description = document.getElementById('editGroupDescription').value.trim();
+
+  if (!title) {
+    showError("Group title is required");
+    return;
+  }
+
+  const payload = {
+    title,
+    category,
+    currency,
+    photo: photo || null,
+    description: description || null
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/groups/${groupId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || 'Failed to update group');
+    }
+
+    showSuccess('Group updated successfully!');
+
+    // Close modal
+    const modalEl = document.getElementById('editGroupModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+
+    // Reload group info
+    await loadGroupInfo();
+
+  } catch (err) {
+    console.error('Error updating group:', err);
+    showError(err.message || 'Failed to update group');
+  }
+}
+
+// ----------------------------
+// Group Info
+// ----------------------------
 async function loadGroupInfo() {
   try {
     const url = new URL(window.location.href);
@@ -66,6 +191,35 @@ async function loadGroupInfo() {
     // Update page title
     document.title = `${currentGroup.title} - Expenses`;
 
+    // ✅ Hide/Show buttons based on group type
+    const manageMembersBtn = document.getElementById("friendsAddMemberbtn");
+    const balancesBtn = document.getElementById("balanceId");
+    const leaveGroupBtn = document.getElementById("leaveGroupBtn");
+    const editGroupBtn = document.getElementById("editGroupBtn");
+
+    console.log("🔍 Debug: Group Type =", currentGroup.type);
+    console.log("🔍 Debug: Buttons found?", { manageMembersBtn, balancesBtn, leaveGroupBtn });
+
+    if (currentGroup.type === "Personal") {
+      if (manageMembersBtn) manageMembersBtn.style.setProperty('display', 'none', 'important');
+      if (balancesBtn) balancesBtn.style.setProperty('display', 'none', 'important');
+      if (leaveGroupBtn) leaveGroupBtn.style.setProperty('display', 'none', 'important');
+
+      // If it's the default Personal Expenses group, maybe hide edit too or restrict it?
+      // For now, let's just hide the delete button in the edit modal (handled in group.js)
+      // But we can also hide the edit button here if we want to be strict.
+      // Let's keep edit open but maybe we should disable title edit?
+      // For now, just hiding the main action buttons is enough.
+    } else {
+      if (manageMembersBtn) manageMembersBtn.style.display = "flex"; // Restore display
+      if (balancesBtn) balancesBtn.style.display = "flex";
+      if (leaveGroupBtn) leaveGroupBtn.style.display = "flex";
+    }
+
+    // ✅ Load dependent data after group info is ready
+    loadPayersForExpense();
+    loadMembersForExpense();
+
   } catch (err) {
     console.error("Error loading group info:", err);
     showError("Failed to load group information");
@@ -82,6 +236,44 @@ async function loadPayersForExpense() {
       console.log("⚠️ Not on expenses page, skipping loadPayersForExpense");
       return;
     }
+
+    // ✅ Hide Group Select since we are already in a group
+    const groupSelectContainer = document.getElementById('groupsListForExpenses')?.closest('.col-md-6');
+    if (groupSelectContainer) {
+      groupSelectContainer.style.display = 'none';
+      // Also ensure the select has the current group value
+      const groupSelect = document.getElementById('groupsListForExpenses');
+      if (groupSelect && currentGroup) {
+        // Create option if it doesn't exist
+        if (groupSelect.options.length === 0 || groupSelect.value !== currentGroup.id) {
+          groupSelect.innerHTML = `<option value="${currentGroup.id}" selected>${currentGroup.title}</option>`;
+        }
+        groupSelect.value = currentGroup.id;
+      }
+    }
+
+    // ✅ Hide Members Select if Personal Group
+    const membersSelectSection = document.getElementById('membersSelectionSection');
+    const membersCard = document.getElementById('membersListForExpense')?.closest('.card');
+
+    // ✅ Hide Payer Select if Personal Group
+    const payerSelectionSection = document.getElementById('payerSelectionSection');
+    const payerInputRow = document.getElementById('expensePayer')?.closest('.row');
+
+    if (currentGroup && currentGroup.type === 'Personal') {
+      if (membersSelectSection) membersSelectSection.style.display = 'none';
+      if (membersCard) membersCard.style.display = 'none';
+
+      if (payerSelectionSection) payerSelectionSection.style.display = 'none';
+      if (payerInputRow) payerInputRow.style.display = 'none';
+    } else {
+      if (membersSelectSection) membersSelectSection.style.display = 'flex';
+      if (membersCard) membersCard.style.display = 'block';
+
+      if (payerSelectionSection) payerSelectionSection.style.display = 'flex'; // Restore header
+      if (payerInputRow) payerInputRow.style.display = 'flex'; // Restore input
+    }
+
 
     const members = await fetchMembers();
     const payerSelect = document.getElementById('expensePayer');
@@ -104,6 +296,13 @@ async function loadPayersForExpense() {
       option.textContent = `${member.username || `User ${member.user_id}`}${member.user_id === currentUser?.id ? ' (You)' : ''}`;
       payerSelect.appendChild(option);
     });
+
+    // ✅ Auto-select current user if Personal Group
+    if (currentGroup && currentGroup.type === 'Personal' && currentUser) {
+      payerSelect.value = currentUser.id;
+      // Trigger change event to update wallets
+      updateWalletsForPayer();
+    }
 
     console.log("✅ Payers loaded for expense modal");
 
@@ -296,7 +495,7 @@ function updateExpensePreview() {
     const selectedMembers = document.querySelectorAll('#membersListForExpense input[type="checkbox"]:checked');
     const categorySelect = document.getElementById("expenseCategory");
     const category = categorySelect?.selectedOptions[0]?.textContent || "";
-    console.log("jsamkslaksjamsa",selectedMembers);
+    console.log("jsamkslaksjamsa", selectedMembers);
     const memberCount = selectedMembers.length;
     const perPerson = memberCount > 0 ? (amount / memberCount).toFixed(2) : 0;
 
@@ -609,7 +808,7 @@ function showSettlementDetail(settlementId) {
   // Find settlement in current data
   const settlement = window.currentSettlements?.find(s => s.id === settlementId);
   if (!settlement) return;
-  
+
   // Don't show rejected settlements
   if (settlement.status === 'rejected') {
     showError("This settlement was rejected and is no longer active.");
@@ -624,7 +823,7 @@ function showSettlementDetail(settlementId) {
   };
   const headerColor = statusColors[settlement.status?.toLowerCase()] || 'bg-success';
   const headerTextColor = settlement.status?.toLowerCase() === 'pending' ? 'text-dark' : 'text-white';
-  
+
   const modal = document.createElement('div');
   modal.className = 'modal fade';
   modal.innerHTML = `
@@ -727,14 +926,14 @@ async function acceptSettlementFromExpenses(settlementId, fromUsername) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${settlementId}/accept`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -746,14 +945,14 @@ async function acceptSettlementFromExpenses(settlementId, fromUsername) {
     }
 
     showSuccess("Settlement accepted successfully!");
-    
+
     // Close all modals
     const modals = document.querySelectorAll('.modal.show');
     modals.forEach(m => {
       const bsModal = bootstrap.Modal.getInstance(m);
       if (bsModal) bsModal.hide();
     });
-    
+
     // Reload expenses to refresh the list (reset pagination)
     await loadExpenses(true);
   } catch (err) {
@@ -764,7 +963,7 @@ async function acceptSettlementFromExpenses(settlementId, fromUsername) {
 
 async function rejectSettlementFromExpenses(settlementId, fromUsername) {
   const reason = prompt(`Please provide a reason for rejecting this settlement from ${fromUsername} (optional):`);
-  
+
   if (reason === null) {
     return; // User cancelled
   }
@@ -773,14 +972,14 @@ async function rejectSettlementFromExpenses(settlementId, fromUsername) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${settlementId}/reject`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -795,14 +994,14 @@ async function rejectSettlementFromExpenses(settlementId, fromUsername) {
     }
 
     showSuccess("Settlement rejected.");
-    
+
     // Close all modals
     const modals = document.querySelectorAll('.modal.show');
     modals.forEach(m => {
       const bsModal = bootstrap.Modal.getInstance(m);
       if (bsModal) bsModal.hide();
     });
-    
+
     // Reload expenses to refresh the list (rejected will be filtered out, reset pagination)
     await loadExpenses(true);
   } catch (err) {
@@ -862,10 +1061,10 @@ function showSuccess(message) {
 
 function getSettlementActionButtons(settlement) {
   if (!settlement || !currentUser) return '';
-  
+
   const isToCurrentUser = settlement.to_user_id === currentUser.id;
   const isPending = settlement.status === 'pending';
-  
+
   // Only show accept/reject buttons if user is recipient and settlement is pending
   if (isToCurrentUser && isPending) {
     return `
@@ -877,29 +1076,29 @@ function getSettlementActionButtons(settlement) {
       </button>
     `;
   }
-  
+
   return '';
 }
 
 function getSettlementStatusBadge(status, textOnly = false) {
   if (!status) return textOnly ? 'Unknown' : '<span class="badge bg-secondary">Unknown</span>';
-  
+
   const statusLower = status.toLowerCase();
-  
+
   if (statusLower === 'accepted') {
-    return textOnly 
-      ? 'Accepted' 
+    return textOnly
+      ? 'Accepted'
       : '<span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Accepted</span>';
   } else if (statusLower === 'pending') {
-    return textOnly 
-      ? 'Pending' 
+    return textOnly
+      ? 'Pending'
       : '<span class="badge bg-warning text-dark fs-6"><i class="bi bi-clock me-1"></i>Pending</span>';
   } else if (statusLower === 'rejected') {
-    return textOnly 
-      ? 'Rejected' 
+    return textOnly
+      ? 'Rejected'
       : '<span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Rejected</span>';
   }
-  
+
   return textOnly ? status : `<span class="badge bg-secondary">${status}</span>`;
 }
 
@@ -926,23 +1125,23 @@ function getRelativeTime(dateString) {
   // Parse the date string - JavaScript handles ISO strings with timezone correctly
   const date = new Date(dateString);
   const now = new Date();
-  
+
   // Check if date is valid
   if (isNaN(date.getTime())) {
     console.error("Invalid date string:", dateString);
     return formatDate(dateString);
   }
-  
+
   // Calculate difference in milliseconds
   // Both Date objects are in the same timezone context (JavaScript Date is timezone-aware)
   // getTime() returns milliseconds since epoch (UTC), so comparison is correct
   const diffMs = now.getTime() - date.getTime();
-  
+
   // Debug logging for recent expenses (within 2 hours)
   if (Math.abs(diffMs) < 7200000) {
     const dateLocal = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
     const nowLocal = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-    
+
     console.log("🕐 Time calculation:", {
       dateString: dateString,
       dateParsed: date.toString(),
@@ -957,13 +1156,13 @@ function getRelativeTime(dateString) {
       timezoneOffset: date.getTimezoneOffset()
     });
   }
-  
+
   // Handle negative differences (future dates) - shouldn't happen but just in case
   if (diffMs < 0) {
     console.warn("⚠️ Future date detected:", dateString);
     return 'Just now';
   }
-  
+
   const diffInSeconds = Math.floor(diffMs / 1000);
   const diffInMinutes = Math.floor(diffMs / (1000 * 60));
   const diffInHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -971,16 +1170,16 @@ function getRelativeTime(dateString) {
 
   // Show "Just now" for expenses less than 1 minute old
   if (diffInSeconds < 60) return 'Just now';
-  
+
   // Show minutes for expenses less than 1 hour old
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  
+
   // Show hours for expenses less than 24 hours old
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  
+
   // Show days for expenses less than 7 days old
   if (diffInDays < 7) return `${diffInDays}d ago`;
-  
+
   // Otherwise show formatted date
   return formatDate(dateString);
 }
@@ -1034,15 +1233,15 @@ async function loadWallets() {
 // -----------------------------
 async function fetchExpensesForGroup(groupId, limit = 20, offset = 0) {
   if (!groupId) return { expenses: [], total: 0, has_more: false };
-  
+
   const url = `${API_URL}/expenses/${groupId}?limit=${limit}&offset=${offset}`;
   const res = await fetch(url, { headers: getHeaders() });
-  
+
   if (!res.ok) {
     console.error("Failed to fetch expenses:", res.status);
     return { expenses: [], total: 0, has_more: false };
   }
-  
+
   const data = await res.json();
   return data;
 }
@@ -1102,8 +1301,8 @@ async function loadExpenses(reset = false) {
 
     // Fetch expenses with pagination
     const expensesData = await fetchExpensesForGroup(
-      groupId, 
-      expensesPagination.pageSize, 
+      groupId,
+      expensesPagination.pageSize,
       expensesPagination.currentOffset
     );
 
@@ -1171,7 +1370,7 @@ async function loadExpenses(reset = false) {
     showError("Failed to load expenses");
     expensesPagination.isLoading = false;
     hideLoadMoreIndicator();
-    
+
     if (expensesPagination.currentOffset === 0) {
       showEmptyState();
     }
@@ -1278,10 +1477,10 @@ function showEmptyState() {
 function showLoadMoreIndicator() {
   // Remove existing indicator if any
   hideLoadMoreIndicator();
-  
+
   const table = document.getElementById("expensesTable");
   const mobileList = document.getElementById("expensesList");
-  
+
   // Add loading row to table
   if (table) {
     const loadingRow = document.createElement("tr");
@@ -1296,7 +1495,7 @@ function showLoadMoreIndicator() {
     `;
     table.appendChild(loadingRow);
   }
-  
+
   // Add loading card to mobile list
   if (mobileList) {
     const loadingCard = document.createElement("div");
@@ -1813,17 +2012,17 @@ async function addExpenseModalSubmit() {
       // Parse date components
       const [year, month, day] = date.split('-').map(Number);
       const [hours, minutes] = time.split(':').map(Number);
-      
+
       // Create date in LOCAL timezone (not UTC)
       // This ensures the date/time you enter is what gets stored
       expenseDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      
+
       // Validate the date
       if (isNaN(expenseDate.getTime())) {
         showError("Invalid date or time");
         return;
       }
-      
+
       // Debug: Log the date conversion
       console.log("📅 Date creation:", {
         input: `${date} ${time}`,
@@ -1909,13 +2108,13 @@ async function initializeExpenseModal() {
 
     // ✅ Set current date and time (using LOCAL timezone, not UTC)
     const now = new Date();
-    
+
     // Get local date in YYYY-MM-DD format
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const today = `${year}-${month}-${day}`;
-    
+
     // Get local time in HH:MM format (24-hour)
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -1926,7 +2125,7 @@ async function initializeExpenseModal() {
 
     if (dateInput) dateInput.value = today;
     if (timeInput) timeInput.value = currentTime;
-    
+
     console.log("🕐 Initialized expense modal with local time:", {
       localDate: today,
       localTime: currentTime,
@@ -2741,8 +2940,8 @@ document.addEventListener("DOMContentLoaded", () => {
   friendsListtoAddMember();
   loadMembers();
   loadWallets();
-  loadPayersForExpense();
-  loadMembersForExpense();
+  // loadPayersForExpense(); // Moved to loadGroupInfo
+  // loadMembersForExpense(); // Moved to loadGroupInfo
   initializeExpenseModal();
 
   // Add refresh functionality
@@ -2876,7 +3075,7 @@ async function applyFilter(filter) {
 document.getElementById("downloadTemplateBtn")?.addEventListener("click", async () => {
   const url = new URL(window.location.href);
   const groupId = url.searchParams.get("id");
-  
+
   if (!groupId) return alert("No group selected");
 
   const res = await fetch(`${API_URL}/expenses/${groupId}/download-template`, {
@@ -2899,7 +3098,7 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
   const groupId = url.searchParams.get("id");
   const fileInput = e.target;
   const statusDiv = document.getElementById("uploadStatus");
-  
+
   if (!groupId) return alert("No group selected");
   if (!fileInput?.files.length) return;
 
@@ -2912,15 +3111,15 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
   formData.append("file", fileInput.files[0]);
 
   try {
-  // Don't set Content-Type header for FormData - let the browser set it with boundary
-  const headers = { ...getHeaders() };
-  delete headers['Content-Type'];
-  
-  const res = await fetch(`${API_URL}/expenses/${groupId}/upload`, {
-    method: "POST",
-    headers: headers,
-    body: formData
-  });
+    // Don't set Content-Type header for FormData - let the browser set it with boundary
+    const headers = { ...getHeaders() };
+    delete headers['Content-Type'];
+
+    const res = await fetch(`${API_URL}/expenses/${groupId}/upload`, {
+      method: "POST",
+      headers: headers,
+      body: formData
+    });
 
     let data;
     try {
@@ -2928,7 +3127,7 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
     } catch (e) {
       data = { detail: "Server response error" };
     }
-    
+
     if (res.ok) {
       // Check if there were errors in upload
       if (data.status === "error" && data.errors && data.errors.length > 0) {
@@ -2942,7 +3141,7 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
           statusDiv.className = "text-center mb-3";
         }
         showError(`Upload completed with ${data.errors.length} errors. See details below.`);
-        
+
         // Clear status after 10 seconds
         setTimeout(() => {
           if (statusDiv) statusDiv.innerHTML = "";
@@ -2956,7 +3155,7 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
         showSuccess(data.message || "Expenses uploaded successfully!");
         fileInput.value = ""; // Clear file input
         await loadExpenses(true); // Reset pagination and reload expenses
-        
+
         // Clear status after 3 seconds
         setTimeout(() => {
           if (statusDiv) statusDiv.innerHTML = "";
@@ -2984,7 +3183,7 @@ document.getElementById("uploadFile")?.addEventListener("change", async (e) => {
 document.getElementById("downloadExpensesBtn")?.addEventListener("click", async () => {
   const url = new URL(window.location.href);
   const groupId = url.searchParams.get("id");
-  
+
   if (!groupId) return alert("No group selected");
 
   const res = await fetch(`${API_URL}/expenses/${groupId}/download`, {

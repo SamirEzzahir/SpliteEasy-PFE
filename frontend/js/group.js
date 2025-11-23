@@ -160,6 +160,232 @@ async function fetchFriends() {
 }
 
 // -----------------------------
+// Edit Group Modal Functions
+// -----------------------------
+async function openEditGroupModal(groupId) {
+  try {
+    // Fetch the specific group data
+    const res = await fetch(`${API_URL}/groups/${groupId}`, { headers: getHeaders() });
+    if (!res.ok) {
+      throw new Error('Failed to load group');
+    }
+
+    const group = await res.json();
+
+    // Check if modal exists, if not create it
+    let modalEl = document.getElementById('editGroupModal');
+    if (!modalEl) {
+      // Create modal HTML dynamically
+      const modalHTML = `
+        <div class="modal fade" id="editGroupModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <form id="editGroupForm">
+                <div class="modal-body">
+                  <input type="hidden" id="editGroupId">
+                  
+                  <div class="mb-3">
+                    <label for="editGroupTitle" class="form-label">Group Name</label>
+                    <input type="text" class="form-control" id="editGroupTitle" required>
+                  </div>
+                  
+                  <div class="mb-3" id="editGroupCategoryDiv">
+                    <label for="editGroupCategory" class="form-label">Category</label>
+                    <select class="form-select" id="editGroupCategory" required>
+                      <option value="Home">🏠 Home</option>
+                      <option value="Couple">💕 Couple</option>
+                      <option value="Trip">✈️ Trip</option>
+                      <option value="Work">💼 Work</option>
+                      <option value="Other">📝 Other</option>
+                    </select>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="editGroupCurrency" class="form-label">Currency</label>
+                    <select class="form-select" id="editGroupCurrency" required>
+                      <option value="MAD">🇲🇦 MAD</option>
+                      <option value="USD">🇺🇸 USD</option>
+                      <option value="EUR">🇪🇺 EUR</option>
+                      <option value="GBP">🇬🇧 GBP</option>
+                    </select>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label for="editGroupDescription" class="form-label">Description</label>
+                    <textarea class="form-control" id="editGroupDescription" rows="3"></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-warning">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      modalEl = document.getElementById('editGroupModal');
+
+      // Add form submit handler
+      document.getElementById('editGroupForm').addEventListener('submit', saveGroupEdit);
+    }
+
+    // Populate form fields
+    document.getElementById('editGroupId').value = group.id;
+    document.getElementById('editGroupTitle').value = group.title || '';
+    document.getElementById('editGroupCategory').value = group.category || 'Other';
+    document.getElementById('editGroupCurrency').value = group.currency || 'MAD';
+    document.getElementById('editGroupDescription').value = group.description || '';
+
+    // ✅ Hide/show and disable fields based on group type
+    const titleInput = document.getElementById('editGroupTitle');
+    const categoryDiv = document.getElementById('editGroupCategoryDiv');
+    const categorySelect = document.getElementById('editGroupCategory');
+
+    // Check if it's the default Personal Expenses group
+    const isDefaultPersonalGroup = group.type === 'Personal' && group.title === 'Personal Expenses';
+
+    if (group.type === 'Personal') {
+      // For ALL Personal groups: HIDE category field completely
+      if (categoryDiv) {
+        categoryDiv.style.display = 'none';
+      }
+
+      // For DEFAULT Personal Expenses group ONLY: also disable title
+      if (isDefaultPersonalGroup && titleInput) {
+        titleInput.disabled = true;
+        titleInput.style.backgroundColor = '#e9ecef';
+        titleInput.title = 'Cannot edit title of default Personal Expenses group';
+      } else if (titleInput) {
+        // Other Personal groups can edit title
+        titleInput.disabled = false;
+        titleInput.style.backgroundColor = '';
+        titleInput.title = '';
+      }
+    } else {
+      // Non-Personal groups: show and enable both
+      if (categoryDiv) {
+        categoryDiv.style.display = 'block';
+      }
+      if (titleInput) {
+        titleInput.disabled = false;
+        titleInput.style.backgroundColor = '';
+        titleInput.title = '';
+      }
+      if (categorySelect) {
+        categorySelect.disabled = false;
+        categorySelect.style.backgroundColor = '';
+        categorySelect.title = '';
+      }
+    }
+
+    // Show modal
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+  } catch (err) {
+    console.error('Error opening edit modal:', err);
+    showError('Failed to load group data');
+  }
+}
+
+async function saveGroupEdit(e) {
+  e.preventDefault();
+
+  const groupId = document.getElementById('editGroupId').value;
+  const title = document.getElementById('editGroupTitle').value.trim();
+  const category = document.getElementById('editGroupCategory').value;
+  const currency = document.getElementById('editGroupCurrency').value;
+  const description = document.getElementById('editGroupDescription').value.trim();
+
+  if (!title) {
+    showError('Group title is required');
+    return;
+  }
+
+  const payload = {
+    title,
+    category,
+    currency,
+    description: description || null
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/groups/${groupId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.detail || 'Failed to update group');
+    }
+
+    showSuccess('Group updated successfully!');
+
+    // Close modal
+    const modalEl = document.getElementById('editGroupModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+
+    // Reload groups
+    await loadGroups();
+
+  } catch (err) {
+    console.error('Error updating group:', err);
+    showError(err.message || 'Failed to update group');
+  }
+}
+
+// -----------------------------
+// Delete Group Function
+// -----------------------------
+async function deleteGroup(groupId) {
+  try {
+    // Fetch group to check if it's Personal
+    const res = await fetch(`${API_URL}/groups/${groupId}`, { headers: getHeaders() });
+    if (res.ok) {
+      const group = await res.json();
+      if (group.type === 'Personal') {
+        showError('Cannot delete Personal Expenses group');
+        return;
+      }
+    }
+
+    if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+      return;
+    }
+
+    const deleteRes = await fetch(`${API_URL}/groups/${groupId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+
+    if (!deleteRes.ok) {
+      const errorData = await deleteRes.json();
+      throw new Error(errorData.detail || 'Failed to delete group');
+    }
+
+    showSuccess('Group deleted successfully!');
+
+    // Reload groups
+    await loadGroups();
+
+  } catch (err) {
+    console.error('Error deleting group:', err);
+    showError(err.message || 'Failed to delete group');
+  }
+}
+
+// -----------------------------
 // Summary Statistics
 // -----------------------------
 function updateSummaryStats(stats) {
@@ -259,9 +485,10 @@ async function renderGroupsList() {
                     onclick="openEditGroupModal(${g.id})" title="Edit Group">
               <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})" title="Delete Group">
-              <i class="bi bi-trash"></i>
-</button>
+            ${(g.type === "Personal" && g.title === "Personal Expenses")
+          ? `<button class="btn btn-sm btn-outline-secondary" disabled title="Cannot delete default group"><i class="bi bi-lock"></i></button>`
+          : `<button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})" title="Delete Group"><i class="bi bi-trash"></i></button>`
+        }
           </div>
           </td>
         `;
@@ -367,13 +594,14 @@ async function renderGroupsMobileCards() {
               <button class="btn btn-sm btn-outline-primary mb-1" onclick="event.stopPropagation(); openGroup(${g.id})" title="Open">
                 <i class="bi bi-box-arrow-up-right"></i>
               </button>
-<button class="btn btn-sm btn-outline-warning mb-1"
+            <button class="btn btn-sm btn-outline-warning mb-1"
                       onclick="event.stopPropagation(); openEditGroupModal(${g.id})" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteGroup(${g.id})" title="Delete">
-                <i class="bi bi-trash"></i>
-              </button>
+              ${(g.type === "Personal" && g.title === "Personal Expenses")
+          ? `<button class="btn btn-sm btn-outline-secondary" disabled title="Cannot delete default group"><i class="bi bi-lock"></i></button>`
+          : `<button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteGroup(${g.id})" title="Delete"><i class="bi bi-trash"></i></button>`
+        }
             </div>
     </div>
   </div>
@@ -470,7 +698,9 @@ function renderFilteredGroupsTable() {
           <span>${g.owner_username || "Unknown"}</span>
         </div>
       </td>
-      <td><span class="badge bg-success">${g.members_usernames?.length || 0} members</span></td>
+      <td>
+        <span class="badge bg-success">${g.members_usernames?.length || 0} members</span>
+      </td>
       <td><small class="text-muted">${getRelativeTime(g.created_at)}</small></td>
       <td>
         <div class="btn-group" role="group">
@@ -481,9 +711,11 @@ function renderFilteredGroupsTable() {
                   onclick="openEditGroupModal(${g.id})" title="Edit Group">
             <i class="bi bi-pencil"></i>
           </button>
+          ${g.type !== 'Personal' ? `
           <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})" title="Delete Group">
             <i class="bi bi-trash"></i>
           </button>
+          ` : ''}
         </div>
       </td>
     `;
@@ -572,20 +804,27 @@ async function createGroup() {
     const currency = document.getElementById("groupCurrency")?.value || "MAD";
     const type = document.getElementById("groupType")?.value || "Other";
     const selectedCards = document.querySelectorAll(".friend-card.selected");
-    if (!selectedCards.length) return alert("Please select a friend!");
     const member_ids = Array.from(selectedCards).map(card => parseInt(card.dataset.friendId));
-    console.log("eaelakkjepae", member_ids);
+
+    const isPersonal = document.getElementById("isPersonalGroup")?.checked;
+
+    // If personal, force type to Personal and ignore members
+    const finalType = isPersonal ? "Personal" : type;
+    const finalMembers = isPersonal ? [] : member_ids;
+
+    if (!isPersonal && !selectedCards.length) return alert("Please select a friend!");
+
     if (!title) {
       showError("Group title is required");
       return;
     }
 
-    console.log("🔄 Creating group:", { title, currency, type, member_ids });
+    console.log("🔄 Creating group:", { title, currency, type: finalType, member_ids: finalMembers });
 
     const res = await fetch(`${API_URL}/groups`, {
       method: "POST",
       headers: getHeaders(),
-      body: JSON.stringify({ title, currency, type, member_ids })
+      body: JSON.stringify({ title, currency, type: finalType, member_ids: finalMembers })
     });
 
     if (!res.ok) {
@@ -610,6 +849,18 @@ async function createGroup() {
     showError(err.message || "Failed to create group");
   }
 }
+
+function toggleFriendSelection() {
+  const isPersonal = document.getElementById("isPersonalGroup")?.checked;
+  const friendsSection = document.getElementById("friendsListtoCreateGroup")?.closest('.row');
+
+  if (friendsSection) {
+    friendsSection.style.display = isPersonal ? 'none' : 'block';
+  }
+}
+
+// Make globally available
+window.toggleFriendSelection = toggleFriendSelection;
 
 function openGroup(id) {
   window.location.href = `expenses.html?id=${id}`;
@@ -799,19 +1050,27 @@ async function loadGroupsForExpense() {
       headers: getHeaders()
     });
     const groups = await res.json();
-    const select = document.getElementById("groupsListForExpenses");
 
-    if (select) {
-      select.innerHTML = '<option value="">-- Select a group --</option>';
-      groups.forEach(g => {
-        const opt = document.createElement("option");
-        opt.value = g.id;
-        opt.textContent = g.title;
-        select.appendChild(opt);
+    const groupSelect = document.getElementById('groupsListForExpenses');
+    if (groupSelect) {
+      groupSelect.innerHTML = '<option value="">-- Choose a group --</option>';
+
+      let personalGroupId = null;
+
+      groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.title;
+        groupSelect.appendChild(option);
+
+        // Check if this is the default Personal Expenses group
+        if (group.type === 'Personal' && group.title === 'Personal Expenses') {
+          personalGroupId = group.id;
+        }
       });
 
       // Listen for selection change
-      select.addEventListener("change", async (e) => {
+      groupSelect.addEventListener("change", async (e) => {
         const groupId = e.target.value;
         if (groupId) {
           await loadMembersForGroup(groupId);
@@ -827,7 +1086,15 @@ async function loadGroupsForExpense() {
           }
         }
       });
+
+      // Auto-select Personal Expenses if found
+      if (personalGroupId) {
+        groupSelect.value = personalGroupId;
+        // Trigger change event to load members (which is just the user)
+        groupSelect.dispatchEvent(new Event('change'));
+      }
     }
+
 
   } catch (err) {
     console.error("Failed to load groups:", err);
@@ -1532,18 +1799,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialize date/time inputs
     initializeDateTimeInputs();
 
-    // Initialize edit group modal
+    // Initialize edit group modal (only on groups.html)
     setTimeout(() => {
       try {
         const modalEl = document.getElementById("editGroupModal");
         if (modalEl && typeof bootstrap !== 'undefined') {
           editGroupModal = new bootstrap.Modal(modalEl);
           console.log("✅ Edit group modal initialized");
-        } else {
-          console.error("❌ Modal element or Bootstrap not found");
+        } else if (modalEl && typeof bootstrap === 'undefined') {
+          console.warn("⚠️ Bootstrap not loaded yet");
         }
+        // No error if modal element doesn't exist (e.g., on home.html)
       } catch (err) {
-        console.error("Modal initialization error:", err);
+        console.error("❌ Modal initialization error:", err);
       }
     }, 200);
 

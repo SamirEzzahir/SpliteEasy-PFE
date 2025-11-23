@@ -229,6 +229,11 @@ async def delete_group(session: AsyncSession, group_id: int, current: int):
     if group.owner_id != current.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
     
+    # ✅ Prevent deleting default Personal group
+    if group.type == "Personal" and group.title == "Personal Expenses":
+         raise HTTPException(status_code=400, detail="Cannot delete your default Personal Expenses group.")
+
+    
     await session.delete(group)
     await session.commit()
 
