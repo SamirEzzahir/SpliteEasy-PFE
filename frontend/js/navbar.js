@@ -203,7 +203,7 @@ function addNavbarStyles() {
     .brand-icon {
       width: 32px;
       height: 32px;
-      background: linear-gradient(135deg, var(--bs-primary), #6610f2);
+      background: linear-gradient(135deg, #0d6efd, #66a6ff);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -248,7 +248,7 @@ function addNavbarStyles() {
     .user-avatar {
       width: 32px;
       height: 32px;
-      background: linear-gradient(135deg, var(--bs-primary), #6610f2);
+      background: linear-gradient(135deg, #0d6efd, #66a6ff);
       border-radius: 50%;
       display: flex;
       align-items: center;

@@ -36,18 +36,29 @@ body {
     right: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
     animation: pulse 3s ease-in-out infinite;
     pointer-events: none;
     z-index: 1;
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 0.5; }
-    50% { transform: scale(1.1); opacity: 0.3; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.3;
+    }
 }
 
-.welcome-banner h1, .welcome-banner p, .welcome-banner .d-flex {
+.welcome-banner h1,
+.welcome-banner p,
+.welcome-banner .d-flex {
     position: relative;
     z-index: 2;
 }
@@ -96,9 +107,17 @@ body {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-.stat-icon.bg-danger { background: linear-gradient(135deg, var(--danger-color), #c82333); }
-.stat-icon.bg-success { background: linear-gradient(135deg, var(--success-color), #20c997); }
-.stat-icon.bg-info { background: linear-gradient(135deg, var(--info-color), #20c997); }
+.stat-icon.bg-danger {
+    background: linear-gradient(135deg, var(--danger-color), #c82333);
+}
+
+.stat-icon.bg-success {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+}
+
+.stat-icon.bg-info {
+    background: linear-gradient(135deg, var(--info-color), #20c997);
+}
 
 /* Tabs */
 .nav-tabs-custom {
@@ -130,7 +149,7 @@ body {
 }
 
 .nav-tabs-custom .nav-link.active {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #6610f2 100%);
+    background: linear-gradient(135deg, #cce1ff45 0%, #ffffff 100%);
     color: white;
     box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
@@ -170,38 +189,42 @@ body {
     .welcome-banner {
         padding: 2rem 1rem;
     }
+
     .welcome-banner h1 {
         font-size: 2rem;
     }
+
     .welcome-banner p {
         font-size: 1rem;
     }
+
     .welcome-banner .btn-light,
     .welcome-banner .btn-outline-light {
         padding: 0.6rem 1.2rem;
         font-size: 0.9rem;
     }
-    
+
     .stat-icon {
         width: 50px;
         height: 50px;
         font-size: 24px;
     }
+
     .stat-card h3 {
         font-size: 1.8rem;
     }
-    
+
     .nav-tabs-custom .nav-link {
         padding: 0.6rem 0.8rem;
         font-size: 0.9rem;
     }
-    
+
     .debt-loan-card .d-flex {
         flex-direction: column;
     }
+
     .debt-loan-card .btn {
         width: 100%;
         margin-bottom: 0.5rem;
     }
 }
-
