@@ -540,3 +540,82 @@ class LoanRepaymentRead(BaseModel):
         from_attributes = True
 
 
+
+# ======================
+# Jar Strategy Schemas
+# ======================
+class JarStrategyBase(BaseModel):
+    name: str
+    nec: float
+    ffa: float
+    edu: float
+    ltss: float
+    play: float
+    give: float
+
+class JarStrategyCreate(JarStrategyBase):
+    pass
+
+class JarStrategyRead(JarStrategyBase):
+    id: int
+    user_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ======================
+# Jar Transaction Schemas
+# ======================
+class JarTransactionBase(BaseModel):
+    jar_type: str
+    amount: float
+    description: str
+    date: datetime = datetime.utcnow()
+
+class JarTransactionCreate(JarTransactionBase):
+    pass
+
+class JarTransactionRead(JarTransactionBase):
+    id: int
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class JarBalance(BaseModel):
+    jar_type: str
+    balance: float
+
+
+# ======================
+# Income Source Schemas
+# ======================
+class IncomeSourceBase(BaseModel):
+    name: str
+
+class IncomeSourceCreate(IncomeSourceBase):
+    pass
+
+class IncomeSourceRead(IncomeSourceBase):
+    id: int
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class MonthlySummary(BaseModel):
+    month: str
+    NEC: float = 0.0
+    FFA: float = 0.0
+    EDU: float = 0.0
+    LTSS: float = 0.0
+    PLAY: float = 0.0
+    GIVE: float = 0.0
+    total: float = 0.0
+
+

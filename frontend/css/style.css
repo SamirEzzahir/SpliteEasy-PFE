@@ -192,6 +192,7 @@ h6.text-secondary {
 .wallet-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: rgba(34, 126, 255, 0.63);
 }
 
 .wallet-card h6 {

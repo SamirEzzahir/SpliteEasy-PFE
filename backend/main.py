@@ -68,14 +68,14 @@ async def on_startup():
     # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database initialized.")
+    print("Database initialized.")
     
     # Run migrations
     try:
         from backend.migrations import run_migrations
         await run_migrations()
     except Exception as e:
-        print(f"⚠️  Migration warning: {e}")
+        print(f"Migration warning: {e}")
         print("   You may need to run migrations manually.")
 
 
@@ -83,7 +83,7 @@ async def on_startup():
 async def on_shutdown():
     # Properly dispose engine connections
     await engine.dispose()
-    print("🧹 Database connection closed.")
+    print("Database connection closed.")
 
 
 
@@ -106,6 +106,6 @@ app.include_router(dashboard.router, tags=["Dashboard"])
 app.include_router(income_types.router, tags=["incomeType"])
 app.include_router(wallets.router, tags=["Wallets"])
 app.include_router(debts_loans.router, tags=["Debts & Loans"])
-app.include_router(econome.router)
+app.include_router(econome.router, tags=["Econome"])
 
  

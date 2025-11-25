@@ -25,34 +25,34 @@ async function loadGroupInfo() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     console.log("🔄 Loading group info for group:", groupId);
     const url = `${API_URL}/groups/${groupId}`;
     console.log("🌐 Fetching from:", url);
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const group = await res.json();
     console.log("📊 Group info loaded:", group);
-    
+
     // Update currency display
     const currencyElement = document.getElementById("groupCurrency");
     if (currencyElement) {
       currencyElement.textContent = group.currency || 'USD';
     }
-    
+
     return group;
   } catch (err) {
     console.error("❌ Error loading group info:", err);
@@ -76,7 +76,7 @@ function showError(message) {
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   `;
-  
+
   // Add to page
   let toastContainer = document.getElementById('toast-container');
   if (!toastContainer) {
@@ -86,13 +86,13 @@ function showError(message) {
     toastContainer.style.zIndex = '9999';
     document.body.appendChild(toastContainer);
   }
-  
+
   toastContainer.appendChild(toast);
-  
+
   // Show toast
   const bsToast = new bootstrap.Toast(toast);
   bsToast.show();
-  
+
   // Remove after hide
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
@@ -111,7 +111,7 @@ function showSuccess(message) {
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   `;
-  
+
   let toastContainer = document.getElementById('toast-container');
   if (!toastContainer) {
     toastContainer = document.createElement('div');
@@ -120,12 +120,12 @@ function showSuccess(message) {
     toastContainer.style.zIndex = '9999';
     document.body.appendChild(toastContainer);
   }
-  
+
   toastContainer.appendChild(toast);
-  
+
   const bsToast = new bootstrap.Toast(toast);
   bsToast.show();
-  
+
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
   });
@@ -142,11 +142,11 @@ function getRelativeTime(dateString) {
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now - date) / 1000);
-  
+
   if (diffInSeconds < 60) return 'Just now';
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
   return date.toLocaleDateString();
 }
 
@@ -172,7 +172,7 @@ async function loadCurrentUser() {
       showError("Authentication system not loaded");
       return false;
     }
-    
+
     // Use the global currentUser from config.js
     if (!currentUser) {
       if (typeof fetchCurrentUser === 'function') {
@@ -183,7 +183,7 @@ async function loadCurrentUser() {
         return false;
       }
     }
-    
+
     if (!currentUser || !currentUser.id) {
       showError("User not authenticated. Please log in.");
       // Redirect to login after a delay
@@ -192,7 +192,7 @@ async function loadCurrentUser() {
       }, 2000);
       return false;
     }
-    
+
     console.log("✅ Current user loaded:", currentUser);
     return true;
   } catch (err) {
@@ -207,44 +207,44 @@ async function loadCurrentUser() {
 // -----------------------------
 function updateSummaryStats(balances) {
   console.log("📊 Updating summary stats with balances:", balances);
-  
+
   // Use proper rounding to avoid floating-point errors
   const round = (num) => Math.round(num * 100) / 100;
-  
+
   // Find current user's balance
   const currentUserBalance = balances.find(b => currentUser && b.user_id === currentUser.id);
   const otherUsersBalances = balances.filter(b => !currentUser || b.user_id !== currentUser.id);
-  
+
   // Balance interpretation:
   // - Positive balance = others owe you
   // - Negative balance = you owe others
-  
+
   // Total Lent: What others owe YOU
   // = Current user's positive balance (if any) OR sum of other users' negative balances (they owe you)
   // Actually, if current user has +4,480.90, that means others owe them 4,480.90
   // So Total Lent = current user's positive balance
-  const totalLent = currentUserBalance && currentUserBalance.net > 0 
+  const totalLent = currentUserBalance && currentUserBalance.net > 0
     ? round(currentUserBalance.net)
     : 0;
-  
+
   // Total Owed: What YOU owe others
   // = Current user's negative balance (if any)
   // Other users' negative balances mean THEY owe YOU, not that you owe them
-  const totalOwed = currentUserBalance && currentUserBalance.net < 0 
+  const totalOwed = currentUserBalance && currentUserBalance.net < 0
     ? round(Math.abs(currentUserBalance.net))
     : 0;
-  
+
   // Net Balance: Current user's balance (positive = others owe you, negative = you owe others)
   const netBalance = currentUserBalance ? round(currentUserBalance.net) : 0;
-  
-  console.log("📊 Calculated stats:", { 
-    totalLent, 
-    totalOwed, 
+
+  console.log("📊 Calculated stats:", {
+    totalLent,
+    totalOwed,
     netBalance,
     currentUserBalance: currentUserBalance?.net,
     currentUserId: currentUser?.id
   });
-  
+
   document.getElementById('totalLent').textContent = `${formatCurrency(totalLent)} MAD`;
   document.getElementById('totalOwed').textContent = `${formatCurrency(totalOwed)} MAD`;
   document.getElementById('netBalance').textContent = `${formatCurrency(Math.abs(netBalance) < 0.01 ? 0 : netBalance)} MAD`;
@@ -270,40 +270,40 @@ async function loadBalances() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     // Check if API_URL is defined
     if (typeof API_URL === 'undefined') {
       throw new Error("API_URL is not defined. Make sure config.js is loaded.");
     }
-    
+
     // Check if getHeaders is defined
     if (typeof getHeaders === 'undefined') {
       throw new Error("getHeaders function is not defined. Make sure config.js is loaded.");
     }
-    
+
     const url = `${API_URL}/settle/${groupId}/balances`;
     console.log("🌐 Fetching balances from:", url);
     console.log("🔑 Headers:", getHeaders());
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     console.log("📡 Response status:", res.status);
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
     console.log("📊 Received balances data:", data);
     console.log("📊 Current mode (from user):", currentUser?.global_settlement_mode);
     balancesData = data;
 
     container.innerHTML = "";
-    
+
     if (!data.length) {
       container.innerHTML = `
         <div class="col-12 text-center text-muted py-5">
@@ -325,16 +325,16 @@ async function loadBalances() {
       const color = balance.net > 0 ? "success" : balance.net < 0 ? "danger" : "secondary";
       const icon = balance.net > 0 ? "arrow-up-circle" : balance.net < 0 ? "arrow-down-circle" : "dash-circle";
       const status = balance.net > 0 ? "Lent" : balance.net < 0 ? "Owes" : "Even";
-      
+
       const isCurrentUser = currentUser && balance.user_id === currentUser.id;
-      
+
       // Check if we're in hybrid mode and have original/adjustment data
       const isHybridMode = balance.original_net !== undefined && balance.original_net !== null;
       const hasAdjustment = balance.global_adjustment !== undefined && balance.global_adjustment !== null && Math.abs(balance.global_adjustment) >= 0.01;
 
       const card = document.createElement("div");
       card.className = "col-12 col-sm-6 col-md-4 col-lg-3";
-      
+
       // Build balance display based on mode
       let balanceDisplay = `
         <p class="card-text fw-bold text-${color} mb-1">
@@ -342,7 +342,7 @@ async function loadBalances() {
         </p>
         <small class="text-muted">${status}</small>
       `;
-      
+
       // If hybrid mode and has adjustment, show both
       if (isHybridMode && hasAdjustment) {
         const adjustmentColor = balance.global_adjustment > 0 ? "success" : "danger";
@@ -364,7 +364,7 @@ async function loadBalances() {
           </div>
         `;
       }
-      
+
       card.innerHTML = `
         <div class="card border-${color} balance-card shadow-sm h-100 ${isCurrentUser ? 'border-3' : ''}">
           <div class="card-body text-center p-3">
@@ -384,13 +384,13 @@ async function loadBalances() {
   } catch (err) {
     console.error("❌ Error loading balances:", err);
     let errorMessage = err.message;
-    
+
     // Provide more helpful error messages
     if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
       errorMessage = "Cannot connect to server. Please check:\n1. Server is running\n2. API_URL is correct\n3. Network connection";
       console.error("🌐 Network error. API_URL:", typeof API_URL !== 'undefined' ? API_URL : 'NOT DEFINED');
     }
-    
+
     container.innerHTML = `
       <div class="col-12 text-center text-danger py-4">
         <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
@@ -425,28 +425,28 @@ async function loadSettlements() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${groupId}/settlements`;
     console.log("🌐 Fetching settlements from:", url);
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
 
     tbody.innerHTML = "";
-    
+
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
@@ -499,11 +499,11 @@ async function loadSettlements() {
   } catch (err) {
     console.error("❌ Error loading settlements:", err);
     let errorMessage = err.message;
-    
+
     if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
       errorMessage = "Cannot connect to server. Please check your connection and try again.";
     }
-    
+
     tbody.innerHTML = `
       <tr>
         <td colspan="4" class="text-center text-danger py-4">
@@ -540,28 +540,28 @@ async function loadHistory() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${groupId}/history`;
     console.log("🌐 Fetching history from:", url);
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
 
     tbody.innerHTML = "";
-    
+
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
@@ -583,7 +583,7 @@ async function loadHistory() {
       const statusBadge = getStatusBadge(settlement.status);
       const isFromCurrentUser = settlement.from_user_id === currentUser.id;
       const isToCurrentUser = settlement.to_user_id === currentUser.id;
-      
+
       // Show action buttons based on status and user role
       let actionButtons = '';
       if (settlement.status === 'pending' && isToCurrentUser) {
@@ -604,7 +604,7 @@ async function loadHistory() {
           </button>
         `;
       }
-      
+
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>
@@ -644,11 +644,11 @@ async function loadHistory() {
   } catch (err) {
     console.error("❌ Error loading history:", err);
     let errorMessage = err.message;
-    
+
     if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
       errorMessage = "Cannot connect to server. Please check your connection and try again.";
     }
-    
+
     tbody.innerHTML = `
       <tr>
         <td colspan="6" class="text-center text-danger py-4">
@@ -671,7 +671,7 @@ function openSettlementModal() {
   if (!balancesData || !currentUser) {
     showError("User data missing — please refresh the page");
     return;
-}
+  }
 
   const select = document.getElementById("toUserSelect");
   const amountInput = document.getElementById("settleAmount");
@@ -758,7 +758,7 @@ function updateSettlementPreview(userName, amount) {
   const preview = document.getElementById("settlementPreview");
   const previewAmount = document.getElementById("previewAmount");
   const previewUser = document.getElementById("previewUser");
-  
+
   previewAmount.textContent = `${formatCurrency(parseFloat(amount))} MAD`;
   previewUser.textContent = userName;
   preview.style.display = "block";
@@ -774,7 +774,7 @@ function quickSettle(fromUser, toUser, amount) {
   // Check if current user is involved in this settlement
   const fromUserData = balancesData.find(b => b.username === fromUser);
   const toUserData = balancesData.find(b => b.username === toUser);
-  
+
   if (!fromUserData || !toUserData) {
     showError("User data not found");
     return;
@@ -789,10 +789,10 @@ function quickSettle(fromUser, toUser, amount) {
   // Pre-fill the settlement modal
   const select = document.getElementById("toUserSelect");
   const amountInput = document.getElementById("settleAmount");
-  
+
   // Open modal first
   openSettlementModal();
-  
+
   // Wait for modal to be ready, then pre-fill
   setTimeout(() => {
     select.value = toUserData.user_id;
@@ -812,13 +812,13 @@ function setupSettlementForm() {
     const select = document.getElementById("toUserSelect");
     const amountInput = document.getElementById("settleAmount");
     const submitBtn = form.querySelector('button[type="submit"]');
-    
+
     // Validation
     if (!select.value) {
       showError("Please select a member to settle with");
       return;
     }
-    
+
     if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
       showError("Please enter a valid amount");
       return;
@@ -841,15 +841,15 @@ function setupSettlementForm() {
       if (typeof loadAuth === 'function') {
         loadAuth();
       }
-      
+
       if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
         throw new Error("API configuration not loaded. Please refresh the page.");
       }
-      
+
       console.log("🔄 Recording settlement with payload:", payload);
       const url = `${API_URL}/settle/${groupId}/record`;
       console.log("🌐 POST to:", url);
-      
+
       const res = await fetch(url, {
         method: "POST",
         headers: getHeaders(),
@@ -867,14 +867,14 @@ function setupSettlementForm() {
       const result = await res.json();
       console.log("✅ Settlement recorded successfully:", result);
       showSuccess("Settlement request sent! Waiting for confirmation.");
-      
+
       // Close modal
       const modal = bootstrap.Modal.getInstance(document.getElementById("recordSettlementModal"));
       if (modal) modal.hide();
 
       // Refresh all data
       await Promise.all([loadBalances(), loadSettlements(), loadHistory()]);
-      
+
     } catch (err) {
       console.error("❌ Error recording settlement:", err);
       showError(err.message || "Failed to record settlement");
@@ -897,11 +897,11 @@ async function loadSettlementMode() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       return;
     }
-    
+
     // Get current user to check their mode preference
     if (currentUser && currentUser.global_settlement_mode) {
       const mode = currentUser.global_settlement_mode;
@@ -920,37 +920,37 @@ async function updateSettlementMode(mode) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded");
     }
-    
+
     const url = `${API_URL}/users/user/me/global-settlement-mode`;
     const res = await fetch(url, {
       method: "PUT",
       headers: getHeaders(),
       body: JSON.stringify({ mode: mode })
     });
-    
+
     if (!res.ok) {
       const errorData = await res.json();
       throw new Error(errorData.detail || "Failed to update mode");
     }
-    
+
     const updatedUser = await res.json();
     console.log("✅ Mode updated. Updated user:", updatedUser);
     console.log("✅ New mode:", updatedUser.global_settlement_mode);
-    
+
     if (currentUser) {
       currentUser.global_settlement_mode = updatedUser.global_settlement_mode;
       console.log("✅ Current user mode updated to:", currentUser.global_settlement_mode);
     }
-    
+
     showSuccess("Settlement mode updated! Reloading balances...");
-    
+
     // Small delay to ensure backend has the updated mode
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Reload balances with new mode
     await Promise.all([loadBalances(), loadSettlements()]);
   } catch (err) {
@@ -973,33 +973,33 @@ function setupSettlementModeSelector() {
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     console.log("🚀 Initializing balance page...");
-    
+
     // Check if config.js is loaded
     if (typeof API_URL === 'undefined') {
       console.error("❌ API_URL is not defined. config.js may not be loaded.");
       showError("Configuration not loaded. Please refresh the page.");
       return;
     }
-    
+
     if (typeof getHeaders === 'undefined') {
       console.error("❌ getHeaders is not defined. config.js may not be loaded.");
       showError("Authentication functions not loaded. Please refresh the page.");
       return;
     }
-    
+
     console.log("✅ Config loaded. API_URL:", API_URL);
     console.log("📍 Group ID from URL:", groupId);
-    
+
     if (!groupId) {
       showError("No group ID found in URL. Please access this page from a group.");
       return;
     }
-    
+
     // Load auth first
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     // Load current user first
     const userLoaded = await loadCurrentUser();
     if (!userLoaded) {
@@ -1018,15 +1018,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     ]);
 
     // Setup event listeners
-  document.getElementById("routerToExpenses").addEventListener("click", () => {
-    window.location.href = `expenses.html?id=${groupId}`;
-  });
-    
-  document.getElementById("recordBtn").addEventListener("click", openSettlementModal);
-    
+    document.getElementById("routerToExpenses").addEventListener("click", () => {
+      window.location.href = `expenses.html?id=${groupId}`;
+    });
+
+    document.getElementById("recordBtn").addEventListener("click", openSettlementModal);
+
     // Setup settlement form
     setupSettlementForm();
-    
+
     // Setup settlement mode selector
     setupSettlementModeSelector();
     await loadSettlementMode();
@@ -1052,14 +1052,14 @@ async function acceptSettlement(settlementId) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${settlementId}/accept`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -1083,7 +1083,7 @@ async function acceptSettlement(settlementId) {
 // -----------------------------
 async function rejectSettlement(settlementId) {
   const reason = prompt("Please provide a reason for rejecting this settlement (optional):");
-  
+
   if (reason === null) {
     return; // User cancelled
   }
@@ -1093,14 +1093,14 @@ async function rejectSettlement(settlementId) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${settlementId}/reject`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -1130,7 +1130,7 @@ async function resendSettlement(settlementId, toUserId, currentAmount) {
   if (newAmount === null) {
     return; // User cancelled
   }
-  
+
   const amount = newAmount ? parseFloat(newAmount) : currentAmount;
   if (isNaN(amount) || amount <= 0) {
     showError("Invalid amount");
@@ -1144,14 +1144,14 @@ async function resendSettlement(settlementId, toUserId, currentAmount) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/${settlementId}/resend`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),

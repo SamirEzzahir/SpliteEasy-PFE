@@ -40,8 +40,8 @@ class DebtLoanStatus(enum.Enum):
     active = "active"
     partially_paid = "partially_paid"
     fully_paid = "fully_paid"
-
-# ======================
+ 
+# ====================== 
 # User
 # ======================
 class User(Base):
@@ -77,6 +77,9 @@ class User(Base):
     income_types: Mapped[list["IncomeType"]] = relationship("IncomeType", back_populates="user",cascade="all, delete-orphan")
     wallets: Mapped[list["Wallet"]] = relationship("Wallet",back_populates="user",cascade="all, delete-orphan")
     transactions: Mapped[list["Transaction"]] = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
+    jar_strategies: Mapped[list["JarStrategy"]] = relationship("JarStrategy", back_populates="user", cascade="all, delete-orphan")
+    jar_transactions: Mapped[list["JarTransaction"]] = relationship("JarTransaction", back_populates="user", cascade="all, delete-orphan")
+    income_sources: Mapped[list["IncomeSource"]] = relationship("IncomeSource", back_populates="user", cascade="all, delete-orphan")
     debts: Mapped[list["Debt"]] = relationship("Debt", back_populates="user", cascade="all, delete-orphan")
     loans: Mapped[list["Loan"]] = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
 
@@ -116,6 +119,38 @@ class Membership(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="memberships")
     group: Mapped["Group"] = relationship("Group", back_populates="memberships")
+
+
+# ======================
+# JarTransaction
+# ======================
+class JarTransaction(Base):
+    __tablename__ = "jar_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    jar_type: Mapped[str] = mapped_column(String(10))  # NEC, FFA, EDU, LTSS, PLAY, GIVE
+    amount: Mapped[float] = mapped_column(Float)  # Positive for income, Negative for expense
+    description: Mapped[str] = mapped_column(String(255))
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="jar_transactions")
+
+
+# ======================
+# IncomeSource
+# ======================
+class IncomeSource(Base):
+    __tablename__ = "income_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="income_sources")
+
 
 
 # ======================
@@ -408,4 +443,31 @@ class LoanRepayment(Base):
     # Relationships
     loan: Mapped["Loan"] = relationship("Loan", back_populates="repayments")
     wallet: Mapped["Wallet"] = relationship("Wallet", foreign_keys=[wallet_id])
+
+
+# ======================
+# Jar Strategy (Money Jars)
+# ======================
+class JarStrategy(Base):
+    __tablename__ = "jar_strategies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    # If user_id is None, it's a global/default strategy
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    
+    # Percentages (stored as decimals, e.g., 0.55 for 55%)
+    nec: Mapped[float] = mapped_column(Float, default=0.0)
+    ffa: Mapped[float] = mapped_column(Float, default=0.0)
+    edu: Mapped[float] = mapped_column(Float, default=0.0)
+    ltss: Mapped[float] = mapped_column(Float, default=0.0)
+    play: Mapped[float] = mapped_column(Float, default=0.0)
+    give: Mapped[float] = mapped_column(Float, default=0.0)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user: Mapped[Optional["User"]] = relationship("User")
+
 
