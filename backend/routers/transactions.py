@@ -62,12 +62,12 @@ async def list_transactions(
             'transaction_type': transaction_type_value,
             'amount': float(t.amount),
             'note': t.note,
-            'created_at': t.created_at
+            'created_at': t.created_at,
+            'from_wallet': t.from_wallet,
+            'to_wallet': t.to_wallet
         }
         
         transaction_data = TransactionRead.model_validate(transaction_dict)
-        transaction_data.from_wallet_name = t.from_wallet.name if t.from_wallet else None
-        transaction_data.to_wallet_name = t.to_wallet.name if t.to_wallet else None
         transaction_list.append(transaction_data)
     
     return transaction_list
@@ -124,12 +124,11 @@ async def get_transaction(
         'transaction_type': transaction_type_value,
         'amount': float(transaction.amount),
         'note': transaction.note,
-        'created_at': transaction.created_at
+        'created_at': transaction.created_at,
+        'from_wallet': transaction.from_wallet,
+        'to_wallet': transaction.to_wallet
     }
     
     transaction_data = TransactionRead.model_validate(transaction_dict)
-    transaction_data.from_wallet_name = transaction.from_wallet.name if transaction.from_wallet else None
-    transaction_data.to_wallet_name = transaction.to_wallet.name if transaction.to_wallet else None
-    
     return transaction_data
 

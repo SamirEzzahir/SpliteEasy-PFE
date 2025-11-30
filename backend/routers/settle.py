@@ -246,43 +246,55 @@ async def global_settlement_history(
     """
     Get global settlement history for current user.
     """
-    result = await session.execute(
-        select(GlobalSettlement)
-        .where(
-            (GlobalSettlement.from_user_id == current.id) |
-            (GlobalSettlement.to_user_id == current.id)
+    try:
+        result = await session.execute(
+            select(GlobalSettlement)
+            .where(
+                (GlobalSettlement.from_user_id == current.id) |
+                (GlobalSettlement.to_user_id == current.id)
+            )
+            .order_by(GlobalSettlement.created_at.desc())
         )
-        .order_by(GlobalSettlement.created_at.desc())
-    )
-    
-    settlements = result.scalars().all()
-    
-    user_ids = {s.from_user_id for s in settlements} | {s.to_user_id for s in settlements}
-    if not user_ids:
-        return []
-    
-    res_users = await session.execute(
-        select(User.id, User.username).where(User.id.in_(user_ids))
-    )
-    users = dict(res_users.all())
-    
-    return [
-        GlobalSettlementOut(
-            id=s.id,
-            from_user_id=s.from_user_id,
-            from_username=users.get(s.from_user_id, "Unknown"),
-            to_user_id=s.to_user_id,
-            to_username=users.get(s.to_user_id, "Unknown"),
-            amount=s.amount,
-            status=SettlementStatusSchema(s.status.value),
-            message=s.message,
-            proof_photo=s.proof_photo,
-            rejected_reason=s.rejected_reason,
-            created_at=s.created_at,
-            updated_at=s.updated_at
+        
+        settlements = result.scalars().all()
+        
+        user_ids = {s.from_user_id for s in settlements} | {s.to_user_id for s in settlements}
+        if not user_ids:
+            return []
+        
+        res_users = await session.execute(
+            select(User.id, User.username).where(User.id.in_(user_ids))
         )
-        for s in settlements
-    ]
+        users = dict(res_users.all())
+        
+        settlement_outs = []
+        for s in settlements:
+            # Handle status safely
+            status_val = s.status.value if hasattr(s.status, 'value') else str(s.status)
+            if status_val.lower() in ["pending", "accepted", "rejected"]:
+                status_val = status_val.lower()
+
+            settlement_outs.append(GlobalSettlementOut(
+                id=s.id,
+                from_user_id=s.from_user_id,
+                from_username=users.get(s.from_user_id, "Unknown"),
+                to_user_id=s.to_user_id,
+                to_username=users.get(s.to_user_id, "Unknown"),
+                amount=s.amount,
+                status=SettlementStatusSchema(status_val),
+                message=s.message,
+                proof_photo=s.proof_photo,
+                rejected_reason=s.rejected_reason,
+                created_at=s.created_at,
+                updated_at=s.updated_at
+            ))
+            
+        return settlement_outs
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"❌ Error in global_settlement_history: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 # -----------------------------
@@ -614,38 +626,45 @@ async def suggested_settlements(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
-    await ensure_user_in_group(session, current.id, group_id)
-    balances = await compute_group_balances(session, group_id)
-    
-    # Round balances to ensure consistency (balances are already rounded in compute_group_balances,
-    # but we round again here to ensure exact match with displayed values)
-    from decimal import Decimal, ROUND_HALF_UP
-    def round_balance(val):
-        return float(Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
-    
-    balances = {uid: round_balance(bal) for uid, bal in balances.items()}
-    
-    raw_settlements = minimize_cash_flow(balances)
+    try:
+        await ensure_user_in_group(session, current.id, group_id)
+        balances = await compute_group_balances(session, group_id)
+        
+        # Round balances to ensure consistency (balances are already rounded in compute_group_balances,
+        # but we round again here to ensure exact match with displayed values)
+        from decimal import Decimal, ROUND_HALF_UP
+        def round_balance(val):
+            return float(Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        
+        balances = {uid: round_balance(bal) for uid, bal in balances.items()}
+        
+        raw_settlements = minimize_cash_flow(balances)
 
-    if not raw_settlements:
-        return []
+        if not raw_settlements:
+            return []
 
-    user_ids = {s["from_user"] for s in raw_settlements} | {s["to_user"] for s in raw_settlements}
-    result = await session.execute(select(User.id, User.username).where(User.id.in_(user_ids)))
-    users = dict(result.all())
+        user_ids = {s["from_user"] for s in raw_settlements} | {s["to_user"] for s in raw_settlements}
+        result = await session.execute(select(User.id, User.username).where(User.id.in_(user_ids)))
+        users = dict(result.all())
 
-    return [
-        SettlementOut(
-            from_user_id=s["from_user"],
-            from_username=users.get(s["from_user"], f"User {s['from_user']}"),
-            to_user_id=s["to_user"],
-            to_username=users.get(s["to_user"], f"User {s['to_user']}"),
-            amount=s["amount"],
-            status=SettlementStatusSchema.pending,
-            created_at=datetime.utcnow()
-        )
-        for s in raw_settlements
-    ]
+        return [
+            SettlementOut(
+                group_id=group_id,  # ✅ Added group_id
+                from_user_id=s["from_user"],
+                from_username=users.get(s["from_user"], f"User {s['from_user']}"),
+                to_user_id=s["to_user"],
+                to_username=users.get(s["to_user"], f"User {s['to_user']}"),
+                amount=s["amount"],
+                status=SettlementStatusSchema.pending,
+                created_at=datetime.utcnow()
+            )
+            for s in raw_settlements
+        ]
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"❌ Error in suggested_settlements: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 # -----------------------------
@@ -658,59 +677,73 @@ async def settlement_history(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
-    # ✅ Ensure user belongs to the group
-    await ensure_user_in_group(session, current.id, group_id)
+    try:
+        # ✅ Ensure user belongs to the group
+        await ensure_user_in_group(session, current.id, group_id)
 
-    # ✅ Fetch settlements only for the current group
-    # ✅ Include ALL statuses (accepted, pending, rejected) for history page
-    query = select(Settlement).where(
-        (Settlement.group_id == group_id) & (
-                (Settlement.from_user_id == current.id) |
-                (Settlement.to_user_id == current.id)
+        # ✅ Fetch settlements only for the current group
+        # ✅ Include ALL statuses (accepted, pending, rejected) for history page
+        query = select(Settlement).where(
+            (Settlement.group_id == group_id) & (
+                    (Settlement.from_user_id == current.id) |
+                    (Settlement.to_user_id == current.id)
+                )
             )
+        
+        # Filter by status if provided
+        if status:
+            try:
+                status_enum = SettlementStatus[status]
+                query = query.where(Settlement.status == status_enum)
+            except KeyError:
+                pass  # Invalid status, ignore filter
+        
+        query = query.order_by(Settlement.created_at.desc())
+        
+        result = await session.execute(query)
+        settlements = result.scalars().all()
+
+        # ✅ Fetch usernames for all involved users
+        user_ids = {s.from_user_id for s in settlements} | {s.to_user_id for s in settlements}
+        if not user_ids:
+            return []  # No settlements found for this group
+
+        res_users = await session.execute(
+            select(User.id, User.username).where(User.id.in_(user_ids))
         )
-    
-    # Filter by status if provided
-    if status:
-        try:
-            status_enum = SettlementStatus[status]
-            query = query.where(Settlement.status == status_enum)
-        except KeyError:
-            pass  # Invalid status, ignore filter
-    
-    query = query.order_by(Settlement.created_at.desc())
-    
-    result = await session.execute(query)
-    settlements = result.scalars().all()
+        users = dict(res_users.all())
 
-    # ✅ Fetch usernames for all involved users
-    user_ids = {s.from_user_id for s in settlements} | {s.to_user_id for s in settlements}
-    if not user_ids:
-        return []  # No settlements found for this group
-
-    res_users = await session.execute(
-        select(User.id, User.username).where(User.id.in_(user_ids))
-    )
-    users = dict(res_users.all())
-
-    # ✅ Format output with status
-    return [
-        SettlementOut(
-            id=s.id,
-            from_user_id=s.from_user_id,
-            from_username=users.get(s.from_user_id, "Unknown"),
-            to_user_id=s.to_user_id,
-            to_username=users.get(s.to_user_id, "Unknown"),
-            amount=s.amount,
-            status=SettlementStatusSchema(s.status.value),
-            message=s.message,
-            proof_photo=s.proof_photo,
-            rejected_reason=s.rejected_reason,
-            created_at=s.created_at,
-            updated_at=s.updated_at
-        )
-        for s in settlements
-    ]
+            # ✅ Format output with status
+        settlement_outs = []
+        for s in settlements:
+            # Handle status safely (it might be an Enum or a string)
+            status_val = s.status.value if hasattr(s.status, 'value') else str(s.status)
+            # Ensure status_val matches schema (lowercase)
+            if status_val.lower() in ["pending", "accepted", "rejected"]:
+                status_val = status_val.lower()
+            
+            settlement_outs.append(SettlementOut(
+                id=s.id,
+                group_id=s.group_id,  # ✅ Added group_id from settlement object
+                from_user_id=s.from_user_id,
+                from_username=users.get(s.from_user_id, "Unknown"),
+                to_user_id=s.to_user_id,
+                to_username=users.get(s.to_user_id, "Unknown"),
+                amount=s.amount,
+                status=SettlementStatusSchema(status_val),
+                message=s.message,
+                proof_photo=s.proof_photo,
+                rejected_reason=s.rejected_reason,
+                created_at=s.created_at,
+                updated_at=s.updated_at
+            ))
+            
+        return settlement_outs
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"❌ Error in settlement_history: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 # -----------------------------
 # Record a settlement
@@ -780,6 +813,7 @@ async def record_settlement(
 
     return SettlementOut(
         id=settlement.id,
+        group_id=group_id,  # ✅ Added group_id
         from_user_id=current.id,
         from_username=from_username, 
         to_user_id=payload.to_user_id,  
@@ -846,6 +880,7 @@ async def accept_settlement(
     
     return SettlementOut(
         id=settlement.id,
+        group_id=settlement.group_id,  # ✅ Added group_id
         from_user_id=settlement.from_user_id,
         from_username=from_user.username if from_user else "Unknown",
         to_user_id=settlement.to_user_id,
@@ -916,6 +951,7 @@ async def reject_settlement(
     
     return SettlementOut(
         id=settlement.id,
+        group_id=settlement.group_id,  # ✅ Added group_id
         from_user_id=settlement.from_user_id,
         from_username=from_user.username if from_user else "Unknown",
         to_user_id=settlement.to_user_id,
@@ -988,6 +1024,7 @@ async def resend_settlement(
     
     return SettlementOut(
         id=original.id,
+        group_id=original.group_id,  # ✅ Added group_id
         from_user_id=original.from_user_id,
         from_username=from_user.username if from_user else "Unknown",
         to_user_id=original.to_user_id,

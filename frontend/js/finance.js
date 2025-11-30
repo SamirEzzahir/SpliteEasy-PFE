@@ -608,14 +608,18 @@ async function loadTransactions() {
             const isCredit = t.transaction_type === 'credit';
             const typeBadge = isDebt ? 'Debt' : isCredit ? 'Credit' : 'Transfer';
             const typeColor = isDebt ? 'danger' : isCredit ? 'success' : 'info';
-            const toWallet = isDebt || isCredit ? 'External' : (t.to_wallet_name || 'N/A');
+
+            // Use nested wallet objects
+            const fromWalletName = t.from_wallet ? t.from_wallet.name : 'N/A';
+            const toWalletName = t.to_wallet ? t.to_wallet.name : 'N/A';
+            const toWallet = isDebt || isCredit ? 'External' : toWalletName;
 
             return `
                             <tr>
                                 <td class="text-muted">#${t.id}</td>
                                 <td>${date}</td>
                                 <td><span class="badge bg-${typeColor}-subtle text-${typeColor} border border-${typeColor}">${typeBadge}</span></td>
-                                <td><span class="fw-medium">${t.from_wallet_name || "N/A"}</span></td>
+                                <td><span class="fw-medium">${fromWalletName}</span></td>
                                 <td><span class="fw-medium">${toWallet}</span></td>
                                 <td class="text-end fw-bold text-primary">${t.amount.toFixed(2)} MAD</td>
                             </tr>
@@ -633,7 +637,11 @@ async function loadTransactions() {
             const isCredit = t.transaction_type === 'credit';
             const typeBadge = isDebt ? 'Debt' : isCredit ? 'Credit' : 'Transfer';
             const typeColor = isDebt ? 'danger' : isCredit ? 'success' : 'info';
-            const toWallet = isDebt || isCredit ? 'External' : (t.to_wallet_name || 'N/A');
+
+            // Use nested wallet objects
+            const fromWalletName = t.from_wallet ? t.from_wallet.name : 'N/A';
+            const toWalletName = t.to_wallet ? t.to_wallet.name : 'N/A';
+            const toWallet = isDebt || isCredit ? 'External' : toWalletName;
 
             return `
                         <div class="debt-loan-card card mb-3 shadow-sm border-0">
@@ -645,7 +653,7 @@ async function loadTransactions() {
                                 <div class="d-flex align-items-center justify-content-between mb-3">
                                     <div class="text-center">
                                         <small class="text-muted d-block">From</small>
-                                        <span class="fw-medium">${t.from_wallet_name || "N/A"}</span>
+                                        <span class="fw-medium">${fromWalletName}</span>
                                     </div>
                                     <i class="bi bi-arrow-right text-muted"></i>
                                     <div class="text-center">

@@ -19,6 +19,44 @@ class GlobalSettlementMode(str, Enum):
     hybrid = "hybrid"  # Option 3: Show both original and adjusted
 
 # ======================
+# Role Schemas
+# ======================
+class RoleBase(BaseModel):
+    name: str
+    permissions: str = "[]"
+
+class RoleCreate(RoleBase):
+    pass
+
+class RoleRead(RoleBase):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+# ======================
+# Reclamation Schemas
+# ======================
+class ReclamationBase(BaseModel):
+    subject: str
+    message: str
+
+class ReclamationCreate(ReclamationBase):
+    pass
+
+class ReclamationUpdate(BaseModel):
+    status: str
+
+class ReclamationRead(ReclamationBase):
+    id: int
+    user_id: int
+    status: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# ======================
 # User Schemas
 # ======================
 class UserBase(BaseModel):
@@ -30,7 +68,6 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     profile_photo: Optional[str] = None
     is_active: Optional[bool] = True
-    is_admin: Optional[bool] = False
 
 
     model_config = {
@@ -50,7 +87,8 @@ class UserRead(BaseModel):
     phone: Optional[str] = None
     profile_photo: Optional[str] = None
     is_active: Optional[bool] = True
-    is_admin: Optional[bool] = False
+    role_id: Optional[int] = None
+    role: Optional[RoleRead] = None
     global_settlement_mode: Optional[GlobalSettlementMode] = GlobalSettlementMode.separate
 
 
@@ -270,6 +308,7 @@ class SettlementAction(BaseModel):
 
 class SettlementOut(BaseModel):
     id: Optional[int] = None
+    group_id: int
     from_user_id: int
     from_username: str
     to_user_id: int
@@ -306,12 +345,13 @@ class GlobalSettlementOut(BaseModel):
 
 
 class ActivityLogOut(BaseModel):
+    id: int
     user_id: int
-    username: str
     action: str
     target_type: str | None
     target_id: int | None
     created_at: datetime
+    user: UserRead
 
     class Config:
         from_attributes = True
@@ -321,81 +361,6 @@ class ActivityLogOut(BaseModel):
 
 # ======================
 # INCOME SCHEMAS
-# ======================
-class IncomeBase(BaseModel):
-    amount: float = Field(..., example=1000.0)
-    source_type: Optional[str] = Field("bank", example="cash")
-    note: Optional[str] = Field(None, example="October salary")
-    date: Optional[datetime] = None
-    income_type_id: int
-    wallet_id: int
-
-class IncomeReadWithNames(BaseModel):
-    id: int
-    user_id: int
-    amount: float
-    date: datetime
-    note: str | None
-    wallet_id: int
-    wallet_name: str
-    income_type_id: int
-    category_name: str
-    created_at: datetime
-    updated_at: datetime    
-
-class IncomeCreate(BaseModel):
-    amount: Decimal
-    income_type_id: int
-    wallet_id: int
-    note: str | None = None
-    source_type: str | None = None  # now this exists
-    date: datetime | None = None  # <-- add this
-
-class IncomeUpdate(BaseModel):
-    amount: Optional[float] = None
-    source_type: Optional[str] = None
-    note: Optional[str] = None
-    date: Optional[datetime] = None
-    income_type_id: Optional[int] = None
-    wallet_id: Optional[int] = None
-
-class IncomeRead(IncomeBase):
-    id: int
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# ======================
-# WALLET SCHEMAS
-# ======================
-class WalletBase(BaseModel):
-    name: str = Field(..., example="Main Wallet")
-    category: str = Field(..., example="bank")  # cash, bank, credit_card, other
-    balance: float = Field(0.0, example=500.00)
-
-class WalletCreate(WalletBase):
-    pass
-
-class WalletUpdate(BaseModel):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    balance: Optional[float] = None
-
-class WalletRead(WalletBase):
-    id: int
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# ======================
-# INCOME TYPE SCHEMAS
 # ======================
 class IncomeTypeBase(BaseModel):
     name: str = Field(..., example="Salary")
@@ -415,6 +380,71 @@ class IncomeTypeRead(IncomeTypeBase):
     class Config:
         from_attributes = True
 
+class WalletBase(BaseModel):
+    name: str = Field(..., example="Main Wallet")
+    category: str = Field("cash", example="bank")  # cash, bank, credit_card, other
+    balance: float = Field(0.0, example=500.00)
+
+class WalletCreate(WalletBase):
+    pass
+
+class WalletUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    balance: Optional[float] = None
+
+class WalletRead(WalletBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class IncomeBase(BaseModel):
+    amount: float = Field(..., example=1000.0)
+    source_type: Optional[str] = Field("bank", example="cash")
+    note: Optional[str] = Field(None, example="October salary")
+    date: datetime = datetime.utcnow()
+
+class IncomeCreate(IncomeBase):
+    income_type_id: int
+    wallet_id: int
+
+class IncomeRead(IncomeBase):
+    id: int
+    user_id: int
+    income_type: IncomeTypeRead
+    wallet: WalletRead
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class IncomeUpdate(BaseModel):
+    amount: Optional[float] = None
+    source_type: Optional[str] = None
+    note: Optional[str] = None
+    date: Optional[datetime] = None
+    income_type_id: Optional[int] = None
+    wallet_id: Optional[int] = None
+
+class IncomeReadWithNames(BaseModel):
+    id: int
+    user_id: int
+    amount: float
+    date: datetime
+    note: str | None
+    wallet_id: int
+    wallet_name: str
+    income_type_id: int
+    category_name: str
+    created_at: datetime
+    updated_at: datetime    
+
+
 # ======================
 # TRANSACTION SCHEMAS
 # ======================
@@ -424,21 +454,20 @@ class TransactionType(str, Enum):
     credit = "credit"
 
 class TransactionBase(BaseModel):
-    from_wallet_id: int
-    to_wallet_id: Optional[int] = None  # Nullable for debts
-    transaction_type: TransactionType = TransactionType.transfer
     amount: float
     note: Optional[str] = None
+    transaction_type: TransactionType = TransactionType.transfer
 
 class TransactionCreate(TransactionBase):
-    pass
+    from_wallet_id: int
+    to_wallet_id: Optional[int] = None  # Nullable for debts
 
 class TransactionRead(TransactionBase):
     id: int
     user_id: int
     created_at: datetime
-    from_wallet_name: Optional[str] = None
-    to_wallet_name: Optional[str] = None
+    from_wallet: WalletRead
+    to_wallet: Optional[WalletRead] = None
 
     class Config:
         from_attributes = True
@@ -617,5 +646,3 @@ class MonthlySummary(BaseModel):
     PLAY: float = 0.0
     GIVE: float = 0.0
     total: float = 0.0
-
-

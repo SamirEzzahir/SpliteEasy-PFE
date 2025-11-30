@@ -10,7 +10,7 @@ from backend.routers import memberships, notifications
 from backend import models  # This ensures all models are registered
 
 # Routers
-from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity, debts_loans
+from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity, debts_loans, admin
 
 app = FastAPI(title="SplitApp API", version="1.0")
 
@@ -25,9 +25,9 @@ allowed_origins = [origin.strip() for origin in origins_string.split(",")] if or
 # Development origins
 dev_origins = [
     "http://localhost",
-    "http://127.0.0.1",
+    "http://pcrox.ddns.net",
     "http://localhost:5500", 
-    "http://127.0.0.1:5500",
+    "http://pcrox.ddns.net:5500",
     "http://localhost:5500",
     "http://pcrox.ddns.net:5500",  # Add your production frontend
     "https://pcrox.ddns.net:5500", # Add HTTPS version
@@ -107,5 +107,6 @@ app.include_router(income_types.router, tags=["incomeType"])
 app.include_router(wallets.router, tags=["Wallets"])
 app.include_router(debts_loans.router, tags=["Debts & Loans"])
 app.include_router(econome.router, tags=["Econome"])
+app.include_router(admin.router, tags=["Admin"])
 
  

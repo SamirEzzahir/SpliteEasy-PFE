@@ -1,7 +1,7 @@
 // frontend/js/config.js
 const API_URL = "http://pcrox.ddns.net:8000";
 // const API_URL = "http://localhost:8000"; // local development
-// const API_URL = "http://192.168.1.3:8004"; // local option
+// const API_URL = "http://pcrox.ddns.net:8000"; // local option
 
 // -------------------------
 // AUTH STATE MANAGEMENT
@@ -14,7 +14,7 @@ function loadAuth() {
   try {
     token = localStorage.getItem("token") || null;
     const u = localStorage.getItem("user");
-    currentUser = u ? JSON.parse(u) : null; 
+    currentUser = u ? JSON.parse(u) : null;
   } catch (err) {
     console.warn("⚠️ Could not parse user:", err);
     currentUser = null;
@@ -47,7 +47,7 @@ function checkLogin(redirect = true) {
   loadAuth();
 
 
-  
+
   // small delay to avoid redirect loop during DOM load
   if (!token || !currentUser || !currentUser.id) {
     console.warn("🔒 Not authenticated");
@@ -69,10 +69,10 @@ async function fetchCurrentUser() {
   const t = localStorage.getItem("token");
   if (!t) return null;
   try {
-    const res = await fetch(`${API_URL}/users/user/me`, { headers: { Authorization: `Bearer ${t}` }});
+    const res = await fetch(`${API_URL}/users/user/me`, { headers: { Authorization: `Bearer ${t}` } });
     if (!res.ok) return null;
     return await res.json();
-  } catch(e){ return null; }
+  } catch (e) { return null; }
 }
 
 
@@ -82,25 +82,25 @@ async function fetchWithAuth(url, retries = 3, timeoutMs = 10000) {
     try {
       // Ensure auth is loaded before each request
       loadAuth();
-      
+
       // Create AbortController for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
+
       try {
-        const res = await fetch(url, { 
+        const res = await fetch(url, {
           headers: getHeaders(),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (res.status === 401) {
           console.warn("Authentication failed, redirecting to login");
           window.location.href = "login.html";
           return null;
         }
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           let errorDetail = `Failed to fetch ${url} (${res.status})`;
@@ -121,7 +121,7 @@ async function fetchWithAuth(url, retries = 3, timeoutMs = 10000) {
           }
           throw new Error(errorDetail);
         }
-        
+
         return await res.json();
       } catch (fetchError) {
         clearTimeout(timeoutId);

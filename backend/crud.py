@@ -15,6 +15,11 @@ from decimal import Decimal, ROUND_HALF_UP
 # Users
 # ------------------------
 async def create_user(session: AsyncSession, user_data: UserCreate) -> UserRead:
+    # Fetch default "User" role
+    from .models import Role
+    result = await session.execute(select(Role).where(Role.name == "User"))
+    default_role = result.scalar_one_or_none()
+    
     user = User(
         email=user_data.email,
         username=user_data.username,
@@ -25,11 +30,11 @@ async def create_user(session: AsyncSession, user_data: UserCreate) -> UserRead:
         phone=user_data.phone,
         profile_photo=user_data.profile_photo,
         is_active=user_data.is_active,
-        is_admin=user_data.is_admin
+        role_id=default_role.id if default_role else None
     )
     session.add(user)
     await session.commit()
-    await session.refresh(user)
+    await session.refresh(user, ['role']) # Refresh role relationship
     return UserRead.model_validate(user, from_attributes=True)
 
 
@@ -1508,6 +1513,11 @@ async def add_income(session: AsyncSession, user_id: int, data: IncomeCreate) ->
     session.add(new_income)
     await session.commit()
     await session.refresh(new_income)
+    
+    # ✅ Manually assign relationships to avoid MissingGreenlet error
+    new_income.wallet = wallet
+    new_income.income_type = income_type
+    
     return new_income
 
 
@@ -1624,8 +1634,14 @@ async def update_income(session: AsyncSession, income_id: int, user_id: int, dat
         old_wallet.balance = new_balance
 
     await session.commit()
-    await session.refresh(income)
-    return income
+    
+    # ✅ Reload with relationships to avoid MissingGreenlet error
+    result = await session.execute(
+        select(Income)
+        .options(selectinload(Income.wallet), selectinload(Income.income_type))
+        .where(Income.id == income.id)
+    )
+    return result.scalar_one()
 
 
 # =========================================================

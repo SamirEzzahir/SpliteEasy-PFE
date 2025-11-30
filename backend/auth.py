@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from .config import settings
 from .db import get_session
@@ -37,7 +38,9 @@ async def get_current_user(session: AsyncSession = Depends(get_session), token: 
         username: str = payload.get("username")
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = (await session.execute(select(User).where(User.username == username))).scalar_one_or_none()
+    user = (await session.execute(
+        select(User).where(User.username == username).options(selectinload(User.role))
+    )).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user

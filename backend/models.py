@@ -41,6 +41,42 @@ class DebtLoanStatus(enum.Enum):
     partially_paid = "partially_paid"
     fully_paid = "fully_paid"
  
+# ======================
+# Role (RBAC)
+# ======================
+class Role(Base):
+    __tablename__ = "roles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    permissions: Mapped[str] = mapped_column(String(5000), default="[]") # JSON string of permissions
+
+    users: Mapped[list["User"]] = relationship("User", back_populates="role")
+
+
+# ======================
+# Reclamation (Support Tickets)
+# ======================
+class ReclamationStatus(enum.Enum):
+    pending = "pending"
+    in_progress = "in_progress"
+    resolved = "resolved"
+    rejected = "rejected"
+
+class Reclamation(Base):
+    __tablename__ = "reclamations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    subject: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str] = mapped_column(String(2000), nullable=False)
+    status: Mapped[ReclamationStatus] = mapped_column(Enum(ReclamationStatus), default=ReclamationStatus.pending)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="reclamations")
+
+
 # ====================== 
 # User
 # ======================
@@ -57,7 +93,10 @@ class User(Base):
     profile_photo: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gender: Mapped[GenderEnum | None] = mapped_column(Enum(GenderEnum), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # RBAC: Replaces is_admin
+    role_id: Mapped[int | None] = mapped_column(ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
+    
     global_settlement_mode: Mapped[GlobalSettlementMode] = mapped_column(
         Enum(GlobalSettlementMode), 
         default=GlobalSettlementMode.separate
@@ -65,6 +104,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    role: Mapped["Role"] = relationship("Role", back_populates="users")
     memberships: Mapped[list["Membership"]] = relationship("Membership", back_populates="user", cascade="all, delete-orphan")
     expenses_paid: Mapped[list["Expense"]] = relationship("Expense", back_populates="payer", foreign_keys="Expense.payer_id")
     expenses_added: Mapped[list["Expense"]] = relationship("Expense", back_populates="added_by_user", foreign_keys="Expense.added_by")
@@ -82,6 +122,7 @@ class User(Base):
     income_sources: Mapped[list["IncomeSource"]] = relationship("IncomeSource", back_populates="user", cascade="all, delete-orphan")
     debts: Mapped[list["Debt"]] = relationship("Debt", back_populates="user", cascade="all, delete-orphan")
     loans: Mapped[list["Loan"]] = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
+    reclamations: Mapped[list["Reclamation"]] = relationship("Reclamation", back_populates="user", cascade="all, delete-orphan")
 
 # ======================
 # Group

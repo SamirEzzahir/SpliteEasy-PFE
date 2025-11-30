@@ -327,22 +327,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderSystemSelector() {
     systemSelector.innerHTML = "";
     strategies.forEach(s => {
-      const isActive = s.id == currentStrategyId ? "active" : "";
-      const editBtn = !s.is_default
-        ? `<div class="position-absolute top-0 end-0 p-1">
-                     <button class="btn btn-xs btn-link text-muted p-0 edit-strategy-btn" data-id="${s.id}" title="Edit">
-                       <i class="bi bi-pencil-fill" style="font-size: 0.7rem;"></i>
-                     </button>
-                   </div>`
-        : "";
-
       const cardHtml = `
                 <div class="col-4 col-md-3 position-relative">
-                    <div class="system-select-card ${isActive}" data-id="${s.id}">
+                    <div class="system-select-card" data-id="${s.id}" style="cursor: pointer;">
                         <i class="bi ${s.icon}"></i>
                         <div class="fw-bold small text-truncate w-100 px-1">${s.name}</div>
                     </div>
-                    ${editBtn}
                 </div>
             `;
       systemSelector.insertAdjacentHTML("beforeend", cardHtml);
@@ -350,17 +340,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.querySelectorAll(".system-select-card").forEach(card => {
       card.addEventListener("click", () => {
-        currentStrategyId = card.dataset.id;
-        renderSystemSelector();
+        openStrategyDetails(card.dataset.id);
       });
     });
+  }
 
-    document.querySelectorAll(".edit-strategy-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openEditModal(btn.dataset.id);
-      });
-    });
+  function openStrategyDetails(id) {
+    const strategy = strategies.find(s => s.id == id);
+    if (!strategy) return;
+
+    // Populate fields
+    strategyIdInput.value = strategy.id;
+    strategyNameInput.value = strategy.name;
+    document.getElementById("necInput").value = Math.round(strategy.nec * 100);
+    document.getElementById("ffaInput").value = Math.round(strategy.ffa * 100);
+    document.getElementById("eduInput").value = Math.round(strategy.edu * 100);
+    document.getElementById("ltssInput").value = Math.round(strategy.ltss * 100);
+    document.getElementById("playInput").value = Math.round(strategy.play * 100);
+    document.getElementById("giveInput").value = Math.round(strategy.give * 100);
+    updateTotalPercent();
+
+    // Handle Read-Only vs Edit
+    if (strategy.is_default) {
+      strategyModalTitle.textContent = "Strategy Details (Read-Only)";
+      strategyNameInput.disabled = true;
+      percentInputs.forEach(input => input.disabled = true);
+      saveStrategyBtn.classList.add("d-none"); // Hide save button
+    } else {
+      strategyModalTitle.textContent = "Edit Strategy";
+      strategyNameInput.disabled = false;
+      percentInputs.forEach(input => input.disabled = false);
+      saveStrategyBtn.classList.remove("d-none"); // Show save button
+      saveStrategyBtn.disabled = false; // Enable if valid
+    }
+
+    strategyModal.show();
   }
 
   function populateDistributeSelect() {
@@ -422,27 +436,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (name) addIncomeSource(name);
   });
 
-  // Strategy Management (Simplified for brevity, same as before)
-  function openEditModal(id) {
-    const strategy = strategies.find(s => s.id == id);
-    if (!strategy) return;
-    strategyModalTitle.textContent = "Edit Strategy";
-    strategyIdInput.value = strategy.id;
-    strategyNameInput.value = strategy.name;
-    document.getElementById("necInput").value = Math.round(strategy.nec * 100);
-    document.getElementById("ffaInput").value = Math.round(strategy.ffa * 100);
-    document.getElementById("eduInput").value = Math.round(strategy.edu * 100);
-    document.getElementById("ltssInput").value = Math.round(strategy.ltss * 100);
-    document.getElementById("playInput").value = Math.round(strategy.play * 100);
-    document.getElementById("giveInput").value = Math.round(strategy.give * 100);
-    updateTotalPercent();
-    strategyModal.show();
-  }
-
+  // Strategy Management
   document.getElementById("addStrategyBtn").addEventListener("click", () => {
     strategyModalTitle.textContent = "Create New Strategy";
     strategyForm.reset();
     strategyIdInput.value = "";
+
+    // Enable inputs
+    strategyNameInput.disabled = false;
+    percentInputs.forEach(input => input.disabled = false);
+    saveStrategyBtn.classList.remove("d-none");
+
     updateTotalPercent();
   });
 
@@ -452,6 +456,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       total += parseInt(input.value) || 0;
     });
     totalPercentDisplay.textContent = total + "%";
+
+    // Only validate if inputs are enabled (i.e., not read-only)
+    if (strategyNameInput.disabled) return;
+
     if (total === 100) {
       totalPercentDisplay.classList.remove("text-danger");
       totalPercentDisplay.classList.add("text-success");
@@ -466,6 +474,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   percentInputs.forEach(input => {
     input.addEventListener("input", updateTotalPercent);
   });
+
+  // Manage Strategy Button (in Distribute Modal)
+  const manageStrategyBtn = document.getElementById("manageStrategyBtn");
+  if (manageStrategyBtn) {
+    manageStrategyBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const selectedId = document.getElementById("distributeStrategy").value;
+      if (selectedId) {
+        openStrategyDetails(selectedId);
+      }
+    });
+  }
 
   // Initial Load
   await fetchStrategies();
