@@ -18,6 +18,31 @@ let expensesPagination = {
 };
 
 // ----------------------------
+// Helper Functions
+// ----------------------------
+async function fetchCurrentUser() {
+  try {
+    const res = await fetch(`${API_URL}/users/user/me`, { headers: getHeaders() });
+    if (!res.ok) throw new Error("Failed to fetch current user");
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching current user:", err);
+    return null;
+  }
+}
+
+async function fetchFriends() {
+  try {
+    const res = await fetch(`${API_URL}/friends/my`, { headers: getHeaders() });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching friends:", err);
+    return [];
+  }
+}
+
+// ----------------------------
 // Edit Group Modal Functions
 // ----------------------------
 async function openEditGroupModalFromExpenses() {
@@ -2316,9 +2341,352 @@ async function addMemberFromModal(modal) {
   selectedCards.forEach(card => card.classList.remove('selected'));
 }
 
+// Redesigned Manage Members Modal Logic
+
+// Initialize modal when opened
+document.getElementById('manageMembersModal')?.addEventListener('show.bs.modal', async () => {
+  const groupTitle = document.getElementById('groupTitle')?.textContent.trim() || 'Group';
+  const modalTitle = document.getElementById('manageMembersGroupTitle');
+  if (modalTitle) modalTitle.textContent = groupTitle;
+
+  // Load data
+  await Promise.all([
+    renderFriendsForInvite(),
+    renderGroupMembersForManage()
+  ]);
+});
+
+// Render Friends List for Invite (Left Panel)
+async function renderFriendsForInvite() {
+  const container = document.getElementById('friendsListContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="text-center text-muted py-4">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      <span class="ms-2">Loading friends...</span>
+    </div>
+  `;
+
+  try {
+    const friends = await fetchFriends(); // Assuming this exists and returns list of friends
+    // Filter out friends who are already members
+    // We need current members first
+    const params = new URLSearchParams(window.location.search);
+    const groupId = params.get("id");
+    const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`, { headers: getHeaders() });
+    const members = await membersRes.json();
+    // Ensure IDs are numbers for comparison
+    const memberIds = new Set(members.map(m => Number(m.user_id)));
+
+    const availableFriends = friends.filter(f => !memberIds.has(Number(f.user_id)));
+
+    if (availableFriends.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-emoji-frown fs-1 mb-2"></i>
+          <p class="mb-0">No friends to add.</p>
+          <small>Invite friends to SplitEasy first!</small>
+        </div>
+      `;
+      updateAddButtonState();
+      return;
+    }
+
+    container.innerHTML = '';
+    console.log("Friends loaded:", availableFriends); // Debugging
+    availableFriends.forEach(friend => {
+      const friendId = friend.user_id;
+      const friendName = friend.friend_username || friend.username || 'Unknown';
+      const friendAvatar = friend.profile_photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(friendName) + '&background=random';
+
+      if (!friendId) console.error("Friend ID missing for:", friend);
+
+      const item = document.createElement('label');
+      item.className = 'd-flex align-items-center gap-3 p-3 rounded-3 hover-bg-light cursor-pointer border-bottom border-light';
+      item.innerHTML = `
+        <img src="${friendAvatar}" class="rounded-circle object-fit-cover" width="40" height="40" alt="${friendName}">
+        <div class="flex-grow-1">
+          <p class="mb-0 fw-semibold text-dark">${friendName}</p>
+        </div>
+        <input class="form-check-input fs-5 friend-checkbox" type="checkbox" value="${friendId}">
+      `;
+
+      // Add click event to toggle checkbox logic
+      const checkbox = item.querySelector('input');
+      checkbox.addEventListener('change', updateAddButtonState);
+
+      container.appendChild(item);
+    });
+
+  } catch (err) {
+    console.error("Error loading friends for invite:", err);
+    container.innerHTML = `
+      <div class="text-center text-danger py-4">
+        <i class="bi bi-exclamation-triangle fs-1 mb-2"></i>
+        <p>Failed to load friends.</p>
+    `;
+  }
+}
+
+// Initialize Search Listener robustly
+function initFriendSearch() {
+  const searchInput = document.getElementById('searchFriendsInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const container = document.getElementById('friendsListContainer');
+      if (!container) return;
+
+      const items = container.querySelectorAll('label');
+      items.forEach(item => {
+        const name = item.querySelector('p').textContent.toLowerCase();
+        item.style.display = name.includes(term) ? 'flex' : 'none';
+      });
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initFriendSearch);
+} else {
+  initFriendSearch();
+}
+
+// Render Current Members (Right Panel)
+async function renderGroupMembersForManage() {
+  const container = document.getElementById('currentMembersList');
+  const countBadge = document.getElementById('currentMembersTitle'); // Using title to append count
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="text-center text-muted py-4">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      <span class="ms-2">Loading members...</span>
+    </div>
+  `;
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const groupId = params.get("id");
+
+    // Fetch members and current user in parallel
+    const [membersRes, currentUser] = await Promise.all([
+      fetch(`${API_URL}/groups/${groupId}/members`, { headers: getHeaders() }),
+      fetchCurrentUser()
+    ]);
+
+    if (!membersRes.ok) throw new Error("Failed to fetch members");
+    const members = await membersRes.json();
+
+    // Update count
+    if (countBadge) countBadge.textContent = `Current Members (${members.length})`;
+
+    // Find current user's membership to check admin status
+    const myMembership = members.find(m => m.user_id === currentUser?.id);
+    const iAmAdmin = myMembership?.is_admin;
+
+    container.innerHTML = '';
+    members.forEach(member => {
+      const isMe = member.user_id === currentUser?.id;
+      const isAdmin = member.is_admin;
+      const memberName = member.username || 'Unknown';
+      const memberAvatar = member.profile_photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(memberName) + '&background=random';
+      const memberEmail = member.email || 'No email';
+
+      const item = document.createElement('div');
+      item.className = 'd-flex align-items-center gap-3 p-3 rounded-3 hover-bg-light group mb-2 border-bottom border-light';
+
+      let actionBtns = '';
+
+      // Only show actions if I am admin
+      if (iAmAdmin) {
+        // Cannot remove myself or change my own admin status here (usually)
+        // But for other members:
+        if (!isMe) {
+          // Toggle Admin Button
+          const adminIcon = isAdmin ? 'bi-shield-check text-success' : 'bi-shield text-muted';
+          const adminTitle = isAdmin ? 'Remove Admin' : 'Make Admin';
+          const adminAction = isAdmin ? 'false' : 'true';
+
+          actionBtns += `
+              <button class="btn btn-icon btn-sm me-1" 
+                      onclick="toggleMemberAdmin(${member.user_id}, ${adminAction})" 
+                      title="${adminTitle}">
+                <i class="bi ${adminIcon} fs-5"></i>
+              </button>
+            `;
+
+          // Remove Member Button
+          actionBtns += `
+              <button class="btn btn-icon btn-sm text-danger" 
+                      onclick="removeMember(${member.user_id})" title="Remove Member">
+                <i class="bi bi-trash fs-5"></i>
+              </button>
+            `;
+        }
+      }
+
+      let roleBadge = isAdmin
+        ? `<span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 text-uppercase" style="font-size: 0.7rem;">Admin</span>`
+        : `<span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1 text-uppercase" style="font-size: 0.7rem;">Member</span>`;
+
+      item.innerHTML = `
+        <img src="${memberAvatar}" class="rounded-circle object-fit-cover" width="40" height="40" alt="${memberName}">
+        <div class="flex-grow-1">
+          <p class="mb-0 fw-medium text-dark">${memberName} ${isMe ? '(You)' : ''}</p>
+          <p class="mb-0 small text-muted">${memberEmail}</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            ${roleBadge}
+            ${actionBtns}
+        </div>
+      `;
+      container.appendChild(item);
+    });
+
+  } catch (err) {
+    console.error("Error loading group members:", err);
+    container.innerHTML = `
+      <div class="text-center text-danger py-4">
+        <i class="bi bi-exclamation-triangle fs-1 mb-2"></i>
+        <p>Failed to load members.</p>
+      </div>
+    `;
+  }
+}
+
+// Toggle Member Admin Status
+async function toggleMemberAdmin(membershipId, makeAdmin) {
+  const action = makeAdmin ? "promote to admin" : "remove admin rights from";
+  if (!confirm(`Are you sure you want to ${action} this member?`)) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const groupId = params.get("id");
+
+  try {
+    const res = await fetch(`${API_URL}/groups/${groupId}/members/${membershipId}`, {
+      method: "PUT",
+      headers: Object.assign({ "Content-Type": "application/json" }, getHeaders()),
+      body: JSON.stringify({ is_admin: makeAdmin })
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => null);
+      throw new Error(e?.detail || "Failed to update member status");
+    }
+
+    showSuccess(`Member status updated successfully`);
+    renderGroupMembersForManage(); // Refresh list
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+function updateAddButtonState() {
+  const checkboxes = document.querySelectorAll('.friend-checkbox:checked');
+  const btn = document.getElementById('addMembersBtn');
+  if (btn) {
+    btn.disabled = checkboxes.length === 0;
+    btn.textContent = checkboxes.length > 0 ? `Add ${checkboxes.length} Member${checkboxes.length > 1 ? 's' : ''}` : 'Add Members';
+  }
+}
+
+// Add Member Submit Handler
+document.getElementById('addMembersBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('addMembersBtn');
+  const checkboxes = document.querySelectorAll('.friend-checkbox:checked');
+  const makeAdmin = document.getElementById('makeAdminToggle')?.checked || false;
+
+  if (checkboxes.length === 0) return;
+
+  const selectedUserIds = Array.from(checkboxes)
+    .map(cb => parseInt(cb.value))
+    .filter(id => !isNaN(id)); // Filter out invalid IDs
+
+  if (selectedUserIds.length === 0) {
+    showError("Invalid selection. Please try again.");
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const groupId = params.get("id");
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Adding...';
+
+  try {
+    // Add members one by one or batch if API supports it. 
+    // Existing API seems to support batch: POST /groups/{id}/add_members with { user_ids: [], is_admin: bool }
+    // Let's verify existing addMemberFromModal logic or rewrite it.
+    // The previous code used `addMemberFromModal` which called POST /groups/{id}/add_members
+
+    const payload = {
+      user_ids: selectedUserIds,
+      is_admin: makeAdmin
+    };
+
+    const res = await fetch(`${API_URL}/groups/${groupId}/add_members`, {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, getHeaders()),
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => null);
+      throw new Error(e?.detail || "Failed to add members");
+    }
+
+    showSuccess(`Successfully added ${selectedUserIds.length} member(s)!`);
+
+    // Refresh lists
+    await Promise.all([
+      renderFriendsForInvite(),
+      renderGroupMembersForManage()
+    ]);
+
+    // Reset button
+    btn.disabled = true;
+    btn.textContent = 'Add Members';
+    document.getElementById('makeAdminToggle').checked = false;
+
+  } catch (err) {
+    console.error(err);
+    showError(err.message);
+    btn.disabled = false;
+    btn.textContent = `Add ${checkboxes.length} Member${checkboxes.length > 1 ? 's' : ''}`;
+  }
+});
+
+// Remove Member (Moved from inline onclick)
+async function removeMember(membershipId) {
+  if (!confirm("Are you sure you want to remove this member?")) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const groupId = params.get("id");
+
+  try {
+    const res = await fetch(`${API_URL}/groups/${groupId}/members/${membershipId}`, {
+      method: "DELETE",
+      headers: getHeaders()
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => null);
+      throw new Error(e?.detail || "Failed to remove member");
+    }
+
+    showSuccess("Member removed successfully");
+    renderGroupMembersForManage(); // Refresh list
+    renderFriendsForInvite(); // Friend becomes available again
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+// Legacy function stub if needed by other parts, but we replaced the logic
 async function addMemberModalSubmit() {
-  const modal = document.getElementById("manageMembersModal");
-  await addMemberFromModal(modal);
+  console.warn("addMemberModalSubmit is deprecated. Use the new event listener.");
 }
 
 // Update Member (toggle admin)
