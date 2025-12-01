@@ -2,6 +2,7 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +14,7 @@
       font-family: 'Segoe UI', sans-serif;
       scroll-behavior: smooth;
     }
+
     /* Hero */
     .hero {
       background: linear-gradient(135deg, #4e73df, #1cc88a);
@@ -22,30 +24,40 @@
       position: relative;
       overflow: hidden;
     }
+
     .hero h1 span.typing {
       border-right: 3px solid #fff;
       padding-right: 5px;
       animation: blink 0.8s infinite;
     }
+
     @keyframes blink {
-      0%, 100% { border-color: transparent; }
-      50% { border-color: white; }
+
+      0%,
+      100% {
+        border-color: transparent;
+      }
+
+      50% {
+        border-color: white;
+      }
     }
 
     /* Features */
     .feature-card {
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
+
     .feature-card:hover {
       transform: translateY(-8px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
 
     /* Screenshot */
     .screenshot {
       max-width: 100%;
       border-radius: 15px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
 
     /* Footer */
@@ -55,94 +67,91 @@
     }
   </style>
   <style>
-  /* Smooth gradient button */
-  .btn-gradient {
-    background: linear-gradient(90deg, #007bff, #00b4d8);
-    color: #fff !important;
-    border: none;
-    transition: all 0.3s ease;
-  }
-  .btn-gradient:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-  }
+    /* Smooth gradient button */
+    .btn-gradient {
+      background: linear-gradient(90deg, #007bff, #00b4d8);
+      color: #fff !important;
+      border: none;
+      transition: all 0.3s ease;
+    }
 
-  /* Underline effect on hover */
-  .hover-underline {
-    position: relative;
-    transition: color 0.2s ease;
-  }
-  .hover-underline::after {
-    content: "";
-    position: absolute;
-    width: 0%;
-    height: 2px;
-    left: 0;
-    bottom: -3px;
-    background-color: #007bff;
-    transition: width 0.3s ease;
-  }
-  .hover-underline:hover::after {
-    width: 100%;
-  }
+    .btn-gradient:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
 
-  /* Glassy effect (optional aesthetic boost) */
-  .backdrop-blur {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-</style>
+    /* Underline effect on hover */
+    .hover-underline {
+      position: relative;
+      transition: color 0.2s ease;
+    }
+
+    .hover-underline::after {
+      content: "";
+      position: absolute;
+      width: 0%;
+      height: 2px;
+      left: 0;
+      bottom: -3px;
+      background-color: #007bff;
+      transition: width 0.3s ease;
+    }
+
+    .hover-underline:hover::after {
+      width: 100%;
+    }
+
+    /* Glassy effect (optional aesthetic boost) */
+    .backdrop-blur {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  </style>
 
 </head>
+
 <body>
 
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg shadow-sm sticky-top bg-white bg-opacity-90 backdrop-blur">
-  <div class="container py-2">
-    <!-- Brand -->
-    <a class="navbar-brand fw-bold d-flex align-items-center gap-2 text-primary" href="#">
-      <i class="bi bi-cash-coin fs-4"></i> SplitEasy
-    </a>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg shadow-sm sticky-top bg-white bg-opacity-90 backdrop-blur">
+    <div class="container py-2">
+      <!-- Brand -->
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2 text-primary" href="#">
+        <i class="bi bi-cash-coin fs-4"></i> SplitEasy
+      </a>
 
-    <!-- Toggler -->
-    <button
-      class="navbar-toggler border-0"
-      type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#navbarNav"
-      aria-controls="navbarNav"
-      aria-expanded="false"
-      aria-label="Toggle navigation"
-    >
-      <span class="navbar-toggler-icon"></span>
-    </button>
+      <!-- Toggler -->
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-    <!-- Menu -->
-    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-      <ul class="navbar-nav align-items-lg-center gap-lg-3 text-center">
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-dark hover-underline" href="#features">Features</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-dark hover-underline" href="#pricing">Pricing</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-dark hover-underline" href="login.html">Login</a>
-        </li>
-        <li class="nav-item mt-2 mt-lg-0">
-          <a class="btn btn-gradient px-4 py-2 fw-semibold shadow-sm" href="signup.html">Get Started</a>
-        </li>
-      </ul>
+      <!-- Menu -->
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav align-items-lg-center gap-lg-3 text-center">
+          <li class="nav-item">
+            <a class="nav-link fw-medium text-dark hover-underline" href="#features">Features</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link fw-medium text-dark hover-underline" href="#pricing">Pricing</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link fw-medium text-dark hover-underline" href="login.html">Login</a>
+          </li>
+          <li class="nav-item mt-2 mt-lg-0">
+            <a class="btn btn-gradient px-4 py-2 fw-semibold shadow-sm" href="signup.html">Get Started</a>
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
-</nav>
+  </nav>
 
-<!-- Custom Styles -->
+  <!-- Custom Styles -->
 
 
   <!-- Hero -->
   <section class="hero">
-    <div class="container"> 
+    <div class="container">
       <h1 class="display-4 fw-bold">
         <span class="typing"></span>
       </h1>
@@ -151,7 +160,7 @@
     </div>
   </section>
 
-  <!-- Features --> 
+  <!-- Features -->
   <section id="features" class="py-5">
     <div class="container text-center">
       <h2 class="fw-bold mb-5">Why Choose SplitEasy?</h2>
@@ -275,62 +284,50 @@
     features.forEach(card => observer.observe(card));
   </script>
 
-<script>
-  // -----------------------------
-  // 🔐 Auth Redirect Logic
-  // -----------------------------
-  document.addEventListener("DOMContentLoaded", () => {
-    const token = localStorage.getItem("token");
+  <script>
+    // -----------------------------
+    // 🔐 Auth Redirect Logic
+    // -----------------------------
+    document.addEventListener("DOMContentLoaded", () => {
+      const token = localStorage.getItem("token");
 
-    // Handle "Start for Free" button
-    const startBtn = document.querySelector('a[href="signup.html"].btn');
-    if (startBtn) {
-      startBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (token) {
-          // already logged in → go home
-          window.location.href = "home.html";
-        } else {
-          // not logged in → go to signup page
-          window.location.href = "signup.html";
-        }
-      });
-    }
+      // Handle "Start for Free" button
+      const startBtn = document.querySelector('a[href="signup.html"].btn');
+      if (startBtn) {
+        startBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (token) {
+            // already logged in → go home
+            window.location.href = "home.html";
+          } else {
+            // not logged in → go to signup page
+            window.location.href = "signup.html";
+          }
+        });
+      }
 
-    // Handle "Login" and "Signup" links in navbar or anywhere else
-    document.querySelectorAll('a[href="login.html"], a[href="signup.html"]').forEach(link => {
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        const target = link.getAttribute("href");
+      // Handle "Login" and "Signup" links in navbar or anywhere else
+      document.querySelectorAll('a[href="login.html"], a[href="signup.html"]').forEach(link => {
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          const target = link.getAttribute("href");
 
-        if (token) {
-          // already logged in → go home
-          window.location.href = "home.html";
-        } else {
-          // not logged in → go to clicked link
-          window.location.href = target;
-        }
+          if (token) {
+            // already logged in → go home
+            window.location.href = "home.html";
+          } else {
+            // not logged in → go to clicked link
+            window.location.href = target;
+          }
+        });
       });
     });
-  });
-</script>
+  </script>
 
 
 
   <!-- Animate.css for scroll animations -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 </body>
+
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
- 

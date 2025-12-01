@@ -217,8 +217,8 @@ async function loadGroupInfo() {
     }
 
     // ✅ Load dependent data after group info is ready
-    loadPayersForExpense();
-    loadMembersForExpense();
+    // loadPayersForExpense(); // Removed - handled by initializeExpenseModal
+    // loadMembersForExpense(); // Removed - handled by initializeExpenseModal
 
   } catch (err) {
     console.error("Error loading group info:", err);
@@ -226,94 +226,7 @@ async function loadGroupInfo() {
   }
 }
 
-// Load payer options for expense modal
-async function loadPayersForExpense() {
-  try {
-    console.log("🔄 Loading payers for expense modal");
-
-    // Check if we're on the expenses page
-    if (!window.location.pathname.includes('expenses.html')) {
-      console.log("⚠️ Not on expenses page, skipping loadPayersForExpense");
-      return;
-    }
-
-    // ✅ Hide Group Select since we are already in a group
-    const groupSelectContainer = document.getElementById('groupsListForExpenses')?.closest('.col-md-6');
-    if (groupSelectContainer) {
-      groupSelectContainer.style.display = 'none';
-      // Also ensure the select has the current group value
-      const groupSelect = document.getElementById('groupsListForExpenses');
-      if (groupSelect && currentGroup) {
-        // Create option if it doesn't exist
-        if (groupSelect.options.length === 0 || groupSelect.value !== currentGroup.id) {
-          groupSelect.innerHTML = `<option value="${currentGroup.id}" selected>${currentGroup.title}</option>`;
-        }
-        groupSelect.value = currentGroup.id;
-      }
-    }
-
-    // ✅ Hide Members Select if Personal Group
-    const membersSelectSection = document.getElementById('membersSelectionSection');
-    const membersCard = document.getElementById('membersListForExpense')?.closest('.card');
-
-    // ✅ Hide Payer Select if Personal Group
-    const payerSelectionSection = document.getElementById('payerSelectionSection');
-    const payerInputRow = document.getElementById('expensePayer')?.closest('.row');
-
-    if (currentGroup && currentGroup.type === 'Personal') {
-      if (membersSelectSection) membersSelectSection.style.display = 'none';
-      if (membersCard) membersCard.style.display = 'none';
-
-      if (payerSelectionSection) payerSelectionSection.style.display = 'none';
-      if (payerInputRow) payerInputRow.style.display = 'none';
-    } else {
-      if (membersSelectSection) membersSelectSection.style.display = 'flex';
-      if (membersCard) membersCard.style.display = 'block';
-
-      if (payerSelectionSection) payerSelectionSection.style.display = 'flex'; // Restore header
-      if (payerInputRow) payerInputRow.style.display = 'flex'; // Restore input
-    }
-
-
-    const members = await fetchMembers();
-    const payerSelect = document.getElementById('expensePayer');
-
-    if (!payerSelect) {
-      console.warn("Payer select not found");
-      return;
-    }
-
-    // Get current user for comparison
-    const currentUser = await fetchCurrentUser();
-
-    // Clear existing options except the first one
-    payerSelect.innerHTML = '<option value="">Select who paid...</option>';
-
-    // Add member options
-    members.forEach(member => {
-      const option = document.createElement('option');
-      option.value = member.user_id;
-      option.textContent = `${member.username || `User ${member.user_id}`}${member.user_id === currentUser?.id ? ' (You)' : ''}`;
-      payerSelect.appendChild(option);
-    });
-
-    // ✅ Auto-select current user if Personal Group
-    if (currentGroup && currentGroup.type === 'Personal' && currentUser) {
-      payerSelect.value = currentUser.id;
-      // Trigger change event to update wallets
-      updateWalletsForPayer();
-    }
-
-    console.log("✅ Payers loaded for expense modal");
-
-    // Add event listener for payer change
-    payerSelect.addEventListener('change', updateWalletsForPayer);
-
-  } catch (err) {
-    console.error("❌ Error loading payers for expense:", err);
-    showError("Failed to load payers");
-  }
-}
+// loadPayersForExpense removed - redundant
 
 // Update wallets when payer changes
 function updateWalletsForPayer() {
@@ -365,113 +278,9 @@ function updateWalletsForPayer() {
   });
 }
 
-async function loadMembersForExpense() {
-  try {
-    console.log("🔄 Loading members for expense modal");
+// loadMembersForExpense removed - redundant and caused infinite loop
 
-    // Check if we're on the expenses page
-    if (!window.location.pathname.includes('expenses.html')) {
-      console.log("⚠️ Not on expenses page, skipping loadMembersForExpense");
-      return;
-    }
-
-    // Use the existing fetchMembers function
-    const members = await fetchMembers();
-
-    const membersListContainer = document.getElementById('membersListForExpense');
-    if (!membersListContainer) {
-      console.warn("Members list container not found, retrying in 100ms...");
-      setTimeout(() => loadMembersForExpense(), 100);
-      return;
-    }
-
-    if (members.length === 0) {
-      membersListContainer.innerHTML = `
-        <div class="text-center text-muted py-3">
-          <i class="bi bi-info-circle fs-1 mb-2"></i>
-          <p>No members found in this group</p>
-        </div>
-      `;
-      return;
-    }
-
-    // Use the existing renderMembers function but for the expense modal
-    renderMembersForExpense(membersListContainer, members);
-
-    // Update preview after loading
-    updateExpensePreview();
-
-  } catch (err) {
-    console.error("❌ Error loading members for expense:", err);
-    const membersListContainer = document.getElementById('membersListForExpense');
-    if (membersListContainer) {
-      membersListContainer.innerHTML = `
-        <div class="text-center text-danger py-3">
-          <i class="bi bi-exclamation-triangle fs-1 mb-2"></i>
-          <p>Failed to load members</p>
-        </div>
-      `;
-    }
-  }
-}
-
-function renderMembersForExpense(container, members) {
-  if (!container || !Array.isArray(members)) return;
-
-  container.innerHTML = "";
-  container.className = "row g-3 justify-content-center"; // responsive grid spacing
-
-  members.forEach(m => {
-    const col = document.createElement("div");
-    col.className = "col-6 col-md-4 col-lg-3 col-xl-2"; // auto-fit grid
-
-    const card = document.createElement("div");
-    card.className = "member-card card text-center border-0 shadow-sm";
-    card.style.cursor = "pointer";
-    card.style.transition = "all 0.25s ease";
-    card.style.userSelect = "none";
-    card.style.padding = "1rem";
-
-    // ✅ Avatar or initials
-    const initials = (m.username || "U")
-      .split(" ")
-      .map(w => w[0])
-      .join("")
-      .toUpperCase();
-
-    card.innerHTML = `
-      <input class="form-check-input d-none" type="checkbox" value="${m.user_id}" id="member_${m.user_id}" onchange="updateExpensePreview()" ${m.user_id === currentUser?.id ? 'checked' : ''}>
-      <div class="avatar mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle">
-        ${initials}
-      </div>
-      <h6 class="mb-0 text-truncate">${m.username || m.user_id}</h6>
-      <small class="text-muted">${m.is_admin ? "👑 Admin" : "👤 Member"}</small>
-      ${m.user_id === currentUser?.id ? '<span class="badge bg-primary mt-1">You</span>' : ''}
-    `;
-
-    // ✅ Click to toggle checkbox
-    card.addEventListener("click", (e) => {
-      if (e.target.type === "checkbox") return;
-      const checkbox = card.querySelector("input[type=checkbox]");
-      checkbox.checked = !checkbox.checked;
-      updateExpensePreview();
-    });
-
-    // ✅ Visual feedback
-    card.addEventListener("mouseenter", () => {
-      card.style.transform = "translateY(-2px)";
-      card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-    });
-
-    card.addEventListener("mouseleave", () => {
-      card.style.transform = "translateY(0)";
-      card.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-    });
-
-    col.appendChild(card);
-    container.appendChild(col);
-  });
-}
+// renderMembersForExpense removed - redundant
 
 function selectAllMembers() {
   const checkboxes = document.querySelectorAll('#membersListForExpense input[type="checkbox"]');
@@ -489,44 +298,7 @@ function deselectAllMembers() {
   updateExpensePreview();
 }
 
-function updateExpensePreview() {
-  try {
-    const amount = parseFloat(document.getElementById('expenseAmount')?.value || 0);
-    const selectedMembers = document.querySelectorAll('#membersListForExpense input[type="checkbox"]:checked');
-    const categorySelect = document.getElementById("expenseCategory");
-    const category = categorySelect?.selectedOptions[0]?.textContent || "";
-    console.log("jsamkslaksjamsa", selectedMembers);
-    const memberCount = selectedMembers.length;
-    const perPerson = memberCount > 0 ? (amount / memberCount).toFixed(2) : 0;
-
-    const previewCard = document.getElementById('expensePreview');
-    if (!previewCard) return;
-
-    if (amount > 0 && memberCount > 0) {
-      previewCard.style.display = 'block';
-
-      document.getElementById('previewAmount').textContent = `${amount.toFixed(2)} ${currentGroup?.currency || 'MAD'}`;
-      document.getElementById('previewPerPerson').textContent = `${perPerson} ${currentGroup?.currency || 'MAD'}`;
-      document.getElementById('previewMemberCount').textContent = memberCount;
-      document.getElementById('previewCategory').textContent = category || '-';
-
-      // 🧩 Get usernames (the <h6> text inside the same .member-card)
-      const memberNames = Array.from(selectedMembers).map(cb => {
-        const card = cb.closest('.member-card');
-        const nameEl = card?.querySelector('h6');
-        return nameEl ? nameEl.textContent.trim() : '';
-      });
-
-      document.getElementById('previewParticipate').textContent = memberNames || '-';
-
-
-    } else {
-      previewCard.style.display = 'none';
-    }
-  } catch (err) {
-    console.error("❌ Error updating expense preview:", err);
-  }
-}
+// updateExpensePreview removed - redundant
 
 // -----------------------------
 // Edit Group Functions
@@ -1192,22 +964,21 @@ async function loadWallets() {
     // Store wallets globally for filtering by payer
     userWallets = wallets;
 
-    // Populate wallet dropdowns
-    const addWalletSelect = document.getElementById('expenseWallet');
-    const editWalletSelect = document.getElementById('editWallet');
+    // Populate wallet dropdown
+    const addWalletSelectNew = document.getElementById('addWallet');
 
-    // Populate add wallet select
-    if (addWalletSelect) {
-      addWalletSelect.innerHTML = '<option value="">No wallet selected</option>';
-      wallets.forEach(wallet => {
+    if (addWalletSelectNew) {
+      addWalletSelectNew.innerHTML = '<option value="">-- Select Wallet --</option>';
+      userWallets.forEach(wallet => {
         const option = document.createElement('option');
         option.value = wallet.id;
         option.textContent = `${wallet.name} (${wallet.balance.toFixed(2)} ${wallet.currency || 'MAD'})`;
-        addWalletSelect.appendChild(option);
+        addWalletSelectNew.appendChild(option);
       });
     }
 
     // Populate edit wallet select
+    const editWalletSelect = document.getElementById('editWallet');
     if (editWalletSelect) {
       editWalletSelect.innerHTML = '<option value="">No wallet selected</option>';
       wallets.forEach(wallet => {
@@ -1949,117 +1720,93 @@ async function openExpenseModal(expenseId) {
 // -----------------------------
 // Wrapper for modal save button
 // -----------------------------
-async function addExpenseModalSubmit() {
+async function submitAddExpense() {
   try {
     const url = new URL(window.location.href);
     const groupId = url.searchParams.get("id");
 
-    const date = document.getElementById("expenseDate").value;
-    const time = document.getElementById("expenseTime").value;
-    const amount = parseFloat(document.getElementById("expenseAmount").value);
-    const description = document.getElementById("expenseDesc").value.trim();
-    const note = document.getElementById("expenseNote").value;
-    const category = document.getElementById("expenseCategory").value;
-    const walletId = document.getElementById("expenseWallet").value;
-    const payerId = document.getElementById("expensePayer").value;
+    const description = document.getElementById("addDescription").value.trim();
+    const category = document.getElementById("addCategory").value;
+    const amount = parseFloat(document.getElementById("addAmount").value);
+    const dateStr = document.getElementById("addDate").value;
+    const timeStr = document.getElementById("addTime").value;
+    const payerId = parseInt(document.getElementById("addPayer").value);
+    const walletId = document.getElementById("addWallet").value ? parseInt(document.getElementById("addWallet").value) : null;
+    const note = document.getElementById("addNote").value;
+    const splitType = document.querySelector('input[name="addSplitType"]:checked').value;
 
+    if (!groupId) return showError("No group selected");
+    if (!description) return showError("Please enter a description");
+    if (isNaN(amount) || amount <= 0) return showError("Amount must be a positive number");
+    if (!dateStr || !timeStr) return showError("Please select date and time");
+    if (!payerId) return showError("Please select who paid");
 
-    if (!groupId) {
-      showError("No group selected");
-      return;
-    }
-
-    // Fetch current user first
-    const currentUser = await fetchCurrentUser();
-    if (!currentUser) {
-      showError("User not authenticated");
-      return;
-    }
-
-
-
-    if (!date || !time || !amount || !description) {
-      showError("Please fill in all required fields");
-      return;
-    }
-
-    if (amount <= 0) {
-      showError("Amount must be greater than 0");
-      return;
-    }
-
-    if (!payerId) {
-      showError("Please select who paid for this expense");
-      return;
-    }
-
-    // Get selected members
-    const checked = document.querySelectorAll('#membersListForExpense input[type="checkbox"]:checked');
-    const selectedMembers = Array.from(checked).map(checkbox => parseInt(checkbox.value));
-    if (selectedMembers.length === 0) {
-      showError("Please select at least one member");
-      return;
-    }
-
-    // Build splits equally
-    const share = amount / selectedMembers.length;
-    const splits = selectedMembers.map(id => ({ user_id: id, share_amount: share }));
-
-    // Combine date and time - create in LOCAL timezone explicitly
-    // Parse date components and create Date object in local timezone
-    let expenseDate;
+    // Reconstruct Date
+    let createdAtISO;
     try {
-      // Parse date components
-      const [year, month, day] = date.split('-').map(Number);
-      const [hours, minutes] = time.split(':').map(Number);
-
-      // Create date in LOCAL timezone (not UTC)
-      // This ensures the date/time you enter is what gets stored
-      expenseDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-      // Validate the date
-      if (isNaN(expenseDate.getTime())) {
-        showError("Invalid date or time");
-        return;
-      }
-
-      // Debug: Log the date conversion
-      console.log("📅 Date creation:", {
-        input: `${date} ${time}`,
-        parsed: { year, month: month - 1, day, hours, minutes },
-        localTime: expenseDate.toLocaleString(),
-        localTimeString: expenseDate.toString(),
-        utcTime: expenseDate.toISOString(),
-        timestamp: expenseDate.getTime(),
-        timezoneOffset: expenseDate.getTimezoneOffset()
-      });
-    } catch (err) {
-      console.error("❌ Error creating date:", err);
-      showError("Invalid date or time format");
-      return;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const newDate = new Date(year, month - 1, day, hours, minutes, 0);
+      createdAtISO = newDate.toISOString();
+    } catch (e) {
+      console.error("Date parsing error", e);
+      return showError("Invalid date or time");
     }
 
-    const expenseData = {
-      group_id: parseInt(groupId),
-      payer_id: parseInt(payerId),
-      description: description,
-      note: note,
-      amount: amount,
-      currency: currentGroup?.currency || "MAD",
-      category: category,
-      wallet_id: walletId ? parseInt(walletId) : null,
-      split_type: "equal",
-      created_at: expenseDate.toISOString(), // Send as UTC ISO string
-      splits
-    };
+    // Collect Splits
+    let splits = [];
+    if (splitType === 'equal') {
+      const checked = document.querySelectorAll("#addEqualSplitMembers input[type=checkbox]:checked");
+      const userIds = Array.from(checked).map(c => parseInt(c.value));
+      if (userIds.length === 0) return showError("Please select at least one member");
+      const share = amount / userIds.length;
+      splits = userIds.map(id => ({ user_id: id, share_amount: share }));
+    }
+    else if (splitType === 'percentage') {
+      const inputs = document.querySelectorAll('.add-percentage-input');
+      let totalPercent = 0;
+      inputs.forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        if (val > 0) {
+          totalPercent += val;
+          const share = (amount * val) / 100;
+          splits.push({ user_id: parseInt(input.dataset.userId), share_amount: share });
+        }
+      });
+      if (Math.abs(totalPercent - 100) > 0.1) return showError(`Total percentage must be 100% (currently ${totalPercent.toFixed(1)}%)`);
+    }
+    else if (splitType === 'custom') {
+      const inputs = document.querySelectorAll('.add-custom-amount-input');
+      let totalSplit = 0;
+      inputs.forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        if (val > 0) {
+          totalSplit += val;
+          splits.push({ user_id: parseInt(input.dataset.userId), share_amount: val });
+        }
+      });
+      if (Math.abs(totalSplit - amount) > 0.01) return showError(`Total split amount (${totalSplit.toFixed(2)}) must match expense amount (${amount.toFixed(2)})`);
+    }
 
-    console.log("🔄 Creating expense:", expenseData);
-    console.log("👥 Selected members:", selectedMembers);
+    if (splits.length === 0) return showError("Please assign splits to at least one member");
+
+    const payload = {
+      group_id: parseInt(groupId),
+      payer_id: payerId,
+      description,
+      amount,
+      currency: currentGroup?.currency || "MAD",
+      category,
+      wallet_id: walletId,
+      note,
+      splits,
+      created_at: createdAtISO
+    };
 
     const res = await fetch(`${API_URL}/expenses`, {
       method: "POST",
       headers: getHeaders(),
-      body: JSON.stringify(expenseData),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -2067,24 +1814,23 @@ async function addExpenseModalSubmit() {
       throw new Error(errorData.detail || "Failed to create expense");
     }
 
-    const newExpense = await res.json();
-    console.log("✅ Expense created:", newExpense);
-
     showSuccess(`Expense "${description}" added successfully!`);
 
     // Close modal
-    const addExpenseModal = bootstrap.Modal.getInstance(document.getElementById('addExpenseModal'));
-    if (addExpenseModal) addExpenseModal.hide();
+    const modalEl = document.getElementById('addExpenseModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
 
+    // Reset form
+    document.getElementById("addExpenseForm").reset();
+    initializeExpenseModal(); // Re-init to reset defaults
 
-    // Clear form
-    document.getElementById("addExpenseModal").querySelector("form").reset();
-
-    // Refresh expenses and wallets
+    // Refresh data
     await Promise.all([
-      loadExpenses(true), // Reset pagination
-      loadWallets(),
-      initializeExpenseModal()
+      loadExpenses(true),
+      loadWallets()
     ]);
 
   } catch (err) {
@@ -2098,66 +1844,85 @@ async function addExpenseModalSubmit() {
 // --------------------------------------
 // Initialize expense modal (clean version)
 // --------------------------------------
+// --------------------------------------
+// Initialize expense modal (clean version)
+// --------------------------------------
+function toggleAddWalletVisibility(payerId) {
+  const walletContainer = document.getElementById('addWalletContainer');
+  if (!walletContainer) return;
+
+  // Assuming currentUser is globally available
+  fetchCurrentUser().then(user => {
+    if (user && payerId === user.id) {
+      walletContainer.style.display = 'block';
+    } else {
+      walletContainer.style.display = 'none';
+      document.getElementById('addWallet').value = ""; // Reset wallet selection
+    }
+  });
+}
+
 async function initializeExpenseModal() {
   try {
     // ✅ Run only on expenses page
     if (!window.location.pathname.includes('expenses.html')) {
-      console.log("⚠️ Not on expenses page, skipping initializeExpenseModal");
       return;
     }
 
-    // ✅ Set current date and time (using LOCAL timezone, not UTC)
+    // ✅ Set current date and time (using LOCAL timezone)
     const now = new Date();
-
-    // Get local date in YYYY-MM-DD format
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const today = `${year}-${month}-${day}`;
 
-    // Get local time in HH:MM format (24-hour)
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const currentTime = `${hours}:${minutes}`;
 
-    const dateInput = document.getElementById('expenseDate');
-    const timeInput = document.getElementById('expenseTime');
+    const dateInput = document.getElementById('addDate');
+    const timeInput = document.getElementById('addTime');
 
     if (dateInput) dateInput.value = today;
     if (timeInput) timeInput.value = currentTime;
 
-    console.log("🕐 Initialized expense modal with local time:", {
-      localDate: today,
-      localTime: currentTime,
-      localFull: now.toLocaleString(),
-      utcFull: now.toISOString()
-    });
+    // ✅ Fetch Data
+    // Use loadWallets() which returns the array of wallets
+    const [currentUser, members, wallets] = await Promise.all([
+      fetchCurrentUser(),
+      fetchMembers(),
+      loadWallets()
+    ]);
 
-    // ✅ Add preview listeners
-    const amountInput = document.getElementById('expenseAmount');
-    const categorySelect = document.getElementById('expenseCategory');
+    // Populate Payer Dropdown
+    const addPayerSelect = document.getElementById('addPayer');
+    if (addPayerSelect) {
+      addPayerSelect.innerHTML = '';
+      members.forEach(member => {
+        const option = document.createElement('option');
+        option.value = member.user_id;
+        option.textContent = `${member.username}${member.user_id === currentUser?.id ? ' (You)' : ''}`;
+        addPayerSelect.appendChild(option);
+      });
 
-    if (amountInput) {
-      amountInput.addEventListener('input', updateExpensePreview);
+      // Default to current user
+      if (currentUser) {
+        addPayerSelect.value = currentUser.id;
+        toggleAddWalletVisibility(currentUser.id);
+      }
+
+      // Listener for Payer Change
+      addPayerSelect.addEventListener('change', (e) => {
+        toggleAddWalletVisibility(parseInt(e.target.value));
+      });
     }
 
-    if (categorySelect) {
-      categorySelect.addEventListener('change', updateExpensePreview);
+    // ✅ Initialize Split Logic
+    if (members.length > 0) {
+      initializeAddSplitLogic(members);
     }
 
-    // ✅ Fetch current user and set default payer
-    const currentUser = await fetchCurrentUser();
-    const payerSelect = document.getElementById('expensePayer');
-
-    if (payerSelect && currentUser) {
-      payerSelect.value = currentUser.id;
-      console.log(`✅ Default payer set to current user: ${currentUser.id}`);
-
-      // Trigger wallet update
-      updateWalletsForPayer();
-    }
-
-    console.log("✅ Expense modal initialized successfully");
+    console.log("✅ Add Expense modal initialized successfully");
   } catch (err) {
     console.error("❌ Error initializing expense modal:", err);
   }
@@ -2655,41 +2420,46 @@ async function handleEditExpense(expenseId) {
     document.getElementById("editCategory").value = expense.category || "";
     document.getElementById("editNote").value = expense.note || "";
     document.getElementById("editWallet").value = expense.wallet_id || "";
-    // Update currency in expense modal
-    const editCurrency = document.getElementById('editCurrency');
-    if (editCurrency) {
-      editCurrency.textContent = expense.currency || 'USD';
+
+    // Update currency symbol
+    const editCurrencySymbol = document.getElementById('editCurrencySymbol');
+    if (editCurrencySymbol) {
+      editCurrencySymbol.textContent = expense.currency || 'MAD';
     }
 
+    // Fill Date (Format YYYY-MM-DD)
+    const dateInput = document.getElementById("editDate");
+    if (dateInput && expense.created_at) {
+      const dateObj = new Date(expense.created_at);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      dateInput.value = `${year}-${month}-${day}`;
+      dateInput.dataset.originalTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    }
 
+    // Setup Delete Button
+    const deleteBtn = document.getElementById("deleteExpenseBtn");
+    if (deleteBtn) {
+      const newBtn = deleteBtn.cloneNode(true);
+      deleteBtn.parentNode.replaceChild(newBtn, deleteBtn);
+      newBtn.addEventListener("click", () => deleteExpense(expense.id));
+    }
 
-
-    // Fill splits
+    // Initialize Split Logic
     const members = await fetchMembers();
-    const editSplitsContainer = document.getElementById("editSplitsContainer");
-    if (editSplitsContainer) setTimeout(() => {
-      editSplitsContainer.innerHTML = "";  // <-- clear old rows
-      renderParticipateCheckboxList(editSplitsContainer, members, expense.splits);
-    }, 50); // tiny delay
+    initializeSplitLogic(members, expense);
 
+    // Show modal
+    const modalEl = document.getElementById("editExpenseModal");
+    if (modalEl) {
+      // Dispose existing instance if any to prevent backdrop issues
+      const existingModal = bootstrap.Modal.getInstance(modalEl);
+      if (existingModal) existingModal.dispose();
 
-
-    // Show modal with delay to ensure DOM is ready
-    setTimeout(() => {
-      try {
-        const modalEl = document.getElementById("editExpenseModal");
-        if (modalEl) {
-          let modal = bootstrap.Modal.getInstance(modalEl);
-          if (!modal) {
-            modal = new bootstrap.Modal(modalEl);
-          }
-          modal.show();
-        }
-      } catch (err) {
-        console.error("Edit modal error:", err);
-      }
-    }, 100);
-
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
+    }
   } catch (err) {
     console.error(err);
     alert("Failed to load expense data.");
@@ -2714,48 +2484,85 @@ async function submitEditExpense() {
   const id = document.getElementById("editExpenseId").value;
   const description = document.getElementById("editDescription").value;
   const amount = parseFloat(document.getElementById("editAmount").value);
-  const currency = document.getElementById("editCurrency").value;
+  const dateStr = document.getElementById("editDate").value;
   const category = document.getElementById("editCategory").value;
   const note = document.getElementById("editNote").value;
   const walletId = parseInt(document.getElementById("editWallet").value);
-  const checked = document.querySelectorAll("#editExpenseModal #editSplitsContainer input[type=checkbox]:checked");
-  const userIds = Array.from(checked).map(c => parseInt(c.value));
-
-  // Debug: Log what's being selected
-  console.log("🔍 Debug - Edit Expense Submission:");
-  console.log("📋 All checkboxes:", document.querySelectorAll("#editExpenseModal #editSplitsContainer input[type=checkbox]"));
-  console.log("✅ Checked checkboxes:", checked);
-  console.log("👥 Selected user IDs:", userIds);
-  console.log("💰 Amount:", amount);
-  console.log("📝 Description:", description);
+  const splitType = document.querySelector('input[name="splitType"]:checked').value;
 
   // Validation
-  if (!description.trim()) {
-    return showError("Please enter a description");
+  if (!description.trim()) return showError("Please enter a description");
+  if (isNaN(amount) || amount <= 0) return showError("Amount must be a positive number");
+  if (!dateStr) return showError("Please select a date");
+
+  // Reconstruct Date
+  let createdAtISO;
+  try {
+    const dateInput = document.getElementById("editDate");
+    const originalTime = dateInput.dataset.originalTime || "00:00";
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const [hours, minutes] = originalTime.split(':').map(Number);
+    const newDate = new Date(year, month - 1, day, hours, minutes, 0);
+    createdAtISO = newDate.toISOString();
+  } catch (e) {
+    console.error("Date parsing error", e);
+    createdAtISO = new Date().toISOString();
   }
 
-  if (isNaN(amount) || amount <= 0) {
-    return showError("Amount must be a positive number");
+  // Collect Splits based on Type
+  let splits = [];
+
+  if (splitType === 'equal') {
+    const checked = document.querySelectorAll("#equalSplitMembers input[type=checkbox]:checked");
+    const userIds = Array.from(checked).map(c => parseInt(c.value));
+    if (userIds.length === 0) return showError("Please select at least one member");
+    const share = amount / userIds.length;
+    splits = userIds.map(id => ({ user_id: id, share_amount: share }));
+  }
+  else if (splitType === 'percentage') {
+    const inputs = document.querySelectorAll('.percentage-input');
+    let totalPercent = 0;
+
+    inputs.forEach(input => {
+      const val = parseFloat(input.value) || 0;
+      if (val > 0) {
+        totalPercent += val;
+        const share = (amount * val) / 100;
+        splits.push({ user_id: parseInt(input.dataset.userId), share_amount: share });
+      }
+    });
+
+    if (Math.abs(totalPercent - 100) > 0.1) return showError(`Total percentage must be 100% (currently ${totalPercent.toFixed(1)}%)`);
+  }
+  else if (splitType === 'custom') {
+    const inputs = document.querySelectorAll('.custom-amount-input');
+    let totalSplit = 0;
+
+    inputs.forEach(input => {
+      const val = parseFloat(input.value) || 0;
+      if (val > 0) {
+        totalSplit += val;
+        splits.push({ user_id: parseInt(input.dataset.userId), share_amount: val });
+      }
+    });
+
+    if (Math.abs(totalSplit - amount) > 0.01) return showError(`Total split amount (${totalSplit.toFixed(2)}) must match expense amount (${amount.toFixed(2)})`);
   }
 
-  if (userIds.length === 0) {
-    return showError("Please select at least one member to split with");
-  }
+  if (splits.length === 0) return showError("Please assign splits to at least one member");
 
-  // Wallet is optional - if not selected, wallet_id will be null
-
-  // Collect splits
-  const share = amount / userIds.length;
-  const splits = userIds.map(id => ({ user_id: id, share_amount: share }));
-
-  console.log("test for splitesss : ", splits);
-  const payload = { description, amount, currency, category, note, wallet_id: walletId || null, splits };
-
+  const payload = {
+    description,
+    amount,
+    category,
+    note,
+    wallet_id: walletId || null,
+    splits,
+    created_at: createdAtISO
+  };
 
   try {
-    // Show loading state
     const submitBtn = document.querySelector('#editExpenseModal .btn-primary');
-    const originalText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
     submitBtn.disabled = true;
 
@@ -2770,104 +2577,514 @@ async function submitEditExpense() {
       throw new Error(errorData.detail || "Failed to update expense");
     }
 
-    const updated = await res.json();
-    console.log("✅ Expense updated successfully:", updated);
-
-    // Close modal
-    setTimeout(() => {
-      try {
-        const modalEl = document.getElementById("editExpenseModal");
-        if (modalEl) {
-          const modal = bootstrap.Modal.getInstance(modalEl);
-          if (modal) modal.hide();
-        }
-      } catch (err) {
-        console.error("Modal hide error:", err);
-      }
-    }, 100);
-
-    // Refresh data
-    await loadExpenses(true); // Reset pagination
-    await loadWallets();
-
-    // Show success message
     showSuccess("Expense updated successfully!");
+    const modalEl = document.getElementById("editExpenseModal");
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+
+    await loadExpenses(true);
+    await loadWallets();
 
   } catch (err) {
     console.error("❌ Error updating expense:", err);
     showError(err.message || "Failed to update expense");
   } finally {
-    // Restore button state
     const submitBtn = document.querySelector('#editExpenseModal .btn-primary');
     if (submitBtn) {
-      submitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Save Changes';
+      submitBtn.innerHTML = 'Save Changes';
       submitBtn.disabled = false;
     }
   }
 }
 
-function renderParticipateCheckboxList(container, members, expenseSplits = []) {
-  container.innerHTML = "";
-  container.className = "row g-3 justify-content-center"; // responsive grid spacing
+// -----------------------------
+// Add Expense Split Logic
+// -----------------------------
+function initializeAddSplitLogic(members) {
+  const splitRadios = document.querySelectorAll('input[name="addSplitType"]');
+  const amountInput = document.getElementById('addAmount');
+
+  const equalView = document.getElementById('addEqualSplitView');
+  const percentageView = document.getElementById('addPercentageSplitView');
+  const customView = document.getElementById('addCustomSplitView');
+
+  const labels = {
+    equal: document.getElementById('labelAddSplitEqual'),
+    percentage: document.getElementById('labelAddSplitPercentage'),
+    custom: document.getElementById('labelAddSplitCustom')
+  };
+
+  function updateTabStyles(selectedType) {
+    Object.keys(labels).forEach(type => {
+      const label = labels[type];
+      if (!label) return;
+      if (type === selectedType) {
+        label.classList.remove('text-muted');
+        label.classList.add('bg-white', 'shadow-sm', 'text-dark');
+      } else {
+        label.classList.add('text-muted');
+        label.classList.remove('bg-white', 'shadow-sm', 'text-dark');
+      }
+    });
+  }
+
+  renderAddEqualSplitView(members);
+  renderAddPercentageSplitView(members);
+  renderAddCustomSplitView(members);
+
+  splitRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const type = e.target.value;
+
+      [equalView, percentageView, customView].forEach(view => {
+        if (view) {
+          view.classList.add('d-none');
+          view.classList.remove('d-flex');
+        }
+      });
+
+      const selectedView = type === 'equal' ? equalView
+        : type === 'percentage' ? percentageView
+          : customView;
+
+      if (selectedView) {
+        selectedView.classList.remove('d-none');
+        selectedView.classList.add('d-flex');
+      }
+
+      updateTabStyles(type);
+      updateAddSplitCalculations(type);
+    });
+  });
+
+  amountInput.addEventListener('input', () => {
+    const type = document.querySelector('input[name="addSplitType"]:checked').value;
+    updateAddSplitCalculations(type);
+  });
+
+  // Default to Equal
+  const defaultRadio = document.getElementById('addSplitEqual');
+  if (defaultRadio) defaultRadio.checked = true;
+
+  if (equalView) {
+    equalView.classList.remove('d-none');
+    equalView.classList.add('d-flex');
+  }
+  if (percentageView) percentageView.classList.add('d-none');
+  if (customView) customView.classList.add('d-none');
+
+  updateTabStyles('equal');
+  updateAddSplitCalculations('equal');
+}
+
+function renderAddEqualSplitView(members) {
+  const container = document.getElementById('addEqualSplitMembers');
+  if (!container) return;
+  container.innerHTML = '';
 
   members.forEach(member => {
-    const split = expenseSplits.find(s => Number(s.user_id) === Number(member.user_id));
-
-    const col = document.createElement("div");
-    col.className = "col-6 col-md-4 col-lg-3 col-xl-2"; // responsive grid
-
-    const card = document.createElement("div");
-    card.className = "member-card card text-center border-0 shadow-sm";
-    card.style.cursor = "pointer";
-    card.style.transition = "all 0.25s ease";
-    card.style.userSelect = "none";
-    card.style.padding = "1rem";
-
-    const initials = (member.username || "U")
-      .split(" ")
-      .map(w => w[0])
-      .join("")
-      .toUpperCase();
-
-    // Only check if there's an existing split AND it's not already been unchecked by user
-    const shouldBeChecked = split ? "checked" : "";
-
-    card.innerHTML = `
-      <input class="form-check-input d-none split-checkbox" type="checkbox" value="${member.user_id}" id="member-${member.user_id}" ${shouldBeChecked}>
-      <div class="avatar mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width:50px;height:50px;font-weight:bold;">
-        ${initials}
+    const initials = (member.username || "U").substring(0, 2).toUpperCase();
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center justify-content-between p-2 rounded hover-bg-light';
+    div.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <input class="form-check-input fs-5 m-0 border-primary" type="checkbox" value="${member.user_id}" checked style="cursor: pointer;">
+        <div class="avatar rounded-circle bg-light text-dark d-flex align-items-center justify-content-center fw-bold border" style="width: 40px; height: 40px;">
+          <img src="https://ui-avatars.com/api/?name=${member.username}&background=random" class="rounded-circle" width="40" height="40" alt="${initials}">
+        </div>
+        <div class="d-flex flex-column">
+          <span class="fw-semibold text-dark">${member.username}</span>
+          <small class="text-muted">Equal share</small>
+        </div>
       </div>
-      <h6 class="mb-0 text-truncate">${member.username || member.user_id}</h6>
-      <small class="text-muted">${member.is_admin ? "👑 Admin" : "👤 Member"}</small>
+      <div class="fw-bold text-dark equal-amount-display">$0.00</div>
     `;
 
-    // ✅ Set initial selected state
-    const checkbox = card.querySelector("input[type='checkbox']");
-    if (checkbox.checked) card.classList.add("selected");
-
-    // ✅ Clickable card toggles checkbox
-    card.addEventListener("click", (e) => {
-      if (e.target.tagName !== "INPUT") {
+    div.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const checkbox = div.querySelector('input[type="checkbox"]');
         checkbox.checked = !checkbox.checked;
-        card.classList.toggle("selected", checkbox.checked);
-
-        // Debug: Log when checkbox state changes
-        console.log(`Member ${member.username} (ID: ${member.user_id}) checkbox: ${checkbox.checked ? 'CHECKED' : 'UNCHECKED'}`);
+        updateAddSplitCalculations('equal');
       }
     });
 
-    col.appendChild(card);
-    container.appendChild(col);
+    div.querySelector('input[type="checkbox"]').addEventListener('change', () => updateAddSplitCalculations('equal'));
+    container.appendChild(div);
+  });
+}
+
+function renderAddPercentageSplitView(members) {
+  const container = document.getElementById('addPercentageSplitMembers');
+  if (!container) return;
+  container.innerHTML = '';
+
+  members.forEach(member => {
+    const initials = (member.username || "U").substring(0, 2).toUpperCase();
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center justify-content-between p-2';
+    div.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar rounded-circle bg-light text-dark d-flex align-items-center justify-content-center fw-bold border" style="width: 40px; height: 40px;">
+          <img src="https://ui-avatars.com/api/?name=${member.username}&background=random" class="rounded-circle" width="40" height="40" alt="${initials}">
+        </div>
+        <span class="fw-semibold text-dark">${member.username}</span>
+      </div>
+      <div class="input-group input-group-sm" style="width: 140px;">
+        <input type="number" class="form-control text-end add-percentage-input" data-user-id="${member.user_id}" value="0" min="0" max="100" step="0.1" placeholder="0">
+        <span class="input-group-text bg-white text-muted">%</span>
+      </div>
+    `;
+
+    div.querySelector('input').addEventListener('input', () => updateAddSplitCalculations('percentage'));
+    container.appendChild(div);
+  });
+}
+
+function renderAddCustomSplitView(members) {
+  const container = document.getElementById('addCustomSplitMembers');
+  if (!container) return;
+  container.innerHTML = '';
+
+  members.forEach(member => {
+    const initials = (member.username || "U").substring(0, 2).toUpperCase();
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center justify-content-between p-2';
+    div.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar rounded-circle bg-light text-dark d-flex align-items-center justify-content-center fw-bold border" style="width: 40px; height: 40px;">
+          <img src="https://ui-avatars.com/api/?name=${member.username}&background=random" class="rounded-circle" width="40" height="40" alt="${initials}">
+        </div>
+        <span class="fw-semibold text-dark">${member.username}</span>
+      </div>
+      <div class="input-group input-group-sm" style="width: 140px;">
+        <span class="input-group-text bg-white border-end-0 text-muted">$</span>
+        <input type="number" class="form-control border-start-0 text-end add-custom-amount-input" data-user-id="${member.user_id}" value="0" min="0" step="0.01" placeholder="0.00">
+      </div>
+    `;
+
+    div.querySelector('input').addEventListener('input', () => updateAddSplitCalculations('custom'));
+    container.appendChild(div);
+  });
+}
+
+function updateAddSplitCalculations(type) {
+  const totalAmount = parseFloat(document.getElementById('addAmount').value) || 0;
+  const alertBox = document.getElementById('addSplitValidationAlert');
+  const currency = currentGroup?.currency || 'MAD';
+
+  if (alertBox) alertBox.style.display = 'none';
+
+  if (type === 'equal') {
+    const checkedBoxes = document.querySelectorAll('#addEqualSplitMembers input[type="checkbox"]:checked');
+    const count = checkedBoxes.length;
+    const share = count > 0 ? (totalAmount / count).toFixed(2) : '0.00';
+
+    document.querySelectorAll('#addEqualSplitMembers .equal-amount-display').forEach(div => {
+      const row = div.closest('.d-flex.justify-content-between');
+      const checkbox = row.querySelector('input[type="checkbox"]');
+
+      if (checkbox.checked) {
+        div.textContent = `${share} ${currency}`;
+        div.classList.remove('text-muted');
+        div.classList.add('text-dark');
+      } else {
+        div.textContent = `0.00 ${currency}`;
+        div.classList.add('text-muted');
+        div.classList.remove('text-dark');
+      }
+    });
+  }
+  else if (type === 'percentage') {
+    const inputs = document.querySelectorAll('.add-percentage-input');
+    let totalPercent = 0;
+    inputs.forEach(i => totalPercent += parseFloat(i.value) || 0);
+
+    const remaining = 100 - totalPercent;
+
+    if (Math.abs(remaining) > 0.1) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.textContent = remaining > 0
+          ? `Remaining: ${remaining.toFixed(1)}%`
+          : `Over-assigned by ${Math.abs(remaining).toFixed(1)}%`;
+      }
+    }
+  }
+  else if (type === 'custom') {
+    const inputs = document.querySelectorAll('.add-custom-amount-input');
+    let totalSplit = 0;
+    inputs.forEach(i => totalSplit += parseFloat(i.value) || 0);
+
+    const remaining = totalAmount - totalSplit;
+
+    if (Math.abs(remaining) > 0.01) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.textContent = remaining > 0
+          ? `Remaining: ${remaining.toFixed(2)} ${currency}`
+          : `Over-assigned by ${Math.abs(remaining).toFixed(2)} ${currency}`;
+      }
+    }
+  }
+}
+
+// -----------------------------
+// Helper functions for Add Expense Split
+// -----------------------------
+function selectAllAddMembers() {
+  const checkboxes = document.querySelectorAll('#addEqualSplitMembers input[type="checkbox"]');
+  checkboxes.forEach(cb => cb.checked = true);
+  updateAddSplitCalculations('equal');
+}
+
+function deselectAllAddMembers() {
+  const checkboxes = document.querySelectorAll('#addEqualSplitMembers input[type="checkbox"]');
+  checkboxes.forEach(cb => cb.checked = false);
+  updateAddSplitCalculations('equal');
+}
+
+// -----------------------------
+// Advanced Split Logic (Edit Modal)
+// -----------------------------
+function initializeSplitLogic(members, expense) {
+  const splitRadios = document.querySelectorAll('input[name="splitType"]');
+  const amountInput = document.getElementById('editAmount');
+
+  // Containers
+  const equalView = document.getElementById('equalSplitView');
+  const percentageView = document.getElementById('percentageSplitView');
+  const customView = document.getElementById('customSplitView');
+
+  // Labels for styling
+  const labels = {
+    equal: document.getElementById('labelSplitEqual'),
+    percentage: document.getElementById('labelSplitPercentage'),
+    custom: document.getElementById('labelSplitCustom')
+  };
+
+  function updateTabStyles(selectedType) {
+    Object.keys(labels).forEach(type => {
+      const label = labels[type];
+      if (type === selectedType) {
+        label.classList.remove('text-muted');
+        label.classList.add('bg-white', 'shadow-sm', 'text-dark');
+      } else {
+        label.classList.add('text-muted');
+        label.classList.remove('bg-white', 'shadow-sm', 'text-dark');
+      }
+    });
+  }
+
+  // Render all views initially
+  renderEqualSplitView(members, expense);
+  renderPercentageSplitView(members, expense);
+  renderCustomSplitView(members, expense);
+
+  // Handle Tab Switching
+  splitRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const type = e.target.value;
+
+      // Reset all to hidden
+      [equalView, percentageView, customView].forEach(view => {
+        view.classList.add('d-none');
+        view.classList.remove('d-flex');
+      });
+
+      // Show selected
+      const selectedView = type === 'equal' ? equalView
+        : type === 'percentage' ? percentageView
+          : customView;
+
+      selectedView.classList.remove('d-none');
+      selectedView.classList.add('d-flex');
+
+      updateTabStyles(type);
+      updateSplitCalculations(type);
+    });
   });
 
-  // Debug: Log all checked checkboxes after rendering
-  setTimeout(() => {
-    const allChecked = document.querySelectorAll("#editExpenseModal #editSplitsContainer input[type=checkbox]:checked");
-    console.log("🔍 All checked members after rendering:", Array.from(allChecked).map(cb => ({
-      id: cb.value,
-      name: cb.closest('.member-card').querySelector('h6').textContent
-    })));
-  }, 100);
+  // Handle Amount Change
+  amountInput.addEventListener('input', () => {
+    const type = document.querySelector('input[name="splitType"]:checked').value;
+    updateSplitCalculations(type);
+  });
+
+  // Default to Equal
+  document.getElementById('splitEqual').checked = true;
+
+  // Reset initial state
+  [equalView, percentageView, customView].forEach(view => {
+    view.classList.add('d-none');
+    view.classList.remove('d-flex');
+  });
+
+  equalView.classList.remove('d-none');
+  equalView.classList.add('d-flex');
+
+  updateTabStyles('equal');
+
+  updateSplitCalculations('equal');
+}
+
+function renderEqualSplitView(members, expense) {
+  const container = document.getElementById('equalSplitMembers');
+  container.innerHTML = '';
+
+  members.forEach(member => {
+    const split = expense.splits.find(s => s.user_id === member.user_id);
+    const isChecked = !!split;
+    const initials = (member.username || "U").substring(0, 2).toUpperCase();
+
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center justify-content-between p-2';
+    div.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <input class="form-check-input fs-5 m-0 border-primary" type="checkbox" value="${member.user_id}" ${isChecked ? 'checked' : ''} style="cursor: pointer;">
+        <div class="avatar rounded-circle bg-light text-dark d-flex align-items-center justify-content-center fw-bold border" style="width: 40px; height: 40px;">
+          <img src="https://ui-avatars.com/api/?name=${member.username}&background=random" class="rounded-circle" width="40" height="40" alt="${initials}">
+        </div>
+        <span class="fw-semibold text-dark">${member.username}</span>
+      </div>
+      <div class="input-group input-group-sm" style="width: 120px;">
+        <span class="input-group-text bg-white border-end-0 text-muted">$</span>
+        <input type="text" class="form-control bg-white border-start-0 text-end fw-bold text-dark equal-amount-display" value="0.00" readonly>
+      </div>
+    `;
+
+    // Toggle checkbox when clicking row (except input)
+    div.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const checkbox = div.querySelector('input[type="checkbox"]');
+        checkbox.checked = !checkbox.checked;
+        updateSplitCalculations('equal');
+      }
+    });
+
+    div.querySelector('input[type="checkbox"]').addEventListener('change', () => updateSplitCalculations('equal'));
+    container.appendChild(div);
+  });
+}
+
+function renderPercentageSplitView(members, expense) {
+  const container = document.getElementById('percentageSplitMembers');
+  container.innerHTML = '';
+
+  members.forEach(member => {
+    const initials = (member.username || "U").substring(0, 2).toUpperCase();
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center justify-content-between p-2';
+    div.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar rounded-circle bg-light text-dark d-flex align-items-center justify-content-center fw-bold border" style="width: 40px; height: 40px;">
+          <img src="https://ui-avatars.com/api/?name=${member.username}&background=random" class="rounded-circle" width="40" height="40" alt="${initials}">
+        </div>
+        <span class="fw-semibold text-dark">${member.username}</span>
+      </div>
+      <div class="input-group input-group-sm" style="width: 120px;">
+        <input type="number" class="form-control text-end percentage-input border-end-0" data-user-id="${member.user_id}" value="0" min="0" max="100" placeholder="0">
+        <span class="input-group-text bg-white border-start-0 text-muted">%</span>
+      </div>
+    `;
+
+    div.querySelector('input').addEventListener('input', () => updateSplitCalculations('percentage'));
+    container.appendChild(div);
+  });
+}
+
+function renderCustomSplitView(members, expense) {
+  const container = document.getElementById('customSplitMembers');
+  container.innerHTML = '';
+
+  members.forEach(member => {
+    const split = expense.splits.find(s => s.user_id === member.user_id);
+    const amount = split ? split.share_amount : 0;
+    const initials = (member.username || "U").substring(0, 2).toUpperCase();
+
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center justify-content-between p-2';
+    div.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar rounded-circle bg-light text-dark d-flex align-items-center justify-content-center fw-bold border" style="width: 40px; height: 40px;">
+          <img src="https://ui-avatars.com/api/?name=${member.username}&background=random" class="rounded-circle" width="40" height="40" alt="${initials}">
+        </div>
+        <span class="fw-semibold text-dark">${member.username}</span>
+      </div>
+      <div class="input-group input-group-sm" style="width: 120px;">
+        <span class="input-group-text bg-white border-end-0 text-muted">$</span>
+        <input type="number" class="form-control border-start-0 text-end custom-amount-input" data-user-id="${member.user_id}" value="${amount}" min="0" step="0.01" placeholder="0.00">
+      </div>
+    `;
+
+    div.querySelector('input').addEventListener('input', () => updateSplitCalculations('custom'));
+    container.appendChild(div);
+  });
+}
+
+function updateSplitCalculations(type) {
+  const totalAmount = parseFloat(document.getElementById('editAmount').value) || 0;
+  const alertBox = document.getElementById('splitValidationAlert');
+
+  // Reset alert
+  alertBox.style.display = 'none';
+  alertBox.className = 'alert mt-4 mb-0 text-center fw-bold border-0 rounded-3';
+
+  if (type === 'equal') {
+    const checkedBoxes = document.querySelectorAll('#equalSplitMembers input[type="checkbox"]:checked');
+    const count = checkedBoxes.length;
+    const share = count > 0 ? (totalAmount / count).toFixed(2) : '0.00';
+
+    // Update display inputs
+    document.querySelectorAll('#equalSplitMembers .equal-amount-display').forEach(input => {
+      // Find parent row checkbox
+      const row = input.closest('.d-flex.justify-content-between');
+      const checkbox = row.querySelector('input[type="checkbox"]');
+
+      if (checkbox.checked) {
+        input.value = share;
+        input.classList.remove('text-muted');
+        input.classList.add('text-dark');
+      } else {
+        input.value = '0.00';
+        input.classList.add('text-muted');
+        input.classList.remove('text-dark');
+      }
+    });
+  }
+  else if (type === 'percentage') {
+    const inputs = document.querySelectorAll('.percentage-input');
+    let totalPercent = 0;
+    inputs.forEach(i => totalPercent += parseFloat(i.value) || 0);
+
+    const remaining = 100 - totalPercent;
+
+    if (Math.abs(remaining) > 0.1) {
+      alertBox.style.display = 'block';
+      alertBox.style.backgroundColor = '#ffe4e6'; // Light red
+      alertBox.style.color = '#e11d48'; // Dark red
+      alertBox.textContent = remaining > 0
+        ? `Remaining: ${remaining.toFixed(1)}%`
+        : `Over-assigned by ${Math.abs(remaining).toFixed(1)}%`;
+    }
+  }
+  else if (type === 'custom') {
+    const inputs = document.querySelectorAll('.custom-amount-input');
+    let totalSplit = 0;
+    inputs.forEach(i => totalSplit += parseFloat(i.value) || 0);
+
+    const remaining = totalAmount - totalSplit;
+
+    if (Math.abs(remaining) > 0.01) {
+      alertBox.style.display = 'block';
+      alertBox.style.backgroundColor = '#ffe4e6'; // Light red
+      alertBox.style.color = '#e11d48'; // Dark red
+      alertBox.textContent = remaining > 0
+        ? `Remaining: $${remaining.toFixed(2)}`
+        : `Over-assigned by $${Math.abs(remaining).toFixed(2)}`;
+    }
+  }
 }
 
 // -----------------------------
@@ -2943,6 +3160,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // loadPayersForExpense(); // Moved to loadGroupInfo
   // loadMembersForExpense(); // Moved to loadGroupInfo
   initializeExpenseModal();
+
+  // Refresh modal data when opened
+  const addExpenseModalEl = document.getElementById('addExpenseModal');
+  if (addExpenseModalEl) {
+    addExpenseModalEl.addEventListener('show.bs.modal', () => {
+      initializeExpenseModal();
+    });
+  }
 
   // Add refresh functionality
   const refreshBtn = document.getElementById('refreshExpenses');

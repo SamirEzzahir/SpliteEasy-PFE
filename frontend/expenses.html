@@ -210,217 +210,168 @@
     </div>
   </div>
 
-  <!-- Unified Add Expense Modal -->
+  <!-- Add Expense Modal -->
   <div class="modal fade" id="addExpenseModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-      <div class="modal-content shadow-lg border-0">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title">
-            <i class="bi bi-receipt me-2"></i>Add New Expense
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+
+        <!-- Header -->
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold fs-5 text-dark">Add New Expense</h5>
+          <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal"
+            aria-label="Close"></button>
         </div>
-        <div class="modal-body p-3 p-md-4">
+
+        <div class="modal-body p-4">
           <form id="addExpenseForm">
-            <!-- Step 1: Basic Info -->
-            <div class="row mb-3">
-              <div class="col-12">
-                <h6 class="text-success mb-2 mb-md-3">
-                  <i class="bi bi-info-circle me-1"></i>Expense Details
-                </h6>
-              </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold text-secondary small">Description</label>
+              <input type="text" class="form-control fs-6" id="addDescription"
+                placeholder="e.g., Dinner at The Italian Place" required>
             </div>
 
-            <div class="row mb-3">
-              <div class="col-md-6 mb-3 mb-md-0">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-calendar me-1"></i>Date
-                </label>
-                <input type="date" class="form-control" id="expenseDate" required>
-              </div>
+            <!-- Category & Amount Row -->
+            <div class="row g-3 mb-3">
               <div class="col-md-6">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-clock me-1"></i>Time
-                </label>
-                <input type="time" class="form-control" id="expenseTime" required>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-8 mb-3 mb-md-0">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-tag me-1"></i>Description
-                </label>
-                <input type="text" class="form-control" id="expenseDesc" placeholder="What was this expense for?"
-                  required>
-                <div class="form-text">Be specific about what you're splitting</div>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-grid me-1"></i>Category
-                </label>
-                <select class="form-select" id="expenseCategory">
-                  <option value="Food">🍽️ Food & Dining</option>
-                  <option value="Transport">🚗 Transportation</option>
-                  <option value="Shopping">🛍️ Shopping</option>
-                  <option value="Entertainment">🎬 Entertainment</option>
-                  <option value="Travel">✈️ Travel</option>
-                  <option value="Utilities">⚡ Utilities</option>
-                  <option value="Billing">💳 Billing</option>
-                  <option value="Other">📝 Other</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Note -->
-            <div class="row mb-3">
-              <label class="form-label fw-semibold">Note</label>
-              <textarea type="text" class="form-control" id="expenseNote" rows="2"
-                placeholder="Add a note (optional)"></textarea>
-              <div class="form-text">Add an note </div>
-            </div>
-
-            <!-- Step 2: Amount & Payment -->
-            <div class="row mb-3">
-              <div class="col-12">
-                <h6 class="text-success mb-2 mb-md-3">
-                  <i class="bi bi-cash-stack me-1"></i>Amount & Payment
-                </h6>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6 mb-3 mb-md-0">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-cash-stack me-1"></i>Amount
-                </label>
+                <label class="form-label fw-semibold text-secondary small">Category</label>
                 <div class="input-group">
-                  <input type="number" step="0.01" class="form-control" id="expenseAmount" placeholder="0.00" min="0.01"
-                    required>
-                  <span class="input-group-text" id="currencyDisplay">MAD</span>
+                  <span class="input-group-text bg-white border-end-0"><i class="bi bi-tag text-muted"></i></span>
+                  <select class="form-select fs-6 border-start-0 ps-0" id="addCategory" required>
+                    <option value="Food">🍽️ Food & Dining</option>
+                    <option value="Transport">🚗 Transportation</option>
+                    <option value="Shopping">🛍️ Shopping</option>
+                    <option value="Entertainment">🎬 Entertainment</option>
+                    <option value="Travel">✈️ Travel</option>
+                    <option value="Utilities">⚡ Utilities</option>
+                    <option value="Billing">💳 Billing</option>
+                    <option value="Other">📝 Other</option>
+                  </select>
                 </div>
-                <div class="form-text">Total amount spent</div>
+
+
               </div>
               <div class="col-md-6">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-collection me-1"></i>Select Group
-                </label>
-                <select id="groupsListForExpenses" class="form-select" required>
-                  <option value="">-- Choose a group --</option>
-                </select>
-                <div class="form-text">Which group is this expense for?</div>
-              </div>
-            </div>
-
-            <!-- Step 3: Payer Selection -->
-            <div class="row mb-3" id="payerSelectionSection">
-              <div class="col-12">
-                <h6 class="text-primary mb-2 mb-md-3">
-                  <i class="bi bi-person-check me-1"></i>Who Paid?
-                </h6>
-              </div>
-            </div>
-            <div class="row mb-3">
-              <div class="col-12">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-person-fill me-1"></i>Payer <span class="text-danger">*</span>
-                </label>
-                <select class="form-select" id="expensePayer" required>
-                  <option value="">Select who paid...</option>
-                </select>
-                <div class="form-text">Who actually paid for this expense?</div>
-              </div>
-            </div>
-
-            <!-- Wallet section - only shows for current user -->
-            <div class="row mb-3" id="walletSection" style="display: none;">
-              <div class="col-12">
-                <label class="form-label fw-semibold">
-                  <i class="bi bi-wallet2 me-1"></i>Wallet <small class="text-muted">(Optional)</small>
-                </label>
-                <select class="form-select" id="expenseWallet">
-                  <option value="">No wallet selected</option>
-                </select>
-                <div class="form-text">Deduct from your wallet balance</div>
-              </div>
-            </div>
-
-            <!-- Step 4: Members Selection -->
-            <div class="row mb-3" id="membersSelectionSection">
-              <div class="col-12">
-                <h6 class="text-success mb-2 mb-md-3">
-                  <i class="bi bi-people me-1"></i>Select Members
-                </h6>
-              </div>
-            </div>
-
-            <div class="card border-0 bg-light">
-              <div class="card-body p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <span class="text-muted small">Who should split this expense?</span>
-                  <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-success" onclick="selectAllMembers()">
-                      <i class="bi bi-check-all me-1"></i><span class="d-none d-sm-inline">Select All</span>
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="deselectAllMembers()">
-                      <i class="bi bi-x-square me-1"></i><span class="d-none d-sm-inline">Clear All</span>
-                    </button>
-                  </div>
-                </div>
-                <div id="membersListForExpense" class="border rounded p-3 bg-white"
-                  style="max-height: 200px; overflow-y: auto;">
-                  <div class="text-center text-muted py-3">
-                    <i class="bi bi-hourglass-split"></i> Loading members...
-                  </div>
+                <label class="form-label fw-semibold text-secondary small">Amount</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted" id="addCurrencySymbol">MAD</span>
+                  <input type="number" class="form-control fs-6 border-start-0 ps-1" id="addAmount" placeholder="0.00"
+                    step="0.01" min="0.01" required>
                 </div>
               </div>
             </div>
 
-            <!-- Expense Preview -->
-            <div class="card bg-success text-white mt-3" id="expensePreview" style="display: none;">
-              <div class="card-body">
-                <h6 class="card-title">
-                  <i class="bi bi-eye me-1"></i>Expense Preview
-                </h6>
-                <div class="row">
-                  <div class="col-6 col-md-3 mb-2">
-                    <small>Total Amount:</small>
-                    <div class="fw-bold" id="previewAmount">0.00 MAD</div>
-                  </div>
-                  <div class="col-6 col-md-3 mb-2">
-                    <small>Per Person:</small>
-                    <div class="fw-bold" id="previewPerPerson">0.00 MAD</div>
-                  </div>
-                  <div class="col-6 col-md-3 mb-2">
-                    <small>Members:</small>
-                    <div class="fw-bold" id="previewMemberCount">0</div>
-                  </div>
-                  <div class="col-6 col-md-3 mb-2">
-                    <small>Category:</small>
-                    <div class="fw-bold" id="previewCategory">-</div>
-                  </div>
-                  <div class="col-6 col-md-3 mb-2">
-                    <small>Participents:</small>
-                    <div class="fw-bold" id="previewParticipate">-</div>
-                  </div>
+
+
+            <!-- Paid By & Wallet Row -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Paid by</label>
+                <select class="form-select fs-6" id="addPayer" required>
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              <div class="col-md-6" id="addWalletContainer">
+                <label class="form-label fw-semibold text-secondary small">From Wallet</label>
+                <select class="form-select fs-6" id="addWallet">
+                  <option value="">Wallet</option>
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+            <!-- Note (Moved Above Split) -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-secondary small">Note (Optional)</label>
+              <textarea class="form-control rounded-3 fs-6" id="addNote" rows="2"
+                placeholder="Add any extra details..."></textarea>
+            </div>
+            <!-- Date & Time Row -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Date</label>
+                <div class="input-group">
+                  <input type="date" class="form-control fs-6 border-end-0" id="addDate" required>
+
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Time</label>
+                <div class="input-group">
+                  <input type="time" class="form-control fs-6 border-end-0" id="addTime" required>
+
                 </div>
               </div>
             </div>
+
+
+
+            <!-- Split Section -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-secondary small mb-2">Split Between</label>
+
+              <!-- Segmented Control -->
+              <div class="bg-light p-1 rounded-3 d-flex mb-3" role="group">
+                <input type="radio" class="btn-check" name="addSplitType" id="addSplitEqual" value="equal" checked>
+                <label class="btn btn-sm border-0 flex-grow-1 rounded-3 py-2 fw-semibold shadow-sm bg-white text-dark"
+                  for="addSplitEqual" id="labelAddSplitEqual">Equally</label>
+
+                <input type="radio" class="btn-check" name="addSplitType" id="addSplitPercentage" value="percentage">
+                <label class="btn btn-sm border-0 flex-grow-1 rounded-3 py-2 fw-semibold text-muted"
+                  for="addSplitPercentage" id="labelAddSplitPercentage">By Percentage</label>
+
+                <input type="radio" class="btn-check" name="addSplitType" id="addSplitCustom" value="custom">
+                <label class="btn btn-sm border-0 flex-grow-1 rounded-3 py-2 fw-semibold text-muted"
+                  for="addSplitCustom" id="labelAddSplitCustom">Custom</label>
+              </div>
+
+              <!-- Validation Alert -->
+              <div id="addSplitValidationAlert"
+                class="alert alert-danger py-2 px-3 mb-3 small rounded-3 border-0 bg-danger-subtle text-danger"
+                style="display: none;">
+                <!-- Dynamic message -->
+              </div>
+
+              <!-- Equal Split View -->
+              <div id="addEqualSplitView" class="d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between mb-2">
+                  <button type="button" class="btn btn-link p-0 text-decoration-none small fw-semibold"
+                    onclick="selectAllAddMembers()">Select All</button>
+                  <button type="button" class="btn btn-link p-0 text-decoration-none small fw-semibold text-muted"
+                    onclick="deselectAllAddMembers()">Deselect All</button>
+                </div>
+                <div id="addEqualSplitMembers" class="d-flex flex-column gap-2">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+              <!-- Percentage Split View -->
+              <div id="addPercentageSplitView" class="d-none flex-column gap-2">
+                <div id="addPercentageSplitMembers" class="d-flex flex-column gap-2">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+              <!-- Custom Split View -->
+              <div id="addCustomSplitView" class="d-none flex-column gap-2">
+                <div id="addCustomSplitMembers" class="d-flex flex-column gap-2">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="d-flex justify-content-end gap-2 pt-2">
+              <button type="button" class="btn btn-light px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary px-4 fw-semibold" onclick="submitAddExpense()">Add
+                Expense</button>
+            </div>
+
           </form>
-        </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-circle me-1"></i>Cancel
-          </button>
-          <button type="button" class="btn btn-success" onclick="addExpenseModalSubmit()">
-            <i class="bi bi-check-circle me-1"></i>Add Expense
-          </button>
         </div>
       </div>
     </div>
   </div>
-
   <!-- Manage Members Modal -->
   <div class="modal fade" id="manageMembersModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -507,46 +458,52 @@
     </div>
   </div>
 
-  <!-- Edit Expense Modal -->
+  <!-- Edit Expense Modal (Redesigned) -->
   <div class="modal fade" id="editExpenseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title">
-            <i class="bi bi-pencil-square me-2"></i>Edit Expense
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <!-- Header -->
+        <div class="modal-header border-bottom-0 px-4 pt-4 pb-2">
+          <div>
+            <h4 class="modal-title fw-bold text-dark">Edit Expense</h4>
+            <p class="text-muted small mb-0">Modify the details of your shared expense below.</p>
+          </div>
+          <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal"
+            aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <input type="hidden" id="editExpenseId">
 
-          <!-- Basic Information -->
-          <div class="row">
-            <div class="col-md-8">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Description</label>
-                <input type="text" class="form-control" id="editDescription" placeholder="Enter expense description"
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" id="editExpenseId">
+          <form id="editExpenseForm">
+            <!-- Description -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-dark">Description</label>
+              <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="editDescription"
+                placeholder="e.g. Dinner at The Italian Place" required>
+            </div>
+
+            <!-- Amount & Date -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Amount</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-0 text-muted ps-3" id="editCurrencySymbol">MAD</span>
+                  <input type="number" class="form-control form-control-lg bg-light border-0 fs-6 fw-bold"
+                    id="editAmount" placeholder="0.00" step="0.01" min="0" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Date</label>
+                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6 text-muted" id="editDate"
                   required>
               </div>
             </div>
-            <div class="col-md-4">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Amount</label>
-                <div class="input-group">
-                  <input type="number" class="form-control" id="editAmount" placeholder="0.00" step="0.01" min="0"
-                    required>
-                  <span class="input-group-text" id="editCurrency">MdAD</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Additional Information -->
-          <div class="row">
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Category</label>
-                <select class="form-select" id="editCategory">
+            <!-- Category & Wallet -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Category</label>
+                <select class="form-select form-select-lg bg-light border-0 fs-6 text-muted" id="editCategory">
                   <option value="">Select category</option>
                   <option value="Food">🍽️ Food & Dining</option>
                   <option value="Transport">🚗 Transportation</option>
@@ -558,41 +515,79 @@
                   <option value="Other">📝 Other</option>
                 </select>
               </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Wallet <small class="text-muted">(Optional)</small></label>
-                <select class="form-select" id="editWallet">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Wallet</label>
+                <select class="form-select form-select-lg bg-light border-0 fs-6 text-muted" id="editWallet">
                   <option value="">No wallet selected</option>
                 </select>
               </div>
             </div>
-          </div>
 
-          <!-- Note -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Note</label>
-            <textarea class="form-control" id="editNote" rows="2" placeholder="Add a note (optional)"></textarea>
-          </div>
+            <!-- Note -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-dark">Note (optional)</label>
+              <textarea class="form-control bg-light border-0 fs-6" id="editNote" rows="3"
+                placeholder="Add a short description or memo..."></textarea>
+            </div>
 
-          <!-- Members Selection -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Split Between</label>
-            <div id="editSplitsContainer" class="border rounded p-3"
-              style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa;">
-              <div class="text-center text-muted">
-                <i class="bi bi-hourglass-split"></i> Loading members...
+            <!-- Split Between Section -->
+            <div class="mb-3" id="membersSelectionSection">
+              <h5 class="fw-bold text-dark mb-3">Split Between</h5>
+
+              <!-- Segmented Control Tabs -->
+              <div class="p-1 bg-light rounded-3 d-flex mb-4" style="background-color: #f3f4f6 !important;">
+                <input type="radio" class="btn-check" name="splitType" id="splitEqual" value="equal" checked>
+                <label class="btn btn-sm flex-fill border-0 rounded-3 fw-semibold py-2" for="splitEqual"
+                  id="labelSplitEqual">Equally</label>
+
+                <input type="radio" class="btn-check" name="splitType" id="splitPercentage" value="percentage">
+                <label class="btn btn-sm flex-fill border-0 rounded-3 fw-semibold py-2 text-muted" for="splitPercentage"
+                  id="labelSplitPercentage">By Percentage</label>
+
+                <input type="radio" class="btn-check" name="splitType" id="splitCustom" value="custom">
+                <label class="btn btn-sm flex-fill border-0 rounded-3 fw-semibold py-2 text-muted" for="splitCustom"
+                  id="labelSplitCustom">Custom</label>
+              </div>
+
+              <!-- Split Details Container -->
+              <div id="splitDetailsContainer">
+                <!-- Equal Split View -->
+                <div id="equalSplitView" class="d-none flex-column gap-3">
+                  <div id="equalSplitMembers" class="d-flex flex-column gap-2"
+                    style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Percentage Split View -->
+                <div id="percentageSplitView" class="d-none flex-column gap-3">
+                  <div id="percentageSplitMembers" class="d-flex flex-column gap-2"
+                    style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Custom Split View -->
+                <div id="customSplitView" class="d-none flex-column gap-3">
+                  <div id="customSplitMembers" class="d-flex flex-column gap-2"
+                    style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+              </div>
+
+              <!-- Validation Alert -->
+              <div id="splitValidationAlert" class="alert mt-4 mb-0 text-center fw-bold border-0"
+                style="display: none; background-color: #ffe4e6; color: #e11d48;">
+                <!-- Content injected via JS -->
               </div>
             </div>
-          </div>
+          </form>
+        </div>
 
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              <i class="bi bi-x-circle me-1"></i>Cancel
-            </button>
-            <button type="button" class="btn btn-primary" onclick="submitEditExpense()">
-              <i class="bi bi-check-circle me-1"></i>Save Changes
-            </button>
+        <!-- Footer -->
+        <div class="modal-footer border-top-0 px-4 pb-4 pt-2 d-flex justify-content-between align-items-center">
+          <button type="button" class="btn btn-outline-danger fw-semibold py-2 px-4" id="deleteExpenseBtn">
+            Delete Expense
+          </button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-light fw-semibold py-2 px-4" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary fw-semibold py-2 px-4" onclick="submitEditExpense()">Save
+              Changes</button>
           </div>
         </div>
       </div>

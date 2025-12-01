@@ -28,7 +28,7 @@ function showError(message) {
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   `;
-  
+
   let toastContainer = document.getElementById('toast-container');
   if (!toastContainer) {
     toastContainer = document.createElement('div');
@@ -37,11 +37,11 @@ function showError(message) {
     toastContainer.style.zIndex = '9999';
     document.body.appendChild(toastContainer);
   }
-  
+
   toastContainer.appendChild(toast);
   const bsToast = new bootstrap.Toast(toast);
   bsToast.show();
-  
+
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
   });
@@ -59,7 +59,7 @@ function showSuccess(message) {
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   `;
-  
+
   let toastContainer = document.getElementById('toast-container');
   if (!toastContainer) {
     toastContainer = document.createElement('div');
@@ -68,11 +68,11 @@ function showSuccess(message) {
     toastContainer.style.zIndex = '9999';
     document.body.appendChild(toastContainer);
   }
-  
+
   toastContainer.appendChild(toast);
   const bsToast = new bootstrap.Toast(toast);
   bsToast.show();
-  
+
   toast.addEventListener('hidden.bs.toast', () => {
     toast.remove();
   });
@@ -89,7 +89,7 @@ function getRelativeTime(dateString) {
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now - date) / 1000);
-  
+
   if (diffInSeconds < 60) return 'Just now';
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
@@ -118,7 +118,7 @@ async function loadCurrentUser() {
       showError("Authentication system not loaded");
       return false;
     }
-    
+
     if (!currentUser) {
       if (typeof fetchCurrentUser === 'function') {
         currentUser = await fetchCurrentUser();
@@ -128,7 +128,7 @@ async function loadCurrentUser() {
         return false;
       }
     }
-    
+
     if (!currentUser || !currentUser.id) {
       showError("User not authenticated. Please log in.");
       setTimeout(() => {
@@ -136,7 +136,7 @@ async function loadCurrentUser() {
       }, 2000);
       return false;
     }
-    
+
     console.log("✅ Current user loaded:", currentUser);
     return true;
   } catch (err) {
@@ -151,29 +151,29 @@ async function loadCurrentUser() {
 // -----------------------------
 function updateSummaryStats(balances) {
   console.log("📊 Updating summary stats with balances:", balances);
-  
+
   if (!balances || !Array.isArray(balances)) {
     console.warn("⚠️ Invalid balances data for summary stats:", balances);
     balances = [];
   }
-  
+
   const round = (num) => Math.round(num * 100) / 100;
-  
+
   // Calculate stats with proper handling of empty arrays
   const positiveBalances = balances.filter(b => b && b.net > 0);
   const negativeBalances = balances.filter(b => b && b.net < 0);
-  
+
   const totalLent = round(positiveBalances.reduce((sum, b) => sum + (b.net || 0), 0));
   const totalOwed = round(Math.abs(negativeBalances.reduce((sum, b) => sum + (b.net || 0), 0)));
   const netBalance = round(balances.reduce((sum, b) => sum + (b?.net || 0), 0));
-  
+
   console.log("📊 Calculated stats:", { totalLent, totalOwed, netBalance, positiveCount: positiveBalances.length, negativeCount: negativeBalances.length });
-  
+
   // Update UI elements (check if they exist first)
   const totalLentEl = document.getElementById('totalLent');
   const totalOwedEl = document.getElementById('totalOwed');
   const netBalanceEl = document.getElementById('netBalance');
-  
+
   if (totalLentEl) totalLentEl.textContent = `${formatCurrency(totalLent)} MAD`;
   if (totalOwedEl) totalOwedEl.textContent = `${formatCurrency(totalOwed)} MAD`;
   if (netBalanceEl) netBalanceEl.textContent = `${formatCurrency(Math.abs(netBalance) < 0.01 ? 0 : netBalance)} MAD`;
@@ -198,34 +198,34 @@ async function loadBalances() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/global/balances`;
     console.log("🌐 Fetching global balances from:", url);
     console.log("🔑 Headers:", getHeaders());
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     console.log("📡 Response status:", res.status);
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
     console.log("📊 Received balances data:", data);
     console.log("📊 Data type:", typeof data, "Is array:", Array.isArray(data), "Length:", data?.length);
     balancesData = data;
 
     container.innerHTML = "";
-    
+
     // Check if data is empty or null
     if (!data || !Array.isArray(data) || data.length === 0) {
       console.log("⚠️ No balances data received");
@@ -250,7 +250,7 @@ async function loadBalances() {
       const color = balance.net > 0 ? "success" : balance.net < 0 ? "danger" : "secondary";
       const icon = balance.net > 0 ? "arrow-up-circle" : balance.net < 0 ? "arrow-down-circle" : "dash-circle";
       const status = balance.net > 0 ? "Lent" : balance.net < 0 ? "Owes" : "Even";
-      
+
       const isCurrentUser = currentUser && balance.user_id === currentUser.id;
 
       const card = document.createElement("div");
@@ -277,12 +277,12 @@ async function loadBalances() {
   } catch (err) {
     console.error("❌ Error loading balances:", err);
     let errorMessage = err.message;
-    
+
     if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
       errorMessage = "Cannot connect to server. Please check:\n1. Server is running\n2. API_URL is correct\n3. Network connection";
       console.error("🌐 Network error. API_URL:", typeof API_URL !== 'undefined' ? API_URL : 'NOT DEFINED');
     }
-    
+
     container.innerHTML = `
       <div class="col-12 text-center text-danger py-4">
         <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
@@ -316,28 +316,28 @@ async function loadSettlements() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/global/settlements`;
     console.log("🌐 Fetching global settlements from:", url);
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
 
     tbody.innerHTML = "";
-    
+
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
@@ -389,11 +389,11 @@ async function loadSettlements() {
   } catch (err) {
     console.error("❌ Error loading settlements:", err);
     let errorMessage = err.message;
-    
+
     if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
       errorMessage = "Cannot connect to server. Please check your connection and try again.";
     }
-    
+
     tbody.innerHTML = `
       <tr>
         <td colspan="4" class="text-center text-danger py-4">
@@ -429,28 +429,28 @@ async function loadHistory() {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/global/history`;
     console.log("🌐 Fetching global history from:", url);
-    
+
     const res = await fetch(url, {
       headers: getHeaders(),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("❌ Error response:", errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const data = await res.json();
 
     tbody.innerHTML = "";
-    
+
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
@@ -471,7 +471,7 @@ async function loadHistory() {
       const statusBadge = getStatusBadge(settlement.status);
       const isFromCurrentUser = settlement.from_user_id === currentUser.id;
       const isToCurrentUser = settlement.to_user_id === currentUser.id;
-      
+
       let actionButtons = '';
       if (settlement.status === 'pending' && isToCurrentUser) {
         actionButtons = `
@@ -489,7 +489,7 @@ async function loadHistory() {
           </button>
         `;
       }
-      
+
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>
@@ -529,11 +529,11 @@ async function loadHistory() {
   } catch (err) {
     console.error("❌ Error loading history:", err);
     let errorMessage = err.message;
-    
+
     if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
       errorMessage = "Cannot connect to server. Please check your connection and try again.";
     }
-    
+
     tbody.innerHTML = `
       <tr>
         <td colspan="6" class="text-center text-danger py-4">
@@ -560,15 +560,19 @@ function openSettlementModal() {
 
   const select = document.getElementById("toUserSelect");
   const amountInput = document.getElementById("settleAmount");
-  const preview = document.getElementById("settlementPreview");
-  
+  const messageInput = document.getElementById("settlementMessage");
+
+  // Reset form
   select.innerHTML = '<option value="">Select a friend...</option>';
   amountInput.value = "";
-  preview.style.display = "none";
+  messageInput.value = "";
+
+  // Reset preview
+  updateSettlementPreview(0, null);
 
   // Get current user's balance (if any)
   const myBalance = balancesData.find(b => b.user_id === currentUser.id);
-  
+
   // Show all friends with balances (both positive and negative)
   balancesData.forEach(b => {
     if (b.user_id !== currentUser.id) {
@@ -576,6 +580,7 @@ function openSettlementModal() {
       option.value = b.user_id;
       option.textContent = `${b.username} (${b.net > 0 ? 'owes you' : 'you owe'} ${formatCurrency(Math.abs(b.net))} MAD)`;
       option.dataset.balance = b.net;
+      option.dataset.username = b.username;
       select.appendChild(option);
     }
   });
@@ -595,37 +600,61 @@ function openSettlementModal() {
       if (balance < 0) {
         // User owes this friend, so they can pay
         amountInput.value = Math.abs(balance).toFixed(2);
-        updateSettlementPreview(selected.textContent.split(' (')[0], Math.abs(balance).toFixed(2));
+        updateSettlementPreview(Math.abs(balance).toFixed(2), selected.dataset.username);
       } else {
         // Friend owes user, so user can't pay them (they should pay user)
         amountInput.value = "";
-        preview.style.display = "none";
+        updateSettlementPreview(0, null);
         showError("This friend owes you. They should record the settlement.");
       }
     } else {
-      preview.style.display = "none";
+      updateSettlementPreview(amountInput.value || 0, null);
     }
   });
 
   amountInput.addEventListener("input", () => {
     const selected = select.options[select.selectedIndex];
-    if (selected.value && amountInput.value) {
-      updateSettlementPreview(selected.textContent.split(' (')[0], amountInput.value);
-    }
+    const username = selected.value ? (selected.dataset.username || selected.textContent.split(' (')[0]) : null;
+    updateSettlementPreview(amountInput.value || 0, username);
   });
 
   const modal = new bootstrap.Modal(document.getElementById("recordSettlementModal"));
   modal.show();
 }
 
-function updateSettlementPreview(userName, amount) {
-  const preview = document.getElementById("settlementPreview");
-  const previewAmount = document.getElementById("previewAmount");
-  const previewUser = document.getElementById("previewUser");
-  
-  previewAmount.textContent = `${formatCurrency(parseFloat(amount))} MAD`;
-  previewUser.textContent = userName;
-  preview.style.display = "block";
+function updateSettlementPreview(amount, recipientName) {
+  const displayAmount = parseFloat(amount) || 0;
+  const name = recipientName || "Recipient";
+
+  // Update Amount Display
+  const amountDisplay = document.getElementById("previewAmountDisplay");
+  if (amountDisplay) amountDisplay.textContent = `${formatCurrency(displayAmount)} MAD`;
+
+  // Update Recipient Name
+  const nameDisplay = document.getElementById("previewRecipientName");
+  if (nameDisplay) nameDisplay.textContent = name;
+
+  // Update Recipient Avatar
+  const avatarDisplay = document.getElementById("previewRecipientAvatar");
+  if (avatarDisplay) {
+    if (recipientName) {
+      const initials = recipientName.split(" ").map(w => w[0]).join("").toUpperCase().substring(0, 2);
+      avatarDisplay.textContent = initials;
+      avatarDisplay.classList.remove("bg-secondary");
+      avatarDisplay.classList.add("bg-success");
+    } else {
+      avatarDisplay.textContent = "?";
+      avatarDisplay.classList.remove("bg-success");
+      avatarDisplay.classList.add("bg-secondary");
+    }
+  }
+
+  // Update Text Description
+  const amountText = document.getElementById("previewAmountText");
+  if (amountText) amountText.textContent = `${formatCurrency(displayAmount)} MAD`;
+
+  const recipientText = document.getElementById("previewRecipientText");
+  if (recipientText) recipientText.textContent = name === "Recipient" ? "..." : name;
 }
 
 function quickSettle(fromUser, toUser, amount) {
@@ -636,10 +665,10 @@ function quickSettle(fromUser, toUser, amount) {
 
   // Check if fromUser is the current user
   const isCurrentUserFrom = fromUser === currentUser.username;
-  
+
   // Find user data - current user might not be in balancesData
   let fromUserData, toUserData;
-  
+
   if (isCurrentUserFrom) {
     // Current user is the one who owes (from_user)
     fromUserData = { user_id: currentUser.id, username: currentUser.username };
@@ -649,7 +678,7 @@ function quickSettle(fromUser, toUser, amount) {
     fromUserData = balancesData.find(b => b.username === fromUser);
     toUserData = { user_id: currentUser.id, username: currentUser.username };
   }
-  
+
   if (!fromUserData || !toUserData) {
     console.error("User data not found:", { fromUser, toUser, fromUserData, toUserData, balancesData, currentUser });
     showError("User data not found. Please refresh the page.");
@@ -670,14 +699,14 @@ function quickSettle(fromUser, toUser, amount) {
 
   const select = document.getElementById("toUserSelect");
   const amountInput = document.getElementById("settleAmount");
-  
+
   openSettlementModal();
-  
+
   setTimeout(() => {
     if (select && toUserData) {
       select.value = toUserData.user_id;
       amountInput.value = amount.toFixed(2);
-      updateSettlementPreview(toUser, amount.toFixed(2));
+      updateSettlementPreview(amount.toFixed(2), toUser);
     }
   }, 300);
 }
@@ -694,12 +723,12 @@ function setupSettlementForm() {
     const amountInput = document.getElementById("settleAmount");
     const messageInput = document.getElementById("settlementMessage");
     const submitBtn = form.querySelector('button[type="submit"]');
-    
+
     if (!select.value) {
       showError("Please select a friend to settle with");
       return;
     }
-    
+
     if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
       showError("Please enter a valid amount");
       return;
@@ -719,15 +748,15 @@ function setupSettlementForm() {
       if (typeof loadAuth === 'function') {
         loadAuth();
       }
-      
+
       if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
         throw new Error("API configuration not loaded. Please refresh the page.");
       }
-      
+
       console.log("🔄 Recording global settlement with payload:", payload);
       const url = `${API_URL}/settle/global/record`;
       console.log("🌐 POST to:", url);
-      
+
       const res = await fetch(url, {
         method: "POST",
         headers: getHeaders(),
@@ -745,12 +774,12 @@ function setupSettlementForm() {
       const result = await res.json();
       console.log("✅ Global settlement recorded successfully:", result);
       showSuccess("Global settlement request sent! Waiting for confirmation.");
-      
+
       const modal = bootstrap.Modal.getInstance(document.getElementById("recordSettlementModal"));
       if (modal) modal.hide();
 
       await Promise.all([loadBalances(), loadSettlements(), loadHistory()]);
-      
+
     } catch (err) {
       console.error("❌ Error recording settlement:", err);
       showError(err.message || "Failed to record global settlement");
@@ -773,14 +802,14 @@ async function acceptGlobalSettlement(settlementId) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/global/${settlementId}/accept`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -801,7 +830,7 @@ async function acceptGlobalSettlement(settlementId) {
 
 async function rejectGlobalSettlement(settlementId) {
   const reason = prompt("Please provide a reason for rejecting this global settlement (optional):");
-  
+
   if (reason === null) {
     return;
   }
@@ -810,14 +839,14 @@ async function rejectGlobalSettlement(settlementId) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/global/${settlementId}/reject`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -844,7 +873,7 @@ async function resendGlobalSettlement(settlementId, toUserId, currentAmount) {
   if (newAmount === null) {
     return;
   }
-  
+
   const amount = newAmount ? parseFloat(newAmount) : currentAmount;
   if (isNaN(amount) || amount <= 0) {
     showError("Invalid amount");
@@ -857,14 +886,14 @@ async function resendGlobalSettlement(settlementId, toUserId, currentAmount) {
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
       throw new Error("API configuration not loaded. Please refresh the page.");
     }
-    
+
     const url = `${API_URL}/settle/global/${settlementId}/resend`;
     console.log("🌐 POST to:", url);
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: getHeaders(),
@@ -894,25 +923,25 @@ async function resendGlobalSettlement(settlementId, toUserId, currentAmount) {
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     console.log("🚀 Initializing global balance page...");
-    
+
     if (typeof API_URL === 'undefined') {
       console.error("❌ API_URL is not defined. config.js may not be loaded.");
       showError("Configuration not loaded. Please refresh the page.");
       return;
     }
-    
+
     if (typeof getHeaders === 'undefined') {
       console.error("❌ getHeaders is not defined. config.js may not be loaded.");
       showError("Authentication functions not loaded. Please refresh the page.");
       return;
     }
-    
+
     console.log("✅ Config loaded. API_URL:", API_URL);
-    
+
     if (typeof loadAuth === 'function') {
       loadAuth();
     }
-    
+
     const userLoaded = await loadCurrentUser();
     if (!userLoaded) {
       console.error("❌ Failed to load current user");
@@ -928,7 +957,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ]);
 
     document.getElementById("recordBtn").addEventListener("click", openSettlementModal);
-    
+
     setupSettlementForm();
 
     console.log("✅ Global balance page initialized successfully");

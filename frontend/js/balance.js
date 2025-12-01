@@ -675,13 +675,16 @@ function openSettlementModal() {
 
   const select = document.getElementById("toUserSelect");
   const amountInput = document.getElementById("settleAmount");
-  const preview = document.getElementById("settlementPreview");
+  const messageInput = document.getElementById("settlementMessage");
   const currentBalanceEl = document.getElementById("currentBalance");
 
   // Reset form
   select.innerHTML = '<option value="">Select a member...</option>';
   amountInput.value = "";
-  preview.style.display = "none";
+  messageInput.value = "";
+
+  // Reset preview
+  updateNewSettlementPreview(0, null);
 
   // Get current user's balance
   const myBalance = balancesData.find(b => b.user_id === currentUser.id);
@@ -693,13 +696,16 @@ function openSettlementModal() {
   // Update current balance display
   const balanceColor = myBalance.net > 0 ? "text-success" : myBalance.net < 0 ? "text-danger" : "text-muted";
   const balanceIcon = myBalance.net > 0 ? "arrow-up-circle" : myBalance.net < 0 ? "arrow-down-circle" : "dash-circle";
-  currentBalanceEl.innerHTML = `
-    <span class="${balanceColor}">
-      <i class="bi bi-${balanceIcon} me-1"></i>
-      ${formatCurrency(Math.abs(myBalance.net))} MAD
-      ${myBalance.net > 0 ? '(You lent)' : myBalance.net < 0 ? '(You owe)' : '(Even)'}
-    </span>
-  `;
+
+  if (currentBalanceEl) {
+    currentBalanceEl.innerHTML = `
+      <span class="${balanceColor}">
+        <i class="bi bi-${balanceIcon} me-1"></i>
+        ${formatCurrency(Math.abs(myBalance.net))} MAD
+        ${myBalance.net > 0 ? '(You lent)' : myBalance.net < 0 ? '(You owe)' : '(Even)'}
+      </span>
+    `;
+  }
 
   // User owes money (negative balance)
   if (myBalance.net < 0) {
@@ -717,8 +723,9 @@ function openSettlementModal() {
         const myDebt = Math.min(Math.abs(myBalance.net), b.net);
         const option = document.createElement("option");
         option.value = b.user_id;
-        option.textContent = `${b.username} (${formatCurrency(myDebt)} MAD)`;
+        option.textContent = `${b.username} (You owe ${formatCurrency(myDebt)} MAD)`;
         option.dataset.amount = myDebt.toFixed(2);
+        option.dataset.username = b.username;
         select.appendChild(option);
       });
     }
@@ -730,28 +737,62 @@ function openSettlementModal() {
     select.appendChild(option);
   }
 
-  // Auto-fill amount and show preview
+  // Auto-fill amount and show preview on selection change
   select.addEventListener("change", () => {
     const selected = select.options[select.selectedIndex];
     if (selected.dataset.amount) {
       amountInput.value = selected.dataset.amount;
-      updateSettlementPreview(selected.textContent.split(' (')[0], selected.dataset.amount);
+      updateNewSettlementPreview(selected.dataset.amount, selected.dataset.username);
     } else {
-      preview.style.display = "none";
+      updateNewSettlementPreview(amountInput.value || 0, null);
     }
   });
 
   // Update preview when amount changes
   amountInput.addEventListener("input", () => {
     const selected = select.options[select.selectedIndex];
-    if (selected.value && amountInput.value) {
-      updateSettlementPreview(selected.textContent.split(' (')[0], amountInput.value);
-    }
+    const username = selected.value ? (selected.dataset.username || selected.textContent.split(' (')[0]) : null;
+    updateNewSettlementPreview(amountInput.value || 0, username);
   });
 
   // Open modal
   const modal = new bootstrap.Modal(document.getElementById("recordSettlementModal"));
   modal.show();
+}
+
+function updateNewSettlementPreview(amount, recipientName) {
+  const displayAmount = parseFloat(amount) || 0;
+  const name = recipientName || "Recipient";
+
+  // Update Amount Display
+  const amountDisplay = document.getElementById("previewAmountDisplay");
+  if (amountDisplay) amountDisplay.textContent = `${formatCurrency(displayAmount)} MAD`;
+
+  // Update Recipient Name
+  const nameDisplay = document.getElementById("previewRecipientName");
+  if (nameDisplay) nameDisplay.textContent = name;
+
+  // Update Recipient Avatar
+  const avatarDisplay = document.getElementById("previewRecipientAvatar");
+  if (avatarDisplay) {
+    if (recipientName) {
+      const initials = recipientName.split(" ").map(w => w[0]).join("").toUpperCase().substring(0, 2);
+      avatarDisplay.textContent = initials;
+      avatarDisplay.classList.remove("bg-secondary");
+      avatarDisplay.classList.add("bg-success");
+    } else {
+      avatarDisplay.textContent = "?";
+      avatarDisplay.classList.remove("bg-success");
+      avatarDisplay.classList.add("bg-secondary");
+    }
+  }
+
+  // Update Text Description
+  const amountText = document.getElementById("previewAmountText");
+  if (amountText) amountText.textContent = `${formatCurrency(displayAmount)} MAD`;
+
+  const recipientText = document.getElementById("previewRecipientText");
+  if (recipientText) recipientText.textContent = name === "Recipient" ? "..." : name;
 }
 
 function updateSettlementPreview(userName, amount) {

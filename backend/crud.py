@@ -595,9 +595,9 @@ async def get_expenses_for_group(session: AsyncSession, group_id: int, current_u
         added_by_user = await session.get(User, exp.added_by)
         added_by_username = added_by_user.username if added_by_user else "Unknown"
 
-        # wallet name
+        # wallet name - ONLY show if current user is the payer
         wallet_name = None
-        if exp.wallet_id:
+        if exp.wallet_id and current_user.id == exp.payer_id:
             wallet = await session.get(Wallet, exp.wallet_id)
             wallet_name = wallet.name if wallet else None
 
@@ -1621,11 +1621,11 @@ async def update_income(session: AsyncSession, income_id: int, user_id: int, dat
         if old_wallet.balance < 0:
             raise HTTPException(status_code=400, detail=f"Insufficient balance in source wallet. Available: {old_wallet.balance + old_amount:.2f}")
         
-        new_amount = data.amount if data.amount is not None else income.amount
+        new_amount = Decimal(str(data.amount)) if data.amount is not None else income.amount
         new_wallet.balance += new_amount
     else:
         # same wallet → adjust balance difference
-        new_amount = data.amount if data.amount is not None else income.amount
+        new_amount = Decimal(str(data.amount)) if data.amount is not None else income.amount
         diff = new_amount - old_amount
         new_balance = old_wallet.balance + diff
         # Validate wallet won't go negative
