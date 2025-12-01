@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy import or_
 from backend.db import get_session
 from backend.models import User, Friend, FriendStatus
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/friends")
 @router.get("/search", response_model=list[UserRead])
 async def search_users(query: str, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     result = await session.execute(
-        select(User).where(
+        select(User).options(selectinload(User.role)).where(
             or_(
                 User.username.ilike(f"%{query}%"),
                 User.email.ilike(f"%{query}%"),

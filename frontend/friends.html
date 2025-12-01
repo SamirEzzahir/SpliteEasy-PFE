@@ -1,14 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SplitEasy - Friends</title>
-  
-  <!-- Bootstrap CSS -->
+  <title>SplitEasy – Friends</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="css/friends.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="css/home.css" rel="stylesheet">
+  <style>
+    .friend-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1px solid #eee;
+      height: 100%;
+    }
+
+    .friend-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .friend-avatar-container {
+      margin-bottom: 1rem;
+      position: relative;
+      display: inline-block;
+    }
+
+    .friend-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .friend-avatar-gradient {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.5rem;
+      border: 3px solid #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Gradient colors matching group avatars */
+    .friend-avatar-gradient[data-color="1"] {
+      background: linear-gradient(135deg, #FF6B6B, #EE5253);
+    }
+
+    .friend-avatar-gradient[data-color="2"] {
+      background: linear-gradient(135deg, #4834D4, #686DE0);
+    }
+
+    .friend-avatar-gradient[data-color="3"] {
+      background: linear-gradient(135deg, #6AB04C, #BADC58);
+    }
+
+    .friend-avatar-gradient[data-color="4"] {
+      background: linear-gradient(135deg, #F9CA24, #F0932B);
+    }
+
+    .friend-avatar-gradient[data-color="5"] {
+      background: linear-gradient(135deg, #22A6B3, #7ED6DF);
+    }
+
+    .friend-avatar-gradient[data-color="6"] {
+      background: linear-gradient(135deg, #BE2EDD, #E056FD);
+    }
+
+    .friend-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+      color: #2d3436;
+    }
+
+    .friend-email {
+      color: #636e72;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .friend-actions {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .search-result-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      margin-bottom: 0.75rem;
+      border: 1px solid #eee;
+    }
+
+    .search-result-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .search-result-info {
+      text-align: left;
+    }
+
+    .search-result-name {
+      font-weight: 600;
+      color: #2d3436;
+    }
+
+    .search-result-email {
+      font-size: 0.85rem;
+      color: #636e72;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #b2bec3;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .friends-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -16,215 +169,169 @@
   <div id="navbar" class="d-none d-md-block"></div>
   <div id="navbarMobile" class="d-md-none"></div>
 
-  <!-- Main Content -->
   <div class="container my-4">
-    <!-- Welcome Banner -->
-    <div class="welcome-banner text-center mb-4">
-      <h1 class="fw-bold mb-3">
-        <i class="bi bi-people-fill me-2"></i>Friends
-      </h1>
-      <p class="lead mb-4">Connect with friends and manage your relationships</p>
-      <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <button class="btn btn-light" onclick="loadFriends()" title="Refresh">
-          <i class="bi bi-arrow-clockwise me-2"></i>Refresh
-        </button>
-        <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#searchFriendModal">
-          <i class="bi bi-person-plus me-2"></i>Find Friends
-        </button>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold mb-1">Friends</h2>
+        <p class="text-muted mb-0">Manage your connections and requests</p>
+      </div>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFriendModal">
+        <i class="bi bi-person-plus me-2"></i>Add Friend
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+      <div class="col-md-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body d-flex align-items-center p-4">
+            <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3 text-primary">
+              <i class="bi bi-people fs-4"></i>
+            </div>
+            <div>
+              <h6 class="text-muted mb-1">Total Friends</h6>
+              <h3 class="fw-bold mb-0" id="friendsCount">0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body d-flex align-items-center p-4">
+            <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3 text-warning">
+              <i class="bi bi-inbox fs-4"></i>
+            </div>
+            <div>
+              <h6 class="text-muted mb-1">Received Requests</h6>
+              <h3 class="fw-bold mb-0" id="receivedCount">0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body d-flex align-items-center p-4">
+            <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3 text-info">
+              <i class="bi bi-send fs-4"></i>
+            </div>
+            <div>
+              <h6 class="text-muted mb-1">Sent Requests</h6>
+              <h3 class="fw-bold mb-0" id="sentCount">0</h3>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Statistics -->
-    <div class="row mb-4 g-3">
-      <div class="col-6 col-md-4">
-        <div class="stat-card card h-100 text-center">
-          <div class="stat-card-body">
-            <div class="stat-icon bg-success mx-auto mb-2 mb-md-3">
-              <i class="bi bi-people"></i>
-            </div>
-            <h3 class="mb-1 text-success stat-number" id="friendsCount">0</h3>
-            <p class="text-muted mb-0 stat-label">Total Friends</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-md-4">
-        <div class="stat-card card h-100 text-center">
-          <div class="stat-card-body">
-            <div class="stat-icon bg-warning mx-auto mb-2 mb-md-3">
-              <i class="bi bi-person-check"></i>
-            </div>
-            <h3 class="mb-1 text-warning stat-number" id="receivedCount">0</h3>
-            <p class="text-muted mb-0 stat-label">Requests Received</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-md-4">
-        <div class="stat-card card h-100 text-center">
-          <div class="stat-card-body">
-            <div class="stat-icon bg-info mx-auto mb-2 mb-md-3">
-              <i class="bi bi-person-plus"></i>
-            </div>
-            <h3 class="mb-1 text-info stat-number" id="sentCount">0</h3>
-            <p class="text-muted mb-0 stat-label">Requests Sent</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tabs Navigation -->
-    <div class="card shadow-sm mb-4 border-0">
-      <div class="card-body p-0">
-        <div class="tabs-wrapper">
-          <ul class="nav nav-tabs nav-tabs-custom" id="friendsTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="all-friends-tab" data-bs-toggle="tab" data-bs-target="#all-friends" type="button" role="tab">
-                <i class="bi bi-people me-1 me-md-2"></i><span class="d-none d-sm-inline">All </span>Friends
-                <span class="badge bg-success ms-1 ms-md-2" id="friendsCountBadge">0</span>
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="received-tab" data-bs-toggle="tab" data-bs-target="#received" type="button" role="tab">
-                <i class="bi bi-person-check me-1 me-md-2"></i><span class="d-none d-sm-inline">Requests </span>Received
-                <span class="badge bg-warning ms-1 ms-md-2" id="receivedCountBadge">0</span>
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="sent-tab" data-bs-toggle="tab" data-bs-target="#sent" type="button" role="tab">
-                <i class="bi bi-person-plus me-1 me-md-2"></i><span class="d-none d-sm-inline">Requests </span>Sent
-                <span class="badge bg-info ms-1 ms-md-2" id="sentCountBadge">0</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+    <!-- Tabs -->
+    <ul class="nav nav-tabs nav-fill mb-4" id="friendsTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-semibold" id="my-friends-tab" data-bs-toggle="tab"
+          data-bs-target="#my-friends" type="button" role="tab">
+          <i class="bi bi-people me-2"></i>My Friends
+          <span class="badge bg-secondary ms-2 rounded-pill" id="friendsCountBadge">0</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests"
+          type="button" role="tab">
+          <i class="bi bi-person-lines-fill me-2"></i>Requests
+          <span class="badge bg-danger ms-2 rounded-pill" id="receivedCountBadge">0</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="sent-tab" data-bs-toggle="tab" data-bs-target="#sent" type="button"
+          role="tab">
+          <i class="bi bi-send me-2"></i>Sent
+          <span class="badge bg-secondary ms-2 rounded-pill" id="sentCountBadge">0</span>
+        </button>
+      </li>
+    </ul>
 
     <!-- Tab Content -->
-    <div class="tab-content" id="friendsTabContent">
-      <!-- All Friends Tab -->
-      <div class="tab-pane fade show active" id="all-friends" role="tabpanel">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
-              <h5 class="mb-0 fw-bold">
-                <i class="bi bi-people me-2 text-success"></i>My Friends
-              </h5>
-              <div class="search-container-small">
-                <i class="bi bi-search search-icon-small"></i>
-                <input type="text" class="form-control form-control-sm" id="friendsSearch" placeholder="Search friends...">
-              </div>
-            </div>
+    <div class="tab-content" id="friendsTabsContent">
+
+      <!-- My Friends Tab -->
+      <div class="tab-pane fade show active" id="my-friends" role="tabpanel">
+        <!-- Search Filter -->
+        <div class="mb-4">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" id="filterFriendsInput"
+              placeholder="Filter your friends..." onkeyup="filterFriends(this.value)">
           </div>
-          <div class="card-body p-4">
-            <div id="friendsList" class="friends-grid">
-              <div class="text-center py-5">
-                <div class="spinner-border text-success" role="status"></div>
-                <p class="text-muted mt-2">Loading friends...</p>
-              </div>
+        </div>
+
+        <div id="friendsList" class="friends-grid">
+          <!-- Populated by JS -->
+          <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Requests Received Tab -->
-      <div class="tab-pane fade" id="received" role="tabpanel">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-light">
-            <h5 class="mb-0 fw-bold">
-              <i class="bi bi-person-check me-2 text-warning"></i>Friend Requests Received
-            </h5>
-          </div>
-          <div class="card-body p-4">
-            <div id="receivedRequests" class="friends-grid">
-              <div class="text-center py-5">
-                <div class="spinner-border text-warning" role="status"></div>
-                <p class="text-muted mt-2">Loading requests...</p>
-              </div>
-            </div>
-          </div>
+      <!-- Requests Tab -->
+      <div class="tab-pane fade" id="requests" role="tabpanel">
+        <h5 class="mb-3 fw-bold text-muted">Received Requests</h5>
+        <div id="receivedRequests" class="friends-grid">
+          <!-- Populated by JS -->
         </div>
       </div>
 
-      <!-- Requests Sent Tab -->
+      <!-- Sent Tab -->
       <div class="tab-pane fade" id="sent" role="tabpanel">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-light">
-            <h5 class="mb-0 fw-bold">
-              <i class="bi bi-person-plus me-2 text-info"></i>Friend Requests Sent
-            </h5>
-          </div>
-          <div class="card-body p-4">
-            <div id="sentRequests" class="friends-grid">
-              <div class="text-center py-5">
-                <div class="spinner-border text-info" role="status"></div>
-                <p class="text-muted mt-2">Loading requests...</p>
-              </div>
-            </div>
-          </div>
+        <h5 class="mb-3 fw-bold text-muted">Sent Requests</h5>
+        <div id="sentRequests" class="friends-grid">
+          <!-- Populated by JS -->
         </div>
       </div>
+
     </div>
   </div>
 
-  <!-- Search Friend Modal -->
-  <div class="modal fade" id="searchFriendModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content shadow-lg border-0">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title">
-            <i class="bi bi-search me-2"></i>Find Friends
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+  <!-- Add Friend Modal -->
+  <div class="modal fade" id="addFriendModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Add New Friend</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-4">
-          <div class="mb-4">
-            <label class="form-label fw-semibold">
-              <i class="bi bi-person-plus me-1"></i>Search by Email, Username, or Phone
-            </label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-search"></i></span>
-              <input type="text" id="searchEmail" class="form-control form-control-lg" 
-                     placeholder="Enter email, username, or phone number">
-            </div>
-            <div class="form-text">Search for friends to connect with</div>
+          <p class="text-muted mb-4">Search for users by email, username, or phone number to send a friend request.</p>
+
+          <div class="input-group mb-4">
+            <input type="text" class="form-control form-control-lg" id="searchEmail"
+              placeholder="Enter email or username">
+            <button class="btn btn-primary" type="button" onclick="searchFriend()">
+              <i class="bi bi-search"></i>
+            </button>
           </div>
-          <div id="searchResults" class="search-results-container"></div>
-        </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-circle me-1"></i>Close
-          </button>
-          <button type="button" class="btn btn-primary" onclick="searchFriend()">
-            <i class="bi bi-search me-1"></i>Search
-          </button>
+
+          <div id="searchResults">
+            <!-- Search results will appear here -->
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Toast Container -->
-  <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+  <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/notifications.js"></script>
   <script src="js/navbar.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/friends.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     if (!localStorage.getItem("token")) window.location.href = "login.html";
-    
-    // Search on Enter key
-    document.getElementById('searchEmail')?.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        searchFriend();
-      }
-    });
-    
-    // Filter friends on search
-    document.getElementById('friendsSearch')?.addEventListener('input', function(e) {
-      filterFriends(e.target.value);
-    });
   </script>
 </body>
+
 </html>
