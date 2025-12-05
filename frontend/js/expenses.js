@@ -54,6 +54,7 @@ async function openEditGroupModalFromExpenses() {
   // Populate modal fields
   document.getElementById('editGroupTitle').value = currentGroup.title || '';
   document.getElementById('editGroupType').value = currentGroup.category || 'Other';
+  document.getElementById('editGroupOriginalType').value = currentGroup.type || 'Other';
   document.getElementById('editGroupCurrency').value = currentGroup.currency || 'MAD';
   document.getElementById('editGroupPhoto').value = currentGroup.photo || '';
   document.getElementById('editGroupDescription').value = currentGroup.description || '';
@@ -64,9 +65,9 @@ async function openEditGroupModalFromExpenses() {
   const categorySelect = document.getElementById('editGroupType');
 
   // Check if it's the default Personal Expenses group
-  const isDefaultPersonalGroup = currentGroup.type === 'Personal' && currentGroup.title === 'Personal Expenses';
+  const isDefaultPersonalGroup = (currentGroup.type === 'Personal' || currentGroup.type === 'Personal Expenses') && currentGroup.title === 'Personal Expenses';
 
-  if (currentGroup.type === 'Personal') {
+  if (currentGroup.type === 'Personal' || currentGroup.type === 'Personal Expenses') {
     // For ALL Personal groups: HIDE category field completely
     if (categoryContainer) {
       categoryContainer.style.display = 'none';
@@ -225,7 +226,7 @@ async function loadGroupInfo() {
     console.log("🔍 Debug: Group Type =", currentGroup.type);
     console.log("🔍 Debug: Buttons found?", { manageMembersBtn, balancesBtn, leaveGroupBtn });
 
-    if (currentGroup.type === "Personal") {
+    if (currentGroup.type === "Personal" || currentGroup.type === "Personal Expenses") {
       if (manageMembersBtn) manageMembersBtn.style.setProperty('display', 'none', 'important');
       if (balancesBtn) balancesBtn.style.setProperty('display', 'none', 'important');
       if (leaveGroupBtn) leaveGroupBtn.style.setProperty('display', 'none', 'important');
@@ -352,10 +353,53 @@ async function openEditGroupModalFromExpenses() {
     // Populate all fields
     document.getElementById("editGroupId").value = groupId;
     document.getElementById("editGroupTitle").value = group.title || "";
-    document.getElementById("editGroupType").value = group.type || "Other";
+    document.getElementById("editGroupType").value = group.category || "Other";
+    document.getElementById("editGroupOriginalType").value = group.type || "Other";
     document.getElementById("editGroupCurrency").value = group.currency || "MAD";
     document.getElementById("editGroupPhoto").value = group.photo || "";
     document.getElementById("editGroupDescription").value = group.description || "";
+
+    // ✅ Hide/show and disable fields based on group type
+    const titleInput = document.getElementById('editGroupTitle');
+    const categoryContainer = document.getElementById('editGroupCategoryContainer');
+    const categorySelect = document.getElementById('editGroupType');
+
+    // Check if it's the default Personal Expenses group
+    const isDefaultPersonalGroup = (group.type === 'Personal' || group.type === 'Personal Expenses') && group.title === 'Personal Expenses';
+
+    if (group.type === 'Personal' || group.type === 'Personal Expenses') {
+      // For ALL Personal groups: HIDE category field completely
+      if (categoryContainer) {
+        categoryContainer.style.display = 'none';
+      }
+
+      // For DEFAULT Personal Expenses group ONLY: also disable title
+      if (isDefaultPersonalGroup && titleInput) {
+        titleInput.disabled = true;
+        titleInput.style.backgroundColor = '#e9ecef';
+        titleInput.title = 'Cannot edit title of default Personal Expenses group';
+      } else if (titleInput) {
+        // Other Personal groups can edit title
+        titleInput.disabled = false;
+        titleInput.style.backgroundColor = '';
+        titleInput.title = '';
+      }
+    } else {
+      // Non-Personal groups: show and enable both
+      if (categoryContainer) {
+        categoryContainer.style.display = 'block';
+      }
+      if (titleInput) {
+        titleInput.disabled = false;
+        titleInput.style.backgroundColor = '';
+        titleInput.title = '';
+      }
+      if (categorySelect) {
+        categorySelect.disabled = false;
+        categorySelect.style.backgroundColor = '';
+        categorySelect.title = '';
+      }
+    }
 
     setTimeout(() => {
       try {
@@ -377,7 +421,13 @@ async function saveGroupChanges(event) {
 
   const groupId = document.getElementById("editGroupId").value;
   const newTitle = document.getElementById("editGroupTitle").value.trim();
-  const newType = document.getElementById("editGroupType").value;
+  let newType = document.getElementById("editGroupType").value;
+  const originalType = document.getElementById("editGroupOriginalType").value;
+
+  // Preserve Personal/Personal Expenses type if it was originally set
+  if (originalType === 'Personal' || originalType === 'Personal Expenses') {
+    newType = originalType;
+  }
   const newCurrency = document.getElementById("editGroupCurrency").value;
   const newPhoto = document.getElementById("editGroupPhoto").value.trim();
   const newDescription = document.getElementById("editGroupDescription").value.trim();
@@ -3532,8 +3582,47 @@ document.addEventListener("DOMContentLoaded", () => {
   // Refresh modal data when opened
   const addExpenseModalEl = document.getElementById('addExpenseModal');
   if (addExpenseModalEl) {
-    addExpenseModalEl.addEventListener('show.bs.modal', () => {
-      initializeExpenseModal();
+    addExpenseModalEl.addEventListener('show.bs.modal', async () => {
+      console.log("🚀 Add Expense Modal Opening...");
+      await initializeExpenseModal();
+
+      if (currentGroup) {
+        console.log("📊 Current Group:", currentGroup);
+        // Load members and payers for the current group
+        await loadMembersForGroup(currentGroup.id);
+        await loadPayersForGroup(currentGroup.id);
+      } else {
+        console.warn("⚠️ currentGroup is null!");
+      }
+
+      // ✅ Simplify for Personal Groups
+      if (currentGroup && (currentGroup.type === 'Personal' || currentGroup.type === 'Personal Expenses')) {
+        console.log("✅ Personal Group detected, hiding fields...");
+        // Hide Payer and Split sections
+        const payerContainer = document.getElementById('addPayerContainer');
+        const splitSection = document.getElementById('addSplitSection');
+
+        if (payerContainer) payerContainer.style.display = 'none';
+        else console.error("❌ addPayerContainer not found");
+
+        if (splitSection) splitSection.style.display = 'none';
+        else console.error("❌ addSplitSection not found");
+
+        // Ensure Wallet is visible
+        document.getElementById('addWalletContainer').style.display = 'block';
+
+        // Set default payer to current user
+        const currentUser = await fetchCurrentUser();
+        if (currentUser) {
+          const payerSelect = document.getElementById('addPayer');
+          if (payerSelect) payerSelect.value = currentUser.id;
+        }
+      } else {
+        console.log("ℹ️ Normal group, showing fields...");
+        // Show fields for normal groups
+        document.getElementById('addPayerContainer').style.display = 'block';
+        document.getElementById('addSplitSection').style.display = 'block';
+      }
     });
   }
 

@@ -170,3 +170,68 @@ body {
 .animate-in {
     animation: countUp 0.5s ease forwards;
 }
+
+/* =========================================
+   Strategy Modal Custom Styles
+   ========================================= */
+
+/* Orange (NEC) */
+.bg-orange-subtle {
+    background-color: #fff3cd !important;
+}
+
+.text-orange {
+    color: #fd7e14 !important;
+}
+
+.border-orange {
+    border-color: #fd7e14 !important;
+}
+
+/* Yellow (FFA) */
+.bg-yellow-subtle {
+    background-color: #fff9db !important;
+}
+
+.text-yellow {
+    color: #e6ac00 !important;
+    /* Darker yellow for text visibility */
+}
+
+.border-yellow {
+    border-color: #ffc107 !important;
+}
+
+/* Grey (EDU) */
+.bg-grey-subtle {
+    background-color: #e9ecef !important;
+}
+
+/* text-secondary and border-secondary are standard BS5 */
+
+/* Blue (LTSS) */
+.bg-blue-subtle {
+    background-color: #cfe2ff !important;
+}
+
+/* text-primary and border-primary are standard BS5 */
+
+/* Green (PLAY) */
+.bg-green-subtle {
+    background-color: #d1e7dd !important;
+}
+
+/* text-success and border-success are standard BS5 */
+
+/* Teal (GIVE) */
+.bg-teal-subtle {
+    background-color: #e0f7fa !important;
+}
+
+.text-teal {
+    color: #20c997 !important;
+}
+
+.border-teal {
+    border-color: #20c997 !important;
+}

@@ -607,6 +607,11 @@ class JarTransactionBase(BaseModel):
 class JarTransactionCreate(JarTransactionBase):
     pass
 
+class JarTransactionUpdate(BaseModel):
+    amount: Optional[float] = None
+    description: Optional[str] = None
+    date: Optional[datetime] = None
+
 class JarTransactionRead(JarTransactionBase):
     id: int
     user_id: int
@@ -646,3 +651,38 @@ class MonthlySummary(BaseModel):
     PLAY: float = 0.0
     GIVE: float = 0.0
     total: float = 0.0
+
+
+# ======================
+# Income Log Schemas
+# ======================
+class IncomeLogRead(BaseModel):
+    id: int
+    user_id: int
+    amount: float
+    income_source: str
+    strategy_name: str
+    description: Optional[str] = None
+    date: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class IncomeLogUpdate(BaseModel):
+    amount: Optional[float] = None
+    description: Optional[str] = None
+    income_source: Optional[str] = None
+    date: Optional[datetime] = None
+
+class LedgerItem(BaseModel):
+    id: int
+    type: str  # "income" or "expense"
+    amount: float
+    description: str
+    date: datetime
+    # Extra fields
+    jar_type: Optional[str] = None
+    strategy_name: Optional[str] = None
+    income_source: Optional[str] = None
+

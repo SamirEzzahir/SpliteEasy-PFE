@@ -303,8 +303,16 @@ function renderMyFriends(friends) {
 
     container.innerHTML = friends.map(friend => {
         const friendName = friend.username || friend.friend_email || 'Unknown User';
-        const friendEmail = friend.friend_email || friend.email || '';
         const friendId = friend.friendship_id || friend.id;
+
+        // Format date: "Friends since May 2023"
+        let subText = friend.friend_email || friend.email || '';
+        if (friend.created_at) {
+            const date = new Date(friend.created_at);
+            const month = date.toLocaleString('default', { month: 'long' });
+            const year = date.getFullYear();
+            subText = `Friends since ${month} ${year}`;
+        }
 
         return `
             <div class="friend-card fade-in">
@@ -312,13 +320,13 @@ function renderMyFriends(friends) {
                     ${getFriendAvatarHtml(friend, 100)}
                 </div>
                 <div class="friend-name">${friendName}</div>
-                <div class="friend-email">${friendEmail}</div>
+                <div class="friend-email">${subText}</div>
                 <div class="friend-actions">
                     <button class="btn btn-primary btn-sm" onclick="viewFriendProfile(${friendId})" title="View Profile">
                         <i class="bi bi-person me-1"></i>View
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="removeFriend(${friendId})" title="Remove Friend">
-                        <i class="bi bi-person-dash me-1"></i>Remove
+                        <i class="bi bi-person-dash me-1"></i>Remove Friend
                     </button>
                 </div>
             </div>

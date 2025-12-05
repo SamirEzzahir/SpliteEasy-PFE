@@ -123,6 +123,7 @@ class User(Base):
     debts: Mapped[list["Debt"]] = relationship("Debt", back_populates="user", cascade="all, delete-orphan")
     loans: Mapped[list["Loan"]] = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
     reclamations: Mapped[list["Reclamation"]] = relationship("Reclamation", back_populates="user", cascade="all, delete-orphan")
+    income_logs: Mapped[list["IncomeLog"]] = relationship("IncomeLog", back_populates="user", cascade="all, delete-orphan")
 
 # ======================
 # Group
@@ -170,6 +171,7 @@ class JarTransaction(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    income_log_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("income_logs.id", ondelete="CASCADE"), nullable=True)
     jar_type: Mapped[str] = mapped_column(String(10))  # NEC, FFA, EDU, LTSS, PLAY, GIVE
     amount: Mapped[float] = mapped_column(Float)  # Positive for income, Negative for expense
     description: Mapped[str] = mapped_column(String(255))
@@ -177,6 +179,7 @@ class JarTransaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="jar_transactions")
+    income_log: Mapped[Optional["IncomeLog"]] = relationship("IncomeLog", back_populates="jar_transactions")
 
 
 # ======================
@@ -510,5 +513,25 @@ class JarStrategy(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user: Mapped[Optional["User"]] = relationship("User")
+
+
+# ======================
+# Income Log (For Ledger)
+# ======================
+class IncomeLog(Base):
+    __tablename__ = "income_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    income_source: Mapped[str] = mapped_column(String(100), nullable=False) # Store name directly for simplicity
+    strategy_name: Mapped[str] = mapped_column(String(100), nullable=False) # Store name directly
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="income_logs")
+    jar_transactions: Mapped[list["JarTransaction"]] = relationship("JarTransaction", back_populates="income_log", cascade="all, delete-orphan")
+
 
 

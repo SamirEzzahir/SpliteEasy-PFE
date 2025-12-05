@@ -169,14 +169,14 @@ function updateSummaryStats(balances) {
 
   console.log("📊 Calculated stats:", { totalLent, totalOwed, netBalance, positiveCount: positiveBalances.length, negativeCount: negativeBalances.length });
 
-  // Update UI elements (check if they exist first)
+  // Update UI elements
   const totalLentEl = document.getElementById('totalLent');
   const totalOwedEl = document.getElementById('totalOwed');
   const netBalanceEl = document.getElementById('netBalance');
 
   if (totalLentEl) totalLentEl.textContent = `${formatCurrency(totalLent)} MAD`;
   if (totalOwedEl) totalOwedEl.textContent = `${formatCurrency(totalOwed)} MAD`;
-  if (netBalanceEl) netBalanceEl.textContent = `${formatCurrency(Math.abs(netBalance) < 0.01 ? 0 : netBalance)} MAD`;
+  if (netBalanceEl) netBalanceEl.textContent = `${netBalance > 0 ? '+' : ''}${formatCurrency(netBalance)} MAD`;
 }
 
 // -----------------------------
@@ -186,111 +186,69 @@ async function loadBalances() {
   console.log("🔄 Loading global balances...");
   const container = document.querySelector("#balancesCards");
   container.innerHTML = `
-    <div class="col-12 text-center text-muted py-4">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
+    <div class="text-center text-text-light-secondary py-4">
+      <div class="animate-spin inline-block w-6 h-6 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading"></div>
       <div class="mt-2">Loading balances...</div>
     </div>
   `;
 
   try {
-    if (typeof loadAuth === 'function') {
-      loadAuth();
-    }
-
-    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
-      throw new Error("API configuration not loaded. Please refresh the page.");
-    }
+    if (typeof loadAuth === 'function') loadAuth();
+    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') throw new Error("API configuration not loaded.");
 
     const url = `${API_URL}/settle/global/balances`;
-    console.log("🌐 Fetching global balances from:", url);
-    console.log("🔑 Headers:", getHeaders());
+    const res = await fetch(url, { headers: getHeaders() });
 
-    const res = await fetch(url, {
-      headers: getHeaders(),
-    });
-
-    console.log("📡 Response status:", res.status);
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("❌ Error response:", errorText);
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
     const data = await res.json();
-    console.log("📊 Received balances data:", data);
-    console.log("📊 Data type:", typeof data, "Is array:", Array.isArray(data), "Length:", data?.length);
     balancesData = data;
-
     container.innerHTML = "";
 
-    // Check if data is empty or null
     if (!data || !Array.isArray(data) || data.length === 0) {
-      console.log("⚠️ No balances data received");
       container.innerHTML = `
-        <div class="col-12 text-center text-muted py-5">
-          <i class="bi bi-people fs-1 mb-3"></i>
-          <h5>No balances found</h5>
+        <div class="text-center text-text-light-secondary py-5">
+          <span class="material-symbols-outlined text-4xl mb-3">group_off</span>
+          <h5 class="font-bold">No balances found</h5>
           <p>You have no balances with your friends across all groups.</p>
-          <p class="text-muted small mt-2">This could mean all your debts are settled, or you have no shared expenses with friends.</p>
         </div>
       `;
-      // Still update summary stats with empty array
       updateSummaryStats([]);
       return;
     }
 
     document.getElementById('friendCount').textContent = `${data.length} friends`;
-
     updateSummaryStats(data);
 
     data.forEach((balance) => {
-      const color = balance.net > 0 ? "success" : balance.net < 0 ? "danger" : "secondary";
-      const icon = balance.net > 0 ? "arrow-up-circle" : balance.net < 0 ? "arrow-down-circle" : "dash-circle";
-      const status = balance.net > 0 ? "Lent" : balance.net < 0 ? "Owes" : "Even";
-
-      const isCurrentUser = currentUser && balance.user_id === currentUser.id;
+      const isPositive = balance.net > 0;
+      const isNegative = balance.net < 0;
+      const colorClass = isPositive ? "text-positive" : isNegative ? "text-negative" : "text-text-light-secondary";
+      const statusText = isPositive ? "John owes you" : isNegative ? "You owe John" : "Settled"; // Placeholder name
+      const name = balance.username || "Unknown";
+      const avatarUrl = balance.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
       const card = document.createElement("div");
-      card.className = "col-12 col-sm-6 col-md-4 col-lg-3";
+      card.className = "flex items-center gap-4 p-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark";
       card.innerHTML = `
-        <div class="card border-${color} balance-card shadow-sm h-100 ${isCurrentUser ? 'border-3' : ''}">
-          <div class="card-body text-center p-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="card-title mb-0 fw-bold">${balance.username}</h6>
-              ${isCurrentUser ? '<span class="badge bg-primary">You</span>' : ''}
-            </div>
-            <div class="mb-2">
-              <i class="bi bi-${icon} fs-2 text-${color}"></i>
-            </div>
-            <p class="card-text fw-bold text-${color} mb-1">
-              ${formatCurrency(Math.abs(balance.net))} MAD
-            </p>
-            <small class="text-muted">${status}</small>
-          </div>
+        <img class="size-12 rounded-full object-cover" src="${avatarUrl}" alt="${name}"/>
+        <div class="flex-1">
+          <p class="font-semibold text-text-light-primary dark:text-text-dark-primary">${name}</p>
+          <p class="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+            ${isPositive ? `${name} owes you` : isNegative ? `You owe ${name}` : 'Settled'}
+          </p>
         </div>
+        <p class="font-bold text-lg ${colorClass}">${formatCurrency(Math.abs(balance.net))} MAD</p>
       `;
       container.appendChild(card);
     });
   } catch (err) {
     console.error("❌ Error loading balances:", err);
-    let errorMessage = err.message;
-
-    if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
-      errorMessage = "Cannot connect to server. Please check:\n1. Server is running\n2. API_URL is correct\n3. Network connection";
-      console.error("🌐 Network error. API_URL:", typeof API_URL !== 'undefined' ? API_URL : 'NOT DEFINED');
-    }
-
     container.innerHTML = `
-      <div class="col-12 text-center text-danger py-4">
-        <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+      <div class="text-center text-negative py-4">
+        <span class="material-symbols-outlined text-4xl mb-3">error</span>
         <h5>Error loading balances</h5>
-        <p style="white-space: pre-line;">${errorMessage}</p>
-        <button class="btn btn-outline-primary" onclick="loadBalances()">
-          <i class="bi bi-arrow-clockwise me-1"></i>Retry
-        </button>
+        <button class="mt-2 px-4 py-2 bg-primary text-white rounded-lg" onclick="loadBalances()">Retry</button>
       </div>
     `;
   }
@@ -303,37 +261,17 @@ async function loadSettlements() {
   const tbody = document.querySelector("#settlementsTable tbody");
   tbody.innerHTML = `
     <tr>
-      <td colspan="4" class="text-center text-muted py-4">
-        <div class="spinner-border text-warning" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <div class="mt-2">Loading settlements...</div>
+      <td colspan="4" class="text-center text-text-light-secondary py-4">
+        <div class="animate-spin inline-block w-5 h-5 border-[2px] border-current border-t-transparent text-primary rounded-full"></div>
+        <span class="ml-2">Loading...</span>
       </td>
     </tr>
   `;
 
   try {
-    if (typeof loadAuth === 'function') {
-      loadAuth();
-    }
-
-    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
-      throw new Error("API configuration not loaded. Please refresh the page.");
-    }
-
     const url = `${API_URL}/settle/global/settlements`;
-    console.log("🌐 Fetching global settlements from:", url);
-
-    const res = await fetch(url, {
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("❌ Error response:", errorText);
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
-
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     tbody.innerHTML = "";
@@ -341,10 +279,9 @@ async function loadSettlements() {
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="4" class="text-center text-success py-4">
-            <i class="bi bi-check-circle fs-1 mb-3"></i>
-            <h5>All settled up! 🎉</h5>
-            <p class="mb-0">No global settlements needed</p>
+          <td colspan="4" class="text-center text-positive py-4">
+            <span class="material-symbols-outlined text-2xl mb-2">check_circle</span>
+            <p class="font-bold">All settled up!</p>
           </td>
         </tr>
       `;
@@ -356,31 +293,15 @@ async function loadSettlements() {
 
     data.forEach((settlement) => {
       const row = document.createElement("tr");
+      row.className = "border-b border-border-light dark:border-border-dark";
       row.innerHTML = `
-        <td>
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-              <i class="bi bi-person"></i>
-            </div>
-            <span class="fw-semibold">${settlement.from_username}</span>
-          </div>
-        </td>
-        <td>
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-              <i class="bi bi-person-check"></i>
-            </div>
-            <span class="fw-semibold">${settlement.to_username}</span>
-          </div>
-        </td>
-        <td>
-          <span class="badge bg-warning text-dark fs-6">
-            ${formatCurrency(settlement.amount)} MAD
-          </span>
-        </td>
-        <td>
-          <button class="btn btn-outline-primary btn-sm" onclick="quickSettle('${settlement.from_username}', '${settlement.to_username}', ${settlement.amount})">
-            <i class="bi bi-lightning me-1"></i>Quick Settle
+        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.from_username}</td>
+        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.to_username}</td>
+        <td class="px-6 py-4 font-bold text-right text-text-light-primary dark:text-text-dark-primary">${formatCurrency(settlement.amount)} MAD</td>
+        <td class="px-6 py-4 text-center">
+          <button class="h-8 px-3 text-xs font-bold rounded-md bg-primary text-white hover:opacity-90 transition-opacity" 
+            onclick="quickSettle('${settlement.from_username}', '${settlement.to_username}', ${settlement.amount})">
+            Settle
           </button>
         </td>
       `;
@@ -388,24 +309,7 @@ async function loadSettlements() {
     });
   } catch (err) {
     console.error("❌ Error loading settlements:", err);
-    let errorMessage = err.message;
-
-    if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
-      errorMessage = "Cannot connect to server. Please check your connection and try again.";
-    }
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="4" class="text-center text-danger py-4">
-          <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
-          <h5>Error loading settlements</h5>
-          <p>${errorMessage}</p>
-          <button class="btn btn-outline-primary" onclick="loadSettlements()">
-            <i class="bi bi-arrow-clockwise me-1"></i>Retry
-          </button>
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-negative py-4">Error loading data</td></tr>`;
   }
 }
 
@@ -414,53 +318,18 @@ async function loadSettlements() {
 // -----------------------------
 async function loadHistory() {
   const tbody = document.querySelector("#historyTable tbody");
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="6" class="text-center text-muted py-4">
-        <div class="spinner-border text-info" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <div class="mt-2">Loading history...</div>
-      </td>
-    </tr>
-  `;
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>`;
 
   try {
-    if (typeof loadAuth === 'function') {
-      loadAuth();
-    }
-
-    if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
-      throw new Error("API configuration not loaded. Please refresh the page.");
-    }
-
     const url = `${API_URL}/settle/global/history`;
-    console.log("🌐 Fetching global history from:", url);
-
-    const res = await fetch(url, {
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("❌ Error response:", errorText);
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    }
-
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     tbody.innerHTML = "";
 
     if (!data.length) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" class="text-center text-muted py-4">
-            <i class="bi bi-clock-history fs-1 mb-3"></i>
-            <h5>No global settlement history</h5>
-            <p class="mb-0">No global settlements have been recorded yet</p>
-          </td>
-        </tr>
-      `;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-text-light-secondary py-4">No history found</td></tr>`;
       document.getElementById('historyCount').textContent = '0 records';
       return;
     }
@@ -468,84 +337,46 @@ async function loadHistory() {
     document.getElementById('historyCount').textContent = `${data.length} records`;
 
     data.forEach((settlement) => {
-      const statusBadge = getStatusBadge(settlement.status);
-      const isFromCurrentUser = settlement.from_user_id === currentUser.id;
       const isToCurrentUser = settlement.to_user_id === currentUser.id;
+      const isFromCurrentUser = settlement.from_user_id === currentUser.id;
+
+      let statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Unknown</span>`;
+
+      if (settlement.status === 'pending') {
+        statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-600"><span class="size-1.5 inline-block rounded-full bg-yellow-600"></span>Pending</span>`;
+      } else if (settlement.status === 'accepted') {
+        statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-600"><span class="size-1.5 inline-block rounded-full bg-green-600"></span>Accepted</span>`;
+      } else if (settlement.status === 'rejected') {
+        statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-600"><span class="size-1.5 inline-block rounded-full bg-red-600"></span>Rejected</span>`;
+      }
 
       let actionButtons = '';
       if (settlement.status === 'pending' && isToCurrentUser) {
         actionButtons = `
-          <button class="btn btn-sm btn-success me-1" onclick="acceptGlobalSettlement(${settlement.id})">
-            <i class="bi bi-check-circle me-1"></i>Accept
-          </button>
-          <button class="btn btn-sm btn-danger" onclick="rejectGlobalSettlement(${settlement.id})">
-            <i class="bi bi-x-circle me-1"></i>Reject
-          </button>
+          <button class="text-positive hover:underline text-xs font-bold mr-2" onclick="acceptGlobalSettlement(${settlement.id})">Accept</button>
+          <button class="text-negative hover:underline text-xs font-bold" onclick="rejectGlobalSettlement(${settlement.id})">Reject</button>
         `;
       } else if (settlement.status === 'rejected' && isFromCurrentUser) {
         actionButtons = `
-          <button class="btn btn-sm btn-outline-primary" onclick="resendGlobalSettlement(${settlement.id}, ${settlement.to_user_id}, ${settlement.amount})">
-            <i class="bi bi-arrow-repeat me-1"></i>Resend
-          </button>
+          <button class="text-primary hover:underline text-xs font-bold" onclick="resendGlobalSettlement(${settlement.id}, ${settlement.to_user_id}, ${settlement.amount})">Resend</button>
         `;
       }
 
       const row = document.createElement("tr");
+      row.className = "border-b border-border-light dark:border-border-dark";
       row.innerHTML = `
-        <td>
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">
-              <i class="bi bi-person" style="font-size: 0.75rem;"></i>
-            </div>
-            <span>${settlement.from_username}</span>
-          </div>
-        </td>
-        <td>
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">
-              <i class="bi bi-person-check" style="font-size: 0.75rem;"></i>
-            </div>
-            <span>${settlement.to_username}</span>
-          </div>
-        </td>
-        <td>
-          <span class="fw-semibold text-success">
-            ${formatCurrency(settlement.amount)} MAD
-          </span>
-        </td>
-        <td>
-          ${statusBadge}
-          ${settlement.rejected_reason ? `<br><small class="text-muted">Reason: ${settlement.rejected_reason}</small>` : ''}
-        </td>
-        <td>
-          <small class="text-muted">${getRelativeTime(settlement.created_at)}</small>
-        </td>
-        <td>
-          ${actionButtons}
-        </td>
+        <td class="px-6 py-4 text-text-light-secondary dark:text-text-dark-secondary">${getRelativeTime(settlement.created_at)}</td>
+        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.from_username}</td>
+        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.to_username}</td>
+        <td class="px-6 py-4 font-medium text-right text-text-light-primary dark:text-text-dark-primary">${formatCurrency(settlement.amount)} MAD</td>
+        <td class="px-6 py-4 text-center">${statusBadge}</td>
+        <td class="px-6 py-4 text-center">${actionButtons}</td>
       `;
       tbody.appendChild(row);
     });
   } catch (err) {
     console.error("❌ Error loading history:", err);
-    let errorMessage = err.message;
-
-    if (err.message.includes("Failed to fetch") || err.name === "TypeError") {
-      errorMessage = "Cannot connect to server. Please check your connection and try again.";
-    }
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" class="text-center text-danger py-4">
-          <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
-          <h5>Error loading history</h5>
-          <p>${errorMessage}</p>
-          <button class="btn btn-outline-primary" onclick="loadHistory()">
-            <i class="bi bi-arrow-clockwise me-1"></i>Retry
-          </button>
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-negative py-4">Error loading history</td></tr>`;
   }
 }
 
@@ -562,18 +393,11 @@ function openSettlementModal() {
   const amountInput = document.getElementById("settleAmount");
   const messageInput = document.getElementById("settlementMessage");
 
-  // Reset form
   select.innerHTML = '<option value="">Select a friend...</option>';
   amountInput.value = "";
-  messageInput.value = "";
-
-  // Reset preview
+  if (messageInput) messageInput.value = "";
   updateSettlementPreview(0, null);
 
-  // Get current user's balance (if any)
-  const myBalance = balancesData.find(b => b.user_id === currentUser.id);
-
-  // Show all friends with balances (both positive and negative)
   balancesData.forEach(b => {
     if (b.user_id !== currentUser.id) {
       const option = document.createElement("option");
@@ -598,11 +422,9 @@ function openSettlementModal() {
     if (selected.value && selected.dataset.balance) {
       const balance = parseFloat(selected.dataset.balance);
       if (balance < 0) {
-        // User owes this friend, so they can pay
         amountInput.value = Math.abs(balance).toFixed(2);
         updateSettlementPreview(Math.abs(balance).toFixed(2), selected.dataset.username);
       } else {
-        // Friend owes user, so user can't pay them (they should pay user)
         amountInput.value = "";
         updateSettlementPreview(0, null);
         showError("This friend owes you. They should record the settlement.");
@@ -618,43 +440,37 @@ function openSettlementModal() {
     updateSettlementPreview(amountInput.value || 0, username);
   });
 
-  const modal = new bootstrap.Modal(document.getElementById("recordSettlementModal"));
-  modal.show();
+  // Use Tailwind Modal Logic
+  if (typeof showTailwindModal === 'function') {
+    showTailwindModal();
+  } else {
+    // Fallback if helper not found
+    const modal = document.getElementById('recordSettlementModal');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+  }
 }
 
 function updateSettlementPreview(amount, recipientName) {
   const displayAmount = parseFloat(amount) || 0;
   const name = recipientName || "Recipient";
 
-  // Update Amount Display
   const amountDisplay = document.getElementById("previewAmountDisplay");
   if (amountDisplay) amountDisplay.textContent = `${formatCurrency(displayAmount)} MAD`;
 
-  // Update Recipient Name
   const nameDisplay = document.getElementById("previewRecipientName");
   if (nameDisplay) nameDisplay.textContent = name;
 
-  // Update Recipient Avatar
   const avatarDisplay = document.getElementById("previewRecipientAvatar");
   if (avatarDisplay) {
     if (recipientName) {
       const initials = recipientName.split(" ").map(w => w[0]).join("").toUpperCase().substring(0, 2);
       avatarDisplay.textContent = initials;
-      avatarDisplay.classList.remove("bg-secondary");
-      avatarDisplay.classList.add("bg-success");
+      avatarDisplay.className = "size-10 rounded-full bg-positive text-white flex items-center justify-center font-bold";
     } else {
       avatarDisplay.textContent = "?";
-      avatarDisplay.classList.remove("bg-success");
-      avatarDisplay.classList.add("bg-secondary");
+      avatarDisplay.className = "size-10 rounded-full bg-gray-400 text-white flex items-center justify-center font-bold";
     }
   }
-
-  // Update Text Description
-  const amountText = document.getElementById("previewAmountText");
-  if (amountText) amountText.textContent = `${formatCurrency(displayAmount)} MAD`;
-
-  const recipientText = document.getElementById("previewRecipientText");
-  if (recipientText) recipientText.textContent = name === "Recipient" ? "..." : name;
 }
 
 function quickSettle(fromUser, toUser, amount) {
@@ -716,6 +532,8 @@ function quickSettle(fromUser, toUser, amount) {
 // -----------------------------
 function setupSettlementForm() {
   const form = document.getElementById("settlementForm");
+  if (!form) return;
+
   form.onsubmit = async (e) => {
     e.preventDefault();
 
@@ -741,42 +559,34 @@ function setupSettlementForm() {
     };
 
     const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Recording...';
+    submitBtn.innerHTML = 'Recording...';
     submitBtn.disabled = true;
 
     try {
-      if (typeof loadAuth === 'function') {
-        loadAuth();
-      }
+      if (typeof loadAuth === 'function') loadAuth();
+      if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') throw new Error("API configuration not loaded.");
 
-      if (typeof API_URL === 'undefined' || typeof getHeaders === 'undefined') {
-        throw new Error("API configuration not loaded. Please refresh the page.");
-      }
-
-      console.log("🔄 Recording global settlement with payload:", payload);
       const url = `${API_URL}/settle/global/record`;
-      console.log("🌐 POST to:", url);
-
       const res = await fetch(url, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(payload),
       });
 
-      console.log("📡 Settlement response status:", res.status);
-
       if (!res.ok) {
         const errorData = await res.json();
-        console.error("❌ Settlement error:", errorData);
         throw new Error(errorData.detail || "Failed to record settlement");
       }
 
-      const result = await res.json();
-      console.log("✅ Global settlement recorded successfully:", result);
-      showSuccess("Global settlement request sent! Waiting for confirmation.");
+      showSuccess("Global settlement request sent!");
 
-      const modal = bootstrap.Modal.getInstance(document.getElementById("recordSettlementModal"));
-      if (modal) modal.hide();
+      // Close Tailwind Modal
+      if (typeof closeSettlementModal === 'function') {
+        closeSettlementModal();
+      } else {
+        const modal = document.getElementById('recordSettlementModal');
+        modal.classList.add('opacity-0', 'pointer-events-none');
+      }
 
       await Promise.all([loadBalances(), loadSettlements(), loadHistory()]);
 

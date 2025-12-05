@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List
 from datetime import datetime
 from .. import models, schemas
@@ -116,20 +117,63 @@ async def delete_strategy(
 # Ledger Endpoints
 # ======================
 
-@router.get("/ledger", response_model=List[schemas.JarTransactionRead])
+@router.get("/ledger", response_model=List[schemas.LedgerItem])
 async def get_ledger(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    Get all jar transactions for the user.
+    Get unified ledger:
+    - Income Logs (full income events)
+    - Expenses (negative jar transactions)
     """
-    result = await db.execute(
+    # 1. Fetch Income Logs
+    result_income = await db.execute(
+        select(models.IncomeLog)
+        .where(models.IncomeLog.user_id == current_user.id)
+        .order_by(models.IncomeLog.date.desc())
+    )
+    income_logs = result_income.scalars().all()
+
+    # 2. Fetch Expenses (JarTransactions where amount < 0)
+    result_expenses = await db.execute(
         select(models.JarTransaction)
-        .where(models.JarTransaction.user_id == current_user.id)
+        .where(
+            models.JarTransaction.user_id == current_user.id,
+            models.JarTransaction.amount < 0
+        )
         .order_by(models.JarTransaction.date.desc())
     )
-    return result.scalars().all()
+    expenses = result_expenses.scalars().all()
+
+    # 3. Combine and Sort
+    ledger_items = []
+
+    for log in income_logs:
+        ledger_items.append(schemas.LedgerItem(
+            id=log.id,
+            type="income",
+            amount=log.amount,
+            description=log.description or "Income Distribution",
+            date=log.date,
+            strategy_name=log.strategy_name,
+            income_source=log.income_source
+        ))
+
+    for exp in expenses:
+        ledger_items.append(schemas.LedgerItem(
+            id=exp.id,
+            type="expense",
+            amount=abs(exp.amount), # Show positive amount for display
+            description=exp.description,
+            date=exp.date,
+            jar_type=exp.jar_type
+        ))
+
+    # Sort by date desc
+    ledger_items.sort(key=lambda x: x.date, reverse=True)
+    
+    return ledger_items
 
 @router.get("/balances", response_model=List[schemas.JarBalance])
 async def get_balances(
@@ -160,6 +204,10 @@ async def get_balances(
         for k, v in balances.items()
     ]
 
+# ======================
+# Distribute Income
+# ======================
+
 @router.post("/distribute")
 async def distribute_income(
     amount: float,
@@ -168,70 +216,80 @@ async def distribute_income(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Distribute an income amount into jars based on a strategy.
-    """
-    # Fetch strategy
+    # 1. Fetch Strategy
     result = await db.execute(select(models.JarStrategy).where(models.JarStrategy.id == strategy_id))
     strategy = result.scalar_one_or_none()
-    
+
     if not strategy:
-        # Fallback to default if not found (shouldn't happen with valid ID)
         raise HTTPException(status_code=404, detail="Strategy not found")
-        
-    # Calculate splits
-    splits = {
-        "NEC": amount * strategy.nec,
-        "FFA": amount * strategy.ffa,
-        "EDU": amount * strategy.edu,
-        "LTSS": amount * strategy.ltss,
-        "PLAY": amount * strategy.play,
-        "GIVE": amount * strategy.give
+
+    # 2. Create Income Log
+    income_log = models.IncomeLog(
+        user_id=current_user.id,
+        amount=amount,
+        income_source=description, 
+        strategy_name=strategy.name,
+        description="Distributed via " + strategy.name,
+        date=datetime.utcnow()
+    )
+    db.add(income_log)
+    await db.flush() # Get ID
+
+    # 3. Calculate Splits
+    allocations = {
+        "NEC": strategy.nec,
+        "FFA": strategy.ffa,
+        "EDU": strategy.edu,
+        "LTSS": strategy.ltss,
+        "PLAY": strategy.play,
+        "GIVE": strategy.give
     }
-    
-    # Create transactions
-    new_txns = []
-    for jar, jar_amount in splits.items():
-        if jar_amount > 0:
-            txn = models.JarTransaction(
+
+    # 4. Create Jar Transactions
+    for jar, percent in allocations.items():
+        if percent > 0:
+            share = amount * percent
+            jar_txn = models.JarTransaction(
                 user_id=current_user.id,
+                income_log_id=income_log.id, # Link to IncomeLog
                 jar_type=jar,
-                amount=jar_amount,
-                description=description
+                amount=share,
+                description=f"Distribution from {description}",
+                date=datetime.utcnow()
             )
-            new_txns.append(txn)
-            
-    db.add_all(new_txns)
+            db.add(jar_txn)
+
     await db.commit()
-    return {"message": "Income distributed successfully", "transactions": len(new_txns)}
+    return {"message": "Income distributed successfully"}
+
+
+# ======================
+# Spend from Jar
+# ======================
 
 @router.post("/spend")
 async def spend_from_jar(
-    jar_type: str,
     amount: float,
+    jar_type: str,
     description: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Log an expense from a specific jar.
-    """
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Amount must be positive")
-        
+    # Create negative transaction
     txn = models.JarTransaction(
         user_id=current_user.id,
         jar_type=jar_type,
         amount=-amount, # Negative for expense
-        description=description
+        description=description,
+        date=datetime.utcnow()
     )
-    
     db.add(txn)
     await db.commit()
     return {"message": "Expense logged successfully"}
 
+
 # ======================
-# Income Source Endpoints
+# Income Sources
 # ======================
 
 @router.get("/income-sources", response_model=List[schemas.IncomeSourceRead])
@@ -239,9 +297,6 @@ async def get_income_sources(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Get all income sources for the user.
-    """
     result = await db.execute(select(models.IncomeSource).where(models.IncomeSource.user_id == current_user.id))
     return result.scalars().all()
 
@@ -251,79 +306,179 @@ async def create_income_source(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Create a new income source.
-    """
-    db_source = models.IncomeSource(
-        **source.model_dump(),
-        user_id=current_user.id
-    )
-    db.add(db_source)
+    new_source = models.IncomeSource(user_id=current_user.id, name=source.name)
+    db.add(new_source)
     await db.commit()
-    await db.refresh(db_source)
-    return db_source
+    await db.refresh(new_source)
+    return new_source
 
-@router.delete("/income-sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/income-sources/{source_id}")
 async def delete_income_source(
     source_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Delete an income source.
-    """
-    result = await db.execute(select(models.IncomeSource).where(
-        models.IncomeSource.id == source_id,
-        models.IncomeSource.user_id == current_user.id
-    ))
-    db_source = result.scalar_one_or_none()
+    result = await db.execute(select(models.IncomeSource).where(models.IncomeSource.id == source_id, models.IncomeSource.user_id == current_user.id))
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
     
-    if not db_source:
-        raise HTTPException(status_code=404, detail="Income source not found")
-        
-    await db.delete(db_source)
+    await db.delete(source)
     await db.commit()
-    return None
+    return {"message": "Source deleted"}
+
 
 # ======================
-# Monthly Summary Endpoint
+# Monthly Summary
 # ======================
 
-@router.get("/monthly-summary", response_model=List[schemas.MonthlySummary])
+@router.get("/monthly-summary")
 async def get_monthly_summary(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Get monthly summary of transactions aggregated by jar type.
-    """
-    # Fetch all transactions for the user
     result = await db.execute(
         select(models.JarTransaction)
         .where(models.JarTransaction.user_id == current_user.id)
         .order_by(models.JarTransaction.date.desc())
     )
-    transactions = result.scalars().all()
-    
-    # Aggregate data
-    summary_data = {}
-    
-    for txn in transactions:
-        month_key = txn.date.strftime("%B %Y") # e.g., "January 2024"
-        
-        if month_key not in summary_data:
-            summary_data[month_key] = {
-                "month": month_key,
-                "NEC": 0.0, "FFA": 0.0, "EDU": 0.0,
-                "LTSS": 0.0, "PLAY": 0.0, "GIVE": 0.0,
-                "total": 0.0
-            }
-            
-        # Add to specific jar
-        if txn.jar_type in summary_data[month_key]:
-            summary_data[month_key][txn.jar_type] += txn.amount
-            
-        # Add to total (sum of all jars for that month)
-        summary_data[month_key]["total"] += txn.amount
+    txns = result.scalars().all()
 
-    return list(summary_data.values())
+    summary = {} 
+
+    for t in txns:
+        month_key = t.date.strftime("%Y-%m")
+        if month_key not in summary:
+            summary[month_key] = {"month": month_key, "NEC": 0, "FFA": 0, "EDU": 0, "LTSS": 0, "PLAY": 0, "GIVE": 0, "total": 0}
+        
+        if t.jar_type in summary[month_key]:
+            summary[month_key][t.jar_type] += t.amount
+            summary[month_key]["total"] += t.amount
+
+    return list(summary.values())
+
+
+# ======================
+# Jar History
+# ======================
+
+@router.get("/jar/{jar_type}", response_model=List[schemas.JarTransactionRead])
+async def get_jar_history(
+    jar_type: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(models.JarTransaction)
+        .where(
+            models.JarTransaction.user_id == current_user.id,
+            models.JarTransaction.jar_type == jar_type
+        )
+        .order_by(models.JarTransaction.date.desc())
+    )
+    return result.scalars().all()
+
+
+# ======================
+# Transaction Management
+# ======================
+
+@router.delete("/transactions/{type}/{id}")
+async def delete_transaction(
+    type: str,
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if type == "income":
+        # Delete IncomeLog -> Cascades to JarTransactions via model relationship
+        result = await db.execute(
+            select(models.IncomeLog)
+            .options(selectinload(models.IncomeLog.jar_transactions))
+            .where(models.IncomeLog.id == id, models.IncomeLog.user_id == current_user.id)
+        )
+        item = result.scalar_one_or_none()
+    elif type == "expense" or type == "jar_transaction":
+        # Delete JarTransaction (Expense)
+        result = await db.execute(select(models.JarTransaction).where(models.JarTransaction.id == id, models.JarTransaction.user_id == current_user.id))
+        item = result.scalar_one_or_none()
+    else:
+        raise HTTPException(status_code=400, detail="Invalid type")
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    await db.delete(item)
+    await db.commit()
+    return {"message": "Transaction deleted"}
+
+
+@router.put("/transactions/{type}/{id}")
+async def update_transaction(
+    type: str,
+    id: int,
+    update_data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if type == "income":
+        # Update IncomeLog -> Update linked JarTransactions proportionally
+        result = await db.execute(
+            select(models.IncomeLog)
+            .options(selectinload(models.IncomeLog.jar_transactions))
+            .where(models.IncomeLog.id == id, models.IncomeLog.user_id == current_user.id)
+        )
+        income_log = result.scalar_one_or_none()
+        
+        if not income_log:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+            
+        # Validate with Schema
+        schema = schemas.IncomeLogUpdate(**update_data)
+        
+        if schema.amount is not None and schema.amount != income_log.amount:
+            # Calculate ratio
+            if income_log.amount == 0:
+                ratio = 0 
+            else:
+                ratio = schema.amount / income_log.amount
+            
+            # Update linked transactions
+            for txn in income_log.jar_transactions:
+                txn.amount = txn.amount * ratio
+            
+            income_log.amount = schema.amount
+
+        if schema.description is not None:
+            income_log.description = schema.description
+        if schema.income_source is not None:
+            income_log.income_source = schema.income_source
+        if schema.date is not None:
+            income_log.date = schema.date
+            
+    elif type == "expense" or type == "jar_transaction":
+        # Update JarTransaction
+        result = await db.execute(select(models.JarTransaction).where(models.JarTransaction.id == id, models.JarTransaction.user_id == current_user.id))
+        txn = result.scalar_one_or_none()
+        
+        if not txn:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+            
+        schema = schemas.JarTransactionUpdate(**update_data)
+        
+        if schema.amount is not None:
+            if txn.amount < 0:
+                txn.amount = -abs(schema.amount)
+            else:
+                txn.amount = abs(schema.amount)
+                
+        if schema.description is not None:
+            txn.description = schema.description
+        if schema.date is not None:
+            txn.date = schema.date
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid type")
+
+    await db.commit()
+    return {"message": "Transaction updated"}

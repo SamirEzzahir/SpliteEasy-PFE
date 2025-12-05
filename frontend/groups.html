@@ -335,6 +335,7 @@
         <form id="editGroupForm">
           <div class="modal-body p-4">
             <input type="hidden" id="editGroupId" />
+            <input type="hidden" id="editGroupOriginalType" />
 
             <!-- Basic Information -->
             <div class="row mb-4">
@@ -356,12 +357,12 @@
                   <div class="form-text">Choose a descriptive name for your group</div>
                 </div>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-4" id="editGroupCategoryDiv">
                 <div class="mb-3">
-                  <label for="editGroupType" class="form-label fw-semibold">
+                  <label for="editGroupCategory" class="form-label fw-semibold">
                     <i class="bi bi-grid me-1"></i>Category
                   </label>
-                  <select class="form-select form-select-lg" id="editGroupType" required>
+                  <select class="form-select form-select-lg" id="editGroupCategory" required>
                     <option value="Home">🏠 Home</option>
                     <option value="Couple">💕 Couple</option>
                     <option value="Trip">✈️ Trip</option>

@@ -9,12 +9,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   const distributeModal = new bootstrap.Modal(document.getElementById("distributeModal"));
   const spendModal = new bootstrap.Modal(document.getElementById("spendModal"));
   const sourcesModal = new bootstrap.Modal(document.getElementById("sourcesModal"));
+  const editTransactionModal = new bootstrap.Modal(document.getElementById("editTransactionModal"));
+
+  // Jar History Modal Elements
+  const jarHistoryModal = new bootstrap.Modal(document.getElementById("jarHistoryModal"));
+  const jarHistoryTitle = document.getElementById("jarHistoryTitle");
+  const jarHistoryTableBody = document.getElementById("jarHistoryTableBody");
 
   // Forms
   const strategyForm = document.getElementById("strategyForm");
   const distributeForm = document.getElementById("distributeForm");
   const spendForm = document.getElementById("spendForm");
   const addSourceForm = document.getElementById("addSourceForm");
+  const editTransactionForm = document.getElementById("editTransactionForm");
 
   // Strategy Inputs
   const strategyModalTitle = document.getElementById("strategyModalTitle");
@@ -29,6 +36,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sourcesList = document.getElementById("sourcesList");
   const newSourceName = document.getElementById("newSourceName");
 
+  // Edit Transaction Inputs
+  const editTransactionId = document.getElementById("editTransactionId");
+  const editTransactionType = document.getElementById("editTransactionType");
+  const editAmount = document.getElementById("editAmount");
+  const editIncomeSource = document.getElementById("editIncomeSource");
+  const editDescription = document.getElementById("editDescription");
+  const editDate = document.getElementById("editDate");
+  const editSourceWrapper = document.getElementById("editSourceWrapper");
+
   // --- Configuration ---
   const JARS = {
     NEC: { name: "Necessities", icon: "bi-house-door", color: "bg-orange", desc: "Rent, Food, Bills" },
@@ -42,6 +58,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let strategies = [];
   let currentStrategyId = null;
   let incomeSources = [];
+  let currentOpenJar = null;
+  let allTransactions = []; // Store locally for edit lookup
 
   // --- API Functions ---
 
@@ -115,8 +133,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
-        const transactions = await res.json();
-        renderLedger(transactions);
+        allTransactions = await res.json();
+        renderLedger(allTransactions);
       }
     } catch (err) {
       console.error("Failed to fetch ledger", err);
@@ -135,6 +153,69 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (err) {
       console.error("Failed to fetch income sources", err);
+    }
+  }
+
+  async function fetchJarHistory(jarType) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/econome/jar/${jarType}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const transactions = await res.json();
+        renderJarHistory(transactions, jarType);
+        jarHistoryTitle.textContent = `${JARS[jarType].name} (${jarType}) History`;
+        jarHistoryModal.show();
+      }
+    } catch (err) {
+      console.error("Failed to fetch jar history", err);
+    }
+  }
+
+  async function deleteTransaction(type, id) {
+    if (!confirm("Are you sure you want to delete this transaction? This action cannot be undone.")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/econome/transactions/${type}/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        await refreshAll();
+        if (currentOpenJar) {
+          await fetchJarHistory(currentOpenJar);
+        }
+      } else {
+        alert("Failed to delete transaction");
+      }
+    } catch (err) {
+      console.error("Failed to delete transaction", err);
+    }
+  }
+
+  async function updateTransaction(type, id, data) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/econome/transactions/${type}/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) {
+        await refreshAll();
+        editTransactionModal.hide();
+      } else {
+        alert("Failed to update transaction");
+      }
+    } catch (err) {
+      console.error("Failed to update transaction", err);
     }
   }
 
@@ -226,7 +307,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const cardHtml = `
                 <div class="col-md-6 col-lg-4 animate-in" style="animation-delay: ${index * 0.1}s">
-                    <div class="card jar-card ${config.color} shadow-sm h-100">
+                    <div class="card jar-card ${config.color} shadow-sm h-100" onclick="openJarHistory('${jarKey}')" style="cursor: pointer;">
                         <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div class="jar-icon-wrapper bg-white bg-opacity-25 rounded-circle p-3">
@@ -243,6 +324,36 @@ document.addEventListener("DOMContentLoaded", async () => {
                 </div>
             `;
       balancesContainer.insertAdjacentHTML("beforeend", cardHtml);
+    });
+  }
+
+  window.openJarHistory = (jarType) => {
+    currentOpenJar = jarType;
+    fetchJarHistory(jarType);
+  };
+
+  function renderJarHistory(transactions, jarType) {
+    jarHistoryTableBody.innerHTML = "";
+    if (transactions.length === 0) {
+      jarHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">No transactions yet</td></tr>`;
+      return;
+    }
+
+    transactions.forEach(txn => {
+      const isExpense = txn.amount < 0;
+      const colorClass = isExpense ? "text-danger" : "text-success";
+      const sign = isExpense ? "-" : "+";
+      const amount = Math.abs(txn.amount);
+
+      // Removed Edit/Delete buttons as requested for Jar History
+      const row = `
+                <tr>
+                    <td class="ps-4 text-muted small">${new Date(txn.date).toLocaleDateString()}</td>
+                    <td class="fw-medium">${txn.description}</td>
+                    <td class="text-end pe-4 fw-bold ${colorClass}">${sign}${formatCurrency(amount)}</td>
+                </tr>
+            `;
+      jarHistoryTableBody.insertAdjacentHTML("beforeend", row);
     });
   }
 
@@ -273,21 +384,44 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderLedger(transactions) {
     ledgerTableBody.innerHTML = "";
     if (transactions.length === 0) {
-      ledgerTableBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No transactions yet</td></tr>`;
+      ledgerTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No transactions yet</td></tr>`;
       return;
     }
 
     transactions.forEach(txn => {
-      const isIncome = txn.amount > 0;
+      const isIncome = txn.type === "income";
       const colorClass = isIncome ? "text-success" : "text-danger";
-      const sign = isIncome ? "+" : "";
+      const sign = isIncome ? "+" : "-";
+
+      let description = txn.description;
+      let jarBadge = "";
+      let editBtn = "";
+
+      if (isIncome) {
+        description = `Income: ${txn.income_source || 'Unknown Source'}`;
+        jarBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">Strategy: ${txn.strategy_name}</span>`;
+        // Add Edit Button for Income
+        editBtn = `
+            <button class="btn btn-sm btn-outline-warning border-0 me-1" onclick="openEditTransaction('income', ${txn.id})">
+                <i class="bi bi-pencil"></i>
+            </button>
+        `;
+      } else {
+        jarBadge = `<span class="badge bg-light text-dark border">${txn.jar_type}</span>`;
+      }
 
       const row = `
                 <tr>
                     <td class="ps-4 text-muted small">${new Date(txn.date).toLocaleDateString()}</td>
-                    <td class="fw-medium">${txn.description}</td>
-                    <td><span class="badge bg-light text-dark border">${txn.jar_type}</span></td>
+                    <td class="fw-medium">${description}</td>
+                    <td>${jarBadge}</td>
                     <td class="text-end pe-4 fw-bold ${colorClass}">${sign}${formatCurrency(txn.amount)}</td>
+                    <td class="text-end">
+                        ${editBtn}
+                        <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteTransaction('${txn.type}', ${txn.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
                 </tr>
             `;
       ledgerTableBody.insertAdjacentHTML("beforeend", row);
@@ -297,14 +431,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderIncomeSources() {
     // Populate Dropdown
     incomeSourceSelect.innerHTML = `<option value="" disabled selected>Select source...</option>`;
+
+    // Also populate Edit Modal Dropdown
+    editIncomeSource.innerHTML = `<option value="" disabled selected>Select source...</option>`;
+
     incomeSources.forEach(s => {
+      // Main Distribute Modal
       const option = document.createElement("option");
-      option.value = s.name; // Use name as description
+      option.value = s.name;
       option.textContent = s.name;
       incomeSourceSelect.appendChild(option);
+
+      // Edit Modal
+      const editOption = document.createElement("option");
+      editOption.value = s.name;
+      editOption.textContent = s.name;
+      editIncomeSource.appendChild(editOption);
     });
 
-    // Populate List in Modal
+    // Populate List in Manage Modal
     sourcesList.innerHTML = "";
     incomeSources.forEach(s => {
       const li = `
@@ -352,12 +497,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Populate fields
     strategyIdInput.value = strategy.id;
     strategyNameInput.value = strategy.name;
-    document.getElementById("necInput").value = Math.round(strategy.nec * 100);
-    document.getElementById("ffaInput").value = Math.round(strategy.ffa * 100);
-    document.getElementById("eduInput").value = Math.round(strategy.edu * 100);
-    document.getElementById("ltssInput").value = Math.round(strategy.ltss * 100);
-    document.getElementById("playInput").value = Math.round(strategy.play * 100);
-    document.getElementById("giveInput").value = Math.round(strategy.give * 100);
+
+    // Use toFixed(1) to keep 1 decimal place, convert to float to remove trailing zeros if integer
+    document.getElementById("necInput").value = parseFloat((strategy.nec * 100).toFixed(1));
+    document.getElementById("ffaInput").value = parseFloat((strategy.ffa * 100).toFixed(1));
+    document.getElementById("eduInput").value = parseFloat((strategy.edu * 100).toFixed(1));
+    document.getElementById("ltssInput").value = parseFloat((strategy.ltss * 100).toFixed(1));
+    document.getElementById("playInput").value = parseFloat((strategy.play * 100).toFixed(1));
+    document.getElementById("giveInput").value = parseFloat((strategy.give * 100).toFixed(1));
+
     updateTotalPercent();
 
     // Handle Read-Only vs Edit
@@ -388,6 +536,50 @@ document.addEventListener("DOMContentLoaded", async () => {
       select.appendChild(option);
     });
   }
+
+  // --- Edit Transaction Logic ---
+
+  window.openEditTransaction = (type, id) => {
+    const txn = allTransactions.find(t => t.id === id && t.type === type);
+    if (!txn) return;
+
+    editTransactionId.value = id;
+    editTransactionType.value = type;
+    editAmount.value = txn.amount;
+    editDate.value = new Date(txn.date).toISOString().slice(0, 16); // Format for datetime-local
+
+    if (type === 'income') {
+      editSourceWrapper.classList.remove('d-none');
+      editIncomeSource.value = txn.income_source;
+      editDescription.value = txn.description; // Or handle description separately if needed
+      editIncomeSource.required = true;
+    } else {
+      editSourceWrapper.classList.add('d-none');
+      editDescription.value = txn.description;
+      editIncomeSource.required = false;
+    }
+
+    editTransactionModal.show();
+  };
+
+  editTransactionForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = editTransactionId.value;
+    const type = editTransactionType.value;
+
+    const data = {
+      amount: parseFloat(editAmount.value),
+      date: new Date(editDate.value).toISOString(),
+      description: editDescription.value
+    };
+
+    if (type === 'income') {
+      data.income_source = editIncomeSource.value;
+    }
+
+    updateTransaction(type, id, data);
+  });
+
 
   // --- Helper Functions ---
 
@@ -453,8 +645,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   function updateTotalPercent() {
     let total = 0;
     percentInputs.forEach(input => {
-      total += parseInt(input.value) || 0;
+      // Use parseFloat instead of parseInt
+      total += parseFloat(input.value) || 0;
     });
+
+    // Handle float precision (e.g. 0.1 + 0.2 = 0.300000004)
+    total = parseFloat(total.toFixed(1));
+
     totalPercentDisplay.textContent = total + "%";
 
     // Only validate if inputs are enabled (i.e., not read-only)
@@ -475,6 +672,77 @@ document.addEventListener("DOMContentLoaded", async () => {
     input.addEventListener("input", updateTotalPercent);
   });
 
+  // Strategy Form Submit (Save/Update)
+  strategyForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = strategyIdInput.value;
+    const name = strategyNameInput.value;
+
+    // Convert percentages back to decimals (e.g. 50 -> 0.5)
+    const nec = (parseFloat(document.getElementById("necInput").value) || 0) / 100;
+    const ffa = (parseFloat(document.getElementById("ffaInput").value) || 0) / 100;
+    const edu = (parseFloat(document.getElementById("eduInput").value) || 0) / 100;
+    const ltss = (parseFloat(document.getElementById("ltssInput").value) || 0) / 100;
+    const play = (parseFloat(document.getElementById("playInput").value) || 0) / 100;
+    const give = (parseFloat(document.getElementById("giveInput").value) || 0) / 100;
+
+    const data = { name, nec, ffa, edu, ltss, play, give };
+
+    if (id) {
+      await updateStrategy(id, data);
+    } else {
+      await createStrategy(data);
+    }
+  });
+
+  async function createStrategy(data) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/econome/strategies`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        await fetchStrategies();
+        strategyModal.hide();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Failed to create strategy");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error creating strategy");
+    }
+  }
+
+  async function updateStrategy(id, data) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/econome/strategies/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        await fetchStrategies();
+        strategyModal.hide();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Failed to update strategy");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating strategy");
+    }
+  }
+
   // Manage Strategy Button (in Distribute Modal)
   const manageStrategyBtn = document.getElementById("manageStrategyBtn");
   if (manageStrategyBtn) {
@@ -487,6 +755,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
+
+  // Expose deleteTransaction to window
+  window.deleteTransaction = deleteTransaction;
 
   // Initial Load
   await fetchStrategies();

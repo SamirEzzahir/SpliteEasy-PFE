@@ -248,9 +248,9 @@ async function openEditGroupModal(groupId) {
     const categorySelect = document.getElementById('editGroupCategory');
 
     // Check if it's the default Personal Expenses group
-    const isDefaultPersonalGroup = group.type === 'Personal' && group.title === 'Personal Expenses';
+    const isDefaultPersonalGroup = (group.type === 'Personal' || group.type === 'Personal Expenses') && group.title === 'Personal Expenses';
 
-    if (group.type === 'Personal') {
+    if (group.type === 'Personal' || group.type === 'Personal Expenses') {
       // For ALL Personal groups: HIDE category field completely
       if (categoryDiv) {
         categoryDiv.style.display = 'none';
@@ -485,7 +485,7 @@ async function renderGroupsList() {
                     onclick="openEditGroupModal(${g.id})" title="Edit Group">
               <i class="bi bi-pencil"></i>
             </button>
-            ${(g.type === "Personal" && g.title === "Personal Expenses")
+            ${((g.type === "Personal" || g.type === "Personal Expenses") && g.title === "Personal Expenses")
           ? `<button class="btn btn-sm btn-outline-secondary" disabled title="Cannot delete default group"><i class="bi bi-lock"></i></button>`
           : `<button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id})" title="Delete Group"><i class="bi bi-trash"></i></button>`
         }
@@ -598,7 +598,7 @@ async function renderGroupsMobileCards() {
                       onclick="event.stopPropagation(); openEditGroupModal(${g.id})" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              ${(g.type === "Personal" && g.title === "Personal Expenses")
+              ${((g.type === "Personal" || g.type === "Personal Expenses") && g.title === "Personal Expenses")
           ? `<button class="btn btn-sm btn-outline-secondary" disabled title="Cannot delete default group"><i class="bi bi-lock"></i></button>`
           : `<button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteGroup(${g.id})" title="Delete"><i class="bi bi-trash"></i></button>`
         }
@@ -922,11 +922,54 @@ async function openEditGroupModal(groupId) {
     // Populate all fields
     document.getElementById("editGroupId").value = groupId;
     document.getElementById("editGroupTitle").value = group.title || "";
-    document.getElementById("editGroupType").value = group.type || "Other";
+    document.getElementById("editGroupCategory").value = group.category || "Other";
+    document.getElementById("editGroupOriginalType").value = group.type || "Other";
     document.getElementById("editGroupCurrency").value = group.currency || "MAD";
     document.getElementById("editGroupPhoto").value = group.photo || "";
     console.log("📊 Group descreption :", group.description);
     document.getElementById("editGroupDescription").value = group.description || "";
+
+    // ✅ Hide/show and disable fields based on group type
+    const titleInput = document.getElementById('editGroupTitle');
+    const categoryDiv = document.getElementById('editGroupCategoryDiv');
+    const categorySelect = document.getElementById('editGroupCategory');
+
+    // Check if it's the default Personal Expenses group
+    const isDefaultPersonalGroup = (group.type === 'Personal' || group.type === 'Personal Expenses') && group.title === 'Personal Expenses';
+
+    if (group.type === 'Personal' || group.type === 'Personal Expenses') {
+      // For ALL Personal groups: HIDE category field completely
+      if (categoryDiv) {
+        categoryDiv.style.display = 'none';
+      }
+
+      // For DEFAULT Personal Expenses group ONLY: also disable title
+      if (isDefaultPersonalGroup && titleInput) {
+        titleInput.disabled = true;
+        titleInput.style.backgroundColor = '#e9ecef';
+        titleInput.title = 'Cannot edit title of default Personal Expenses group';
+      } else if (titleInput) {
+        // Other Personal groups can edit title
+        titleInput.disabled = false;
+        titleInput.style.backgroundColor = '';
+        titleInput.title = '';
+      }
+    } else {
+      // Non-Personal groups: show and enable both
+      if (categoryDiv) {
+        categoryDiv.style.display = 'block';
+      }
+      if (titleInput) {
+        titleInput.disabled = false;
+        titleInput.style.backgroundColor = '';
+        titleInput.title = '';
+      }
+      if (categorySelect) {
+        categorySelect.disabled = false;
+        categorySelect.style.backgroundColor = '';
+        categorySelect.title = '';
+      }
+    }
 
     console.log("📝 Fields populated, showing modal...");
 
@@ -964,7 +1007,13 @@ async function saveGroupChanges(event) {
 
   const groupId = document.getElementById("editGroupId").value;
   const newTitle = document.getElementById("editGroupTitle").value.trim();
-  const newType = document.getElementById("editGroupType").value;
+  let newType = document.getElementById("editGroupCategory").value;
+  const originalType = document.getElementById("editGroupOriginalType").value;
+
+  // Preserve Personal/Personal Expenses type if it was originally set
+  if (originalType === 'Personal' || originalType === 'Personal Expenses') {
+    newType = originalType;
+  }
   const newCurrency = document.getElementById("editGroupCurrency").value;
   const newPhoto = document.getElementById("editGroupPhoto").value.trim();
   const newDescription = document.getElementById("editGroupDescription").value.trim();
@@ -1183,6 +1232,10 @@ async function loadPayersForGroup(groupId) {
     }
   }
 }
+
+// Make functions globally accessible
+window.loadMembersForGroup = loadMembersForGroup;
+window.loadPayersForGroup = loadPayersForGroup;
 
 function renderMembersCardsForGroup(container, members) {
   if (!container || !Array.isArray(members)) return;
@@ -1412,9 +1465,13 @@ async function addExpenseModalSubmit() {
     const category = document.getElementById("expenseCategory").value;
     const walletId = document.getElementById("expenseWallet").value;
     const payerId = document.getElementById("expensePayer").value;
-    const groupId = document.getElementById("groupsListForExpenses").value;
+    let groupId = document.getElementById("groupsListForExpenses")?.value;
 
-
+    // If no group selected from dropdown, try to get from URL (for expenses.html)
+    if (!groupId) {
+      const urlParams = new URLSearchParams(window.location.search);
+      groupId = urlParams.get('id');
+    }
 
     // Validation
     if (!groupId) {
