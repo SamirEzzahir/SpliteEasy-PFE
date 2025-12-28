@@ -1,6 +1,6 @@
 // frontend/js/config.js
-const API_URL = "http://pcrox.ddns.net:8000";
-// const API_URL = "http://localhost:8000"; // local development
+//const API_URL = "http://pcrox.ddns.net:8000";
+const API_URL = "http://192.168.137.1:8000"; // local development
 // const API_URL = "http://pcrox.ddns.net:8000"; // local option
 
 // -------------------------

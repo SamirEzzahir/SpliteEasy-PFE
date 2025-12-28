@@ -24,6 +24,7 @@ allowed_origins = [origin.strip() for origin in origins_string.split(",")] if or
 
 # Development origins
 dev_origins = [
+    "http://41.142.215.163:8000",
     "http://localhost",
     "http://pcrox.ddns.net",
     "http://localhost:5500", 
@@ -37,6 +38,7 @@ dev_origins = [
 
 # Production origins  
 prod_origins = [
+    "http://41.142.215.163:8000",
     "http://192.168.1.3:5500",
     "http://pcrox.ddns.net:5555",
     "https://pcrox.ddns.net:5555",
@@ -51,8 +53,8 @@ else:
     allowed_origins = dev_origins
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
+    CORSMiddleware, 
+    allow_origins=["*"],   #allowed_origins,
     allow_credentials=True,
     allow_methods=["*"], 
     allow_headers=["*"],

@@ -425,7 +425,7 @@ body {
 }
 
 /* Hide the View button to match the design exactly */
-.friend-actions .btn-primary {
+.friend-card .friend-actions .btn-primary {
   display: none;
 }
 

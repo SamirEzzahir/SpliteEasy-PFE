@@ -46,15 +46,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   const editSourceWrapper = document.getElementById("editSourceWrapper");
 
   // --- Configuration ---
-  const JARS = {
-    NEC: { name: "Necessities", icon: "bi-house-door", color: "bg-orange", desc: "Rent, Food, Bills" },
-    FFA: { name: "Financial Freedom", icon: "bi-graph-up-arrow", color: "bg-yellow", desc: "Investments, Passive Income" },
-    EDU: { name: "Education", icon: "bi-book", color: "bg-grey", desc: "Books, Courses, Seminars" },
-    LTSS: { name: "Long Term Savings", icon: "bi-piggy-bank", color: "bg-blue", desc: "Big purchases, Rainy day" },
-    PLAY: { name: "Play", icon: "bi-controller", color: "bg-light-green", desc: "Fun, Hobbies, Dining out" },
-    GIVE: { name: "Give", icon: "bi-heart", color: "bg-green", desc: "Charity, Gifts" }
-  };
+  /**
+   * @typedef {Object} JarConfig
+   * @property {string} name - Display name of the jar
+   * @property {string} icon - Bootstrap icon class
+   * @property {string} color - CSS color class
+   * @property {string} desc - Description of the jar
+   */
 
+  /** @type {Object.<string, JarConfig>} */
+  let JARS = {};
+
+  /**
+   * @typedef {Object} Strategy
+   * @property {number} id
+   * @property {string} name
+   * @property {number} nec
+   * @property {number} ffa
+   * @property {number} edu
+   * @property {number} ltss
+   * @property {number} play
+   * @property {number} give
+   * @property {boolean} is_default
+   * @property {number|null} user_id
+   */
+
+  /** @type {Strategy[]} */
   let strategies = [];
   let currentStrategyId = null;
   let incomeSources = [];
@@ -63,6 +80,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- API Functions ---
 
+  /**
+   * Fetches the Jar configuration from the backend.
+   */
+  async function fetchJarConfig() {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/econome/config`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        JARS = await res.json();
+      } else {
+        console.warn("Failed to fetch jar config, using fallback.");
+        useFallbackConfig();
+      }
+    } catch (err) {
+      console.error("Error fetching jar config", err);
+      useFallbackConfig();
+    }
+  }
+
+  function useFallbackConfig() {
+    JARS = {
+      NEC: { name: "Necessities", icon: "bi-house-door", color: "bg-orange", desc: "Rent, Food, Bills" },
+      FFA: { name: "Financial Freedom", icon: "bi-graph-up-arrow", color: "bg-yellow", desc: "Investments, Passive Income" },
+      EDU: { name: "Education", icon: "bi-book", color: "bg-grey", desc: "Books, Courses, Seminars" },
+      LTSS: { name: "Long Term Savings", icon: "bi-piggy-bank", color: "bg-blue", desc: "Big purchases, Rainy day" },
+      PLAY: { name: "Play", icon: "bi-controller", color: "bg-light-green", desc: "Fun, Hobbies, Dining out" },
+      GIVE: { name: "Give", icon: "bi-heart", color: "bg-green", desc: "Charity, Gifts" }
+    };
+  }
+
+  /**
+   * Fetches all available strategies for the user.
+   */
   async function fetchStrategies() {
     try {
       const token = localStorage.getItem("token");
@@ -96,6 +148,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Fetches current jar balances.
+   */
   async function fetchBalances() {
     try {
       const token = localStorage.getItem("token");
@@ -111,6 +166,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Fetches monthly summary data.
+   */
   async function fetchMonthlySummary() {
     try {
       const token = localStorage.getItem("token");
@@ -126,6 +184,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Fetches the full transaction ledger.
+   */
   async function fetchLedger() {
     try {
       const token = localStorage.getItem("token");
@@ -141,6 +202,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Fetches available income sources.
+   */
   async function fetchIncomeSources() {
     try {
       const token = localStorage.getItem("token");
@@ -156,6 +220,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Fetches transaction history for a specific jar.
+   * @param {string} jarType - The type of jar (e.g., "NEC", "FFA")
+   */
   async function fetchJarHistory(jarType) {
     try {
       const token = localStorage.getItem("token");
@@ -173,6 +241,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Deletes a transaction.
+   * @param {string} type - "income" or "expense"
+   * @param {number} id - Transaction ID
+   */
   async function deleteTransaction(type, id) {
     if (!confirm("Are you sure you want to delete this transaction? This action cannot be undone.")) return;
 
@@ -196,6 +269,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Updates a transaction.
+   * @param {string} type - "income" or "expense"
+   * @param {number} id - Transaction ID
+   * @param {Object} data - Updated data
+   */
   async function updateTransaction(type, id, data) {
     try {
       const token = localStorage.getItem("token");
@@ -221,6 +300,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- Action Functions ---
 
+  /**
+   * Distributes income according to a strategy.
+   * @param {number} amount 
+   * @param {number} strategyId 
+   * @param {string} description 
+   */
   async function distributeIncome(amount, strategyId, description) {
     const token = localStorage.getItem("token");
     const res = await fetch(`${API_URL}/econome/distribute?amount=${amount}&strategy_id=${strategyId}&description=${description}`, {
@@ -237,6 +322,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  /**
+   * Logs an expense from a specific jar.
+   * @param {number} amount 
+   * @param {string} jarType 
+   * @param {string} description 
+   */
   async function logExpense(amount, jarType, description) {
     const token = localStorage.getItem("token");
     const res = await fetch(`${API_URL}/econome/spend?amount=${amount}&jar_type=${jarType}&description=${description}`, {
@@ -299,10 +390,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const balMap = {};
     balances.forEach(b => balMap[b.jar_type] = b.balance);
 
-    const jarOrder = ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"];
+    // Use keys from JARS config if available, otherwise fallback to default order
+    const jarOrder = Object.keys(JARS).length > 0 ? Object.keys(JARS) : ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"];
 
     jarOrder.forEach((jarKey, index) => {
       const config = JARS[jarKey];
+      if (!config) return; // Skip if config not loaded yet
+
       const amount = balMap[jarKey] || 0;
 
       const cardHtml = `
@@ -760,6 +854,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.deleteTransaction = deleteTransaction;
 
   // Initial Load
+  await fetchJarConfig(); // Fetch config first
   await fetchStrategies();
   await fetchIncomeSources();
   await refreshAll();

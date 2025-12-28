@@ -1461,7 +1461,7 @@ function renderDesktopTable(items, user, currentGroup = null) {
             <button class="btn btn-sm btn-outline-info view-btn" data-id="${expense.id}" title="View details">
               <i class="bi bi-eye"></i>
                 </button>
-            <button class="btn btn-sm btn-outline-primary edit-btn" data-id="${expense.id}" data-bs-toggle="modal" data-bs-target="#editExpenseModal" ${!isOwner ? "disabled" : ""} title="Edit expense">
+            <button class="btn btn-sm btn-outline-primary edit-btn" data-id="${expense.id}" ${!isOwner ? "disabled" : ""} title="Edit expense">
               <i class="bi bi-pencil"></i>
                 </button>
             <button class="btn btn-sm btn-outline-danger" ${!isOwner ? "disabled" : ""} onclick="deleteExpense(${expense.id})" title="Delete expense">
@@ -1648,7 +1648,7 @@ function showExpenseDetailModal(expense, user) {
                 <button class="btn btn-link p-1 me-2" title="Delete" ${!isOwner ? "disabled" : ""} onclick="deleteExpense(${expense.id})">
                   <i class="bi bi-trash fs-5 text-danger"></i>
                 </button>
-                <button class="btn btn-link p-1" title="Edit" ${!isOwner ? "disabled" : ""} data-bs-toggle="modal" data-bs-target="#editExpenseModal" onclick="handleEditExpense(${expense.id})">
+                <button class="btn btn-link p-1" title="Edit" ${!isOwner ? "disabled" : ""} onclick="handleEditExpense(${expense.id})">
                   <i class="bi bi-pencil fs-5 text-primary"></i>
                 </button>
               </div>
