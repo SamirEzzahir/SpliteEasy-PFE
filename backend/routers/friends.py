@@ -40,13 +40,14 @@ async def my_friends(session: AsyncSession = Depends(get_session), current_user:
     for f in friendships:
         friend_id = f.friend_id if f.user_id == current_user.id else f.user_id
         user = await session.get(User, friend_id)
-        friends_list.append({
-            "friendship_id": f.id,  # needed for remove
-            "user_id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "phone": getattr(user, "phone", "")
-        })
+        if user:
+            friends_list.append({
+                "friendship_id": f.id,  # needed for remove
+                "user_id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "phone": getattr(user, "phone", "")
+            })
     return friends_list
 
 # ----------------- Requests sent -----------------
@@ -56,7 +57,12 @@ async def requests_sent(session: AsyncSession = Depends(get_session), current_us
         select(Friend).where(Friend.user_id == current_user.id, Friend.status == FriendStatus.pending)
     )
     requests = result.scalars().all()
-    return [{"id": r.id, "friend_email": (await session.get(User, r.friend_id)).email} for r in requests]
+    valid_requests = []
+    for r in requests:
+        friend_user = await session.get(User, r.friend_id)
+        if friend_user:
+            valid_requests.append({"id": r.id, "friend_email": friend_user.email})
+    return valid_requests
 
 # ----------------- Requests received -----------------
 @router.get("/requests/received")
@@ -65,7 +71,12 @@ async def requests_received(session: AsyncSession = Depends(get_session), curren
         select(Friend).where(Friend.friend_id == current_user.id, Friend.status == FriendStatus.pending)
     )
     requests = result.scalars().all()
-    return [{"id": r.id, "user_email": (await session.get(User, r.user_id)).email} for r in requests]
+    valid_requests = []
+    for r in requests:
+        friend_user = await session.get(User, r.user_id)
+        if friend_user:
+            valid_requests.append({"id": r.id, "user_email": friend_user.email})
+    return valid_requests
 
 # ----------------- Send friend request -----------------
 @router.post("/request/{friend_id}")
@@ -90,7 +101,7 @@ async def send_friend_request(friend_id: int, session: AsyncSession = Depends(ge
     )
     session.add(friend_request)
     await session.commit()
-    await send_notification(friend_id, f"{current_user.username or current_user.email} sent you a friend request")
+    await send_notification(session, friend_id, f"{current_user.username or current_user.email} sent you a friend request")
     return {"message": "Friend request sent"}
 
 # ----------------- Accept request -----------------
@@ -102,7 +113,7 @@ async def accept_request(request_id: int, session: AsyncSession = Depends(get_se
 
     request.status = FriendStatus.accepted
     await session.commit()
-    await send_notification(request.user_id, f"{current_user.username or current_user.email} accepted your friend request")
+    await send_notification(session, request.user_id, f"{current_user.username or current_user.email} accepted your friend request")
     return {"message": "Friend request accepted"}
 
 # ----------------- Reject request -----------------

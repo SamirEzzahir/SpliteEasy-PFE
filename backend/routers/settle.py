@@ -210,7 +210,7 @@ async def record_global_settlement(
         f"{from_username} recorded a global settlement of {amount}. "
         f"Please review and confirm."
     )
-    await send_notification(payload.to_user_id, notification_msg)
+    await send_notification(session, payload.to_user_id, notification_msg)
     
     # Log activity
     await log_activity(
@@ -332,6 +332,7 @@ async def accept_global_settlement(
     # Send notification to User A
     from_user = await session.get(User, settlement.from_user_id)
     await send_notification(
+        session,
         settlement.from_user_id,
         f"{current.username} accepted your global settlement of {settlement.amount}"
     )
@@ -400,6 +401,7 @@ async def reject_global_settlement(
     from_user = await session.get(User, settlement.from_user_id)
     reason_text = f" Reason: {payload.reason}" if payload.reason else ""
     await send_notification(
+        session,
         settlement.from_user_id,
         f"{current.username} rejected your global settlement of {settlement.amount}.{reason_text}"
     )
@@ -470,6 +472,7 @@ async def resend_global_settlement(
     # Send notification to User B
     to_user = await session.get(User, original.to_user_id)
     await send_notification(
+        session,
         original.to_user_id,
         f"{current.username} resent the global settlement request for {original.amount}"
     )
@@ -800,7 +803,7 @@ async def record_settlement(
         f"{from_username} recorded a settlement of {amount} {group_currency or 'MAD'}. "
         f"Please review and confirm."
     )
-    await send_notification(payload.to_user_id, notification_msg)
+    await send_notification(session, payload.to_user_id, notification_msg)
 
     # ✅ Log activity
     await log_activity(
@@ -863,6 +866,7 @@ async def accept_settlement(
     # Send notification to User A
     from_user = await session.get(User, settlement.from_user_id)
     await send_notification(
+        session,
         settlement.from_user_id,
         f"{current.username} accepted your settlement of {settlement.amount}"
     )
@@ -934,6 +938,7 @@ async def reject_settlement(
     from_user = await session.get(User, settlement.from_user_id)
     reason_text = f" Reason: {payload.reason}" if payload.reason else ""
     await send_notification(
+        session,
         settlement.from_user_id,
         f"{current.username} rejected your settlement of {settlement.amount}.{reason_text}"
     )
@@ -1007,6 +1012,7 @@ async def resend_settlement(
     # Send notification to User B
     to_user = await session.get(User, original.to_user_id)
     await send_notification(
+        session,
         original.to_user_id,
         f"{current.username} resent the settlement request for {original.amount}"
     )

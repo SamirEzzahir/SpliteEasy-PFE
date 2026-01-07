@@ -23,6 +23,7 @@ from backend.crud import (
     round_amount
 )
 from decimal import Decimal
+from backend.routers.notifications import send_notification
 
 router = APIRouter(prefix="/expenses")
 
@@ -35,6 +36,31 @@ async def create_expense_ep(payload: schemas.ExpenseCreate, session: AsyncSessio
     if not payload.added_by:
         payload.added_by = current.id
     exp = await add_expense(session, payload, [(s.user_id, s.share_amount) for s in payload.splits], current.id)
+    
+    # 🔔 Notify Expense Participants (Targeted)
+    try:
+        # Fetch group title
+        group_res = await session.execute(select(Group.title).where(Group.id == exp.group_id))
+        group_title = group_res.scalar_one_or_none() or "Group"
+
+        # Identify participants: Payer + Everyone in the split
+        participant_ids = {s.user_id for s in payload.splits}
+        if payload.payer_id:
+            participant_ids.add(payload.payer_id)
+        
+        # Remove the user who created the expense (don't notify self)
+        if current.id in participant_ids:
+            participant_ids.remove(current.id)
+
+        message = f"🆕 Expense: '{exp.description}' added to '{group_title}' by {current.username}"
+        link = f"groups.html?id={exp.group_id}"
+
+        for member_id in participant_ids:
+            await send_notification(session, member_id, message, type="expense", link=link)
+
+    except Exception as e:
+        print(f"❌ Failed to send expense notifications: {e}")
+
     return schemas.ExpenseRead.model_validate(exp)
 
 

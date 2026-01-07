@@ -102,8 +102,30 @@ function buildNavHTML() {
           </ul>
         </li>
       </ul>
+      
+      <!-- Notifications Dropdown -->
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item dropdown me-3">
+          <a class="nav-link dropdown-toggle position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-bell fs-5"></i>
+            <span id="nav-notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.6rem;">0</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end p-0 shadow-lg border-0" aria-labelledby="notificationDropdown" style="width: 320px; max-height: 400px; overflow-y: auto;">
+             <li class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                <h6 class="mb-0 fw-bold">Notifications</h6>
+                <button class="btn btn-link btn-sm text-decoration-none p-0" onclick="globalNotifications.markAllRead()">Mark all read</button>
+             </li>
+             <div id="notification-list">
+                <!-- Notifications will be loaded here -->
+                <li class="text-center p-4 text-muted">
+                   <p class="mb-0 small">No new notifications</p>
+                </li>
+             </div>
+          </ul>
+        </li>
+      </ul>
 
-      <!-- Right side -->
+      <!-- User Profile (Right side) -->
       <ul class="navbar-nav">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -164,6 +186,7 @@ function buildMobileNavHTML() {
           <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.5rem; padding: 0.2em 0.3em; min-width: 1em; display: none;">0</span>
         </a>
       </div>
+
       <div class="col">
         <a class="nav-link text-center ${isActivePage('stats.html') ? 'active' : ''}" href="stats.html">
           <i class="bi bi-bar-chart fs-5"></i>

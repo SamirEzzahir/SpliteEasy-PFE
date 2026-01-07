@@ -215,8 +215,6 @@ async def migrate_transactions_transaction_type():
                 await conn.execute(update_empty_query)
                 print("✅ Fixed any empty transaction_type values")
                 
-                print("✅ Added column: transaction_type")
-            else:
                 print("✅ Column transaction_type already exists.")
                 
         except Exception as e:
