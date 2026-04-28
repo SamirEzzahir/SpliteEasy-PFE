@@ -144,6 +144,22 @@ class Group(Base):
     owner: Mapped["User"] = relationship("User", back_populates="owned_groups")
     memberships: Mapped[list["Membership"]] = relationship("Membership", back_populates="group", cascade="all, delete-orphan")
     expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="group", cascade="all, delete-orphan")
+    messages: Mapped[list["GroupMessage"]] = relationship("GroupMessage", back_populates="group", cascade="all, delete-orphan")
+
+# ======================
+# Group Message
+# ======================
+class GroupMessage(Base):
+    __tablename__ = "group_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    content: Mapped[str] = mapped_column(String(2000), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    group: Mapped["Group"] = relationship("Group", back_populates="messages")
+    user: Mapped["User"] = relationship("User")
 
 
 # ======================
@@ -213,6 +229,8 @@ class Expense(Base):
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id"), nullable=True)
     split_type: Mapped[str] = mapped_column(String(20), default="equal")
+    jar_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    is_from_jar: Mapped[bool] = mapped_column(Boolean, default=False)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     photo: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

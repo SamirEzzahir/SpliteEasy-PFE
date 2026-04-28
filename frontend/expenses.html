@@ -112,6 +112,13 @@
                 <span class="d-none d-sm-inline">Leave Group</span>
                 <span class="d-sm-none">Leave</span>
               </button>
+
+              <button class="btn btn-warning d-flex align-items-center" data-bs-toggle="offcanvas"
+                data-bs-target="#chatOffcanvas" aria-label="Open Group Chat">
+                <i class="bi bi-chat-dots-fill me-2"></i>
+                <span class="d-none d-sm-inline">Group Chat</span>
+                <span class="d-sm-none">Chat</span>
+              </button>
             </div>
           </div>
         </div>
@@ -265,7 +272,7 @@
 
 
             <!-- Paid By & Wallet Row -->
-            <div class="row g-3 mb-4">
+            <div class="row g-3 mb-3">
               <div class="col-md-6" id="addPayerContainer">
                 <label class="form-label fw-semibold text-secondary small">Paid by</label>
                 <select class="form-select fs-6" id="addPayer" required>
@@ -278,6 +285,25 @@
                   <option value="">Wallet</option>
                   <!-- Populated by JS -->
                 </select>
+              </div>
+            </div>
+
+            <!-- Econome Jar Row -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-12">
+                <label class="form-label fw-semibold text-secondary small text-primary"><i
+                    class="bi bi-piggy-bank me-1"></i>Fund from Économé Jar (Optional)</label>
+                <select class="form-select fs-6 text-muted" id="addJarType">
+                  <option value="">-- No Jar (Regular Expense) --</option>
+                  <option value="NEC">Necessities (NEC)</option>
+                  <option value="FFA">Financial Freedom Account (FFA)</option>
+                  <option value="EDU">Education (EDU)</option>
+                  <option value="LTSS">Long Term Saving (LTSS)</option>
+                  <option value="PLAY">Play (PLAY)</option>
+                  <option value="GIVE">Give (GIVE)</option>
+                </select>
+                <div class="form-text small text-muted mt-1">Selecting a jar will automatically deduct the full amount
+                  from your personal jar tracking.</div>
               </div>
             </div>
             <!-- Note (Moved Above Split) -->
@@ -526,6 +552,21 @@
                   <option value="">No wallet selected</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Econome Jar -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-primary"><i class="bi bi-piggy-bank me-1"></i>Fund from Économé
+                Jar</label>
+              <select class="form-select form-select-lg bg-light border-0 fs-6 text-muted" id="editJarType">
+                <option value="">-- No Jar (Regular Expense) --</option>
+                <option value="NEC">Necessities (NEC)</option>
+                <option value="FFA">Financial Freedom Account (FFA)</option>
+                <option value="EDU">Education (EDU)</option>
+                <option value="LTSS">Long Term Saving (LTSS)</option>
+                <option value="PLAY">Play (PLAY)</option>
+                <option value="GIVE">Give (GIVE)</option>
+              </select>
             </div>
 
             <!-- Note -->
@@ -837,6 +878,42 @@
     </div>
   </div>
 
+  <!-- Group Chat Offcanvas -->
+  <div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" id="chatOffcanvas" aria-labelledby="chatOffcanvasLabel"
+    style="width: 400px; border-left: none;">
+    <div class="offcanvas-header bg-primary text-white">
+      <h5 class="offcanvas-title d-flex align-items-center mb-0" id="chatOffcanvasLabel">
+        <i class="bi bi-chat-quote-fill fs-4 me-2"></i> Group Chat
+      </h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0 bg-light">
+
+      <!-- Messages Container -->
+      <div id="chatMessagesContainer" class="flex-grow-1 p-3 overflow-y-auto" style="height: calc(100vh - 130px);">
+        <!-- Messages will be injected here via chat.js -->
+        <div class="text-center text-muted small mt-4">
+          <i class="bi bi-lock-fill me-1"></i> Messages are end-to-end awesome.
+        </div>
+      </div>
+
+      <!-- Message Input Area -->
+      <div class="p-3 bg-white border-top shadow-sm">
+        <form id="chatForm">
+          <div class="input-group">
+            <input type="text" id="chatInput" class="form-control form-control-lg bg-light"
+              placeholder="Type a message..." required autocomplete="off"
+              style="border-radius: 20px 0 0 20px; border-right: none;">
+            <button class="btn btn-primary px-4" type="submit" style="border-radius: 0 20px 20px 0;">
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="js/config.js"></script>
   <script src="js/notifications.js"></script>
@@ -844,6 +921,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/group.js"></script>
   <script src="js/expenses.js"></script>
+  <script src="js/chat.js"></script>
   <script src="js/auth.js"></script>
   <script>
     if (!localStorage.getItem("token")) window.location.href = "login.html";

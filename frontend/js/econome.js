@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const strategyModal = new bootstrap.Modal(document.getElementById("strategyModal"));
   const distributeModal = new bootstrap.Modal(document.getElementById("distributeModal"));
   const spendModal = new bootstrap.Modal(document.getElementById("spendModal"));
+  const transferModal = new bootstrap.Modal(document.getElementById("transferModal"));
   const sourcesModal = new bootstrap.Modal(document.getElementById("sourcesModal"));
   const editTransactionModal = new bootstrap.Modal(document.getElementById("editTransactionModal"));
 
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const strategyForm = document.getElementById("strategyForm");
   const distributeForm = document.getElementById("distributeForm");
   const spendForm = document.getElementById("spendForm");
+  const transferForm = document.getElementById("transferForm");
   const addSourceForm = document.getElementById("addSourceForm");
   const editTransactionForm = document.getElementById("editTransactionForm");
 
@@ -77,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let incomeSources = [];
   let currentOpenJar = null;
   let allTransactions = []; // Store locally for edit lookup
+  let econChartInstance = null; // Store chart instance for destruction on re-render
 
   // --- API Functions ---
 
@@ -306,9 +309,9 @@ document.addEventListener("DOMContentLoaded", async () => {
    * @param {number} strategyId 
    * @param {string} description 
    */
-  async function distributeIncome(amount, strategyId, description) {
+  async function distributeIncome(amount, strategyId, incomeSource, description) {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${API_URL}/econome/distribute?amount=${amount}&strategy_id=${strategyId}&description=${description}`, {
+    const res = await fetch(`${API_URL}/econome/distribute?amount=${amount}&strategy_id=${strategyId}&income_source=${incomeSource}&description=${description}`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}` }
     });
@@ -322,12 +325,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  /**
-   * Logs an expense from a specific jar.
-   * @param {number} amount 
-   * @param {string} jarType 
-   * @param {string} description 
-   */
   async function logExpense(amount, jarType, description) {
     const token = localStorage.getItem("token");
     const res = await fetch(`${API_URL}/econome/spend?amount=${amount}&jar_type=${jarType}&description=${description}`, {
@@ -341,6 +338,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       spendForm.reset();
     } else {
       alert("Failed to log expense");
+    }
+  }
+
+  /**
+   * Transfers funds between two jars.
+   */
+  async function transferFunds(fromJar, toJar, amount, description) {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/econome/transfer?from_jar=${fromJar}&to_jar=${toJar}&amount=${amount}&description=${description}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      await refreshAll();
+      transferModal.hide();
+      transferForm.reset();
+    } else {
+      const err = await res.json();
+      alert(err.detail || "Failed to transfer funds");
     }
   }
 
@@ -388,7 +405,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderBalances(balances) {
     balancesContainer.innerHTML = "";
     const balMap = {};
-    balances.forEach(b => balMap[b.jar_type] = b.balance);
+    balances.forEach(b => balMap[b.jar_type] = b);
+
+    // Render pie chart with balances
+    renderChart(balances);
 
     // Use keys from JARS config if available, otherwise fallback to default order
     const jarOrder = Object.keys(JARS).length > 0 ? Object.keys(JARS) : ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"];
@@ -397,7 +417,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const config = JARS[jarKey];
       if (!config) return; // Skip if config not loaded yet
 
-      const amount = balMap[jarKey] || 0;
+      const data = balMap[jarKey] || { allocated_balance: 0, net_transfers: 0, balance: 0 };
+      const netTransfersText = data.net_transfers > 0
+        ? `<span class="text-success"><i class="bi bi-arrow-down-left"></i> +${formatCurrency(Math.abs(data.net_transfers))}</span>`
+        : data.net_transfers < 0
+          ? `<span class="text-danger"><i class="bi bi-arrow-up-right"></i> -${formatCurrency(Math.abs(data.net_transfers))}</span>`
+          : `<span class="opacity-50">0 MAD trans.</span>`;
 
       const cardHtml = `
                 <div class="col-md-6 col-lg-4 animate-in" style="animation-delay: ${index * 0.1}s">
@@ -411,13 +436,104 @@ document.addEventListener("DOMContentLoaded", async () => {
                             </div>
                             
                             <h5 class="card-title text-white mb-1 opacity-75">${config.name}</h5>
-                            <div class="display-6 fw-bold text-white mb-2">${formatCurrency(amount)}</div>
+                            <div class="display-6 fw-bold text-white mb-1">${formatCurrency(data.balance)}</div>
+                            <div class="d-flex justify-content-between small text-white mb-2 pb-2 border-bottom border-light">
+                                <span class="opacity-75" title="Income allocated directly to this jar">Allocated: ${formatCurrency(data.allocated_balance)}</span>
+                                <span title="Net transfers in/out of this jar">${netTransfersText}</span>
+                            </div>
                             <small class="text-white opacity-75">${config.desc}</small>
                         </div>
                     </div>
                 </div>
             `;
       balancesContainer.insertAdjacentHTML("beforeend", cardHtml);
+    });
+  }
+
+  function renderChart(balances) {
+    const canvas = document.getElementById('economeChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Destroy existing chart if it exists to prevent overlapping
+    if (econChartInstance) {
+      econChartInstance.destroy();
+    }
+
+    // Only include jars with positive balance
+    const labels = [];
+    const data = [];
+    const backgroundColor = [];
+
+    // Map JARS custom CSS classes to HEX colors for Chart.js
+    const colorMap = {
+      'bg-orange': '#fd7e14',
+      'bg-yellow': '#ffc107',
+      'bg-grey': '#6c757d',
+      'bg-blue': '#0d6efd',
+      'bg-light-green': '#20c997',
+      'bg-green': '#198754',
+      'bg-teal': '#0dcaf0'
+    };
+
+    balances.forEach(b => {
+      if (b.balance > 0) {
+        labels.push(JARS[b.jar_type]?.name || b.jar_type);
+        data.push(b.balance);
+        backgroundColor.push(colorMap[JARS[b.jar_type]?.color] || '#333');
+      }
+    });
+
+    if (data.length === 0) {
+      // No data placeholder config
+      econChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['No Funds'],
+          datasets: [{ data: [1], backgroundColor: ['#e9ecef'] }]
+        },
+        options: { cutout: '70%', plugins: { tooltip: { enabled: false }, legend: { position: 'right' } } }
+      });
+      return;
+    }
+
+    econChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: backgroundColor,
+          borderWidth: 2,
+          borderColor: '#ffffff',
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '65%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              padding: 20,
+              usePointStyle: true,
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                let label = context.label || '';
+                if (label) label += ': ';
+                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MAD' }).format(context.raw).replace('MAD', '') + ' MAD';
+                return label;
+              }
+            }
+          }
+        }
+      }
     });
   }
 
@@ -705,7 +821,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    distributeIncome(amount, stratId, source);
+    distributeIncome(amount, stratId, source, source);
   });
 
   spendForm.addEventListener("submit", (e) => {
@@ -714,6 +830,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const jar = document.getElementById("spendJar").value;
     const desc = document.getElementById("spendDesc").value;
     logExpense(amount, jar, desc);
+  });
+
+  transferForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const amount = document.getElementById("transferAmount").value;
+    const fromJar = document.getElementById("transferFromJar").value;
+    const toJar = document.getElementById("transferToJar").value;
+    const desc = document.getElementById("transferDesc").value;
+    transferFunds(fromJar, toJar, amount, desc);
   });
 
   addSourceForm.addEventListener("submit", (e) => {

@@ -183,19 +183,17 @@ async def get_ledger(
     
     return ledger_items
 
-@router.get("/balances", response_model=List[schemas.JarBalance])
+@router.get("/balances")
 async def get_balances(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    Get current balance for each jar.
+    Get current balance, allocated balance, and net transfers for each jar.
     """
     # Initialize balances
-    balances = {
-        "NEC": 0.0, "FFA": 0.0, "EDU": 0.0, 
-        "LTSS": 0.0, "PLAY": 0.0, "GIVE": 0.0
-    }
+    jars = ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"]
+    balances = {jar: {"allocated": 0.0, "net_transfers": 0.0, "current": 0.0} for jar in jars}
     
     result = await db.execute(
         select(models.JarTransaction)
@@ -205,12 +203,28 @@ async def get_balances(
     
     for txn in transactions:
         if txn.jar_type in balances:
-            balances[txn.jar_type] += txn.amount
+            # We identify transfers by checking the description format we just implemented
+            # Or by using the transaction logic. To be robust, if it's a transfer, we track it differently.
+            is_transfer = txn.description and ("Transfer to " in txn.description or "Transfer from " in txn.description)
             
-    return [
-        schemas.JarBalance(jar_type=k, balance=v) 
-        for k, v in balances.items()
-    ]
+            if is_transfer:
+                balances[txn.jar_type]["net_transfers"] += txn.amount
+            else:
+                balances[txn.jar_type]["allocated"] += txn.amount
+            
+            balances[txn.jar_type]["current"] += txn.amount
+            
+    # Format response
+    response = []
+    for jar, data in balances.items():
+        response.append({
+            "jar_type": jar,
+            "allocated_balance": round(data["allocated"], 2),
+            "net_transfers": round(data["net_transfers"], 2),
+            "balance": round(data["current"], 2)
+        })
+        
+    return response
 
 # ======================
 # Distribute Income
@@ -220,6 +234,7 @@ async def get_balances(
 async def distribute_income(
     amount: float,
     strategy_id: int,
+    income_source: str,
     description: str = "Income Distribution",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -238,6 +253,7 @@ async def distribute_income(
     income_log = models.IncomeLog(
         user_id=current_user.id,
         amount=amount,
+        income_source=income_source,
         strategy_name=strategy.name,
         description=description,
         date=datetime.utcnow()
@@ -486,3 +502,51 @@ async def update_transaction(
 
     await db.commit()
     return {"message": "Transaction updated"}
+
+
+@router.post("/transfer")
+async def transfer_funds(
+    from_jar: str,
+    to_jar: str,
+    amount: float,
+    description: str = "Jar Transfer",
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Transfer funds between two Économé jars.
+    """
+    valid_jars = ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"]
+    if from_jar not in valid_jars or to_jar not in valid_jars:
+        raise HTTPException(status_code=400, detail="Invalid jar type")
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Transfer amount must be positive")
+        
+    if from_jar == to_jar:
+        raise HTTPException(status_code=400, detail="Cannot transfer to the same jar")
+
+    timestamp = datetime.utcnow()
+
+    # Create withdrawal transaction
+    txn_out = models.JarTransaction(
+        user_id=current_user.id,
+        jar_type=from_jar,
+        amount=-amount,
+        description=f"Transfer to {to_jar}: {description}",
+        date=timestamp
+    )
+    db.add(txn_out)
+
+    # Create deposit transaction
+    txn_in = models.JarTransaction(
+        user_id=current_user.id,
+        jar_type=to_jar,
+        amount=amount,
+        description=f"Transfer from {from_jar}: {description}",
+        date=timestamp
+    )
+    db.add(txn_in)
+
+    await db.commit()
+    return {"message": f"Successfully transferred {amount} from {from_jar} to {to_jar}"}

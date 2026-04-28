@@ -47,7 +47,7 @@ async function registerUser() {
     alert("Registered — please log in");
     window.location.href = "login.html";
   } catch (e) {
-    console.error(e);
+    //console.error(e);
     alert("Network error");
   }
 }

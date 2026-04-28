@@ -31,7 +31,7 @@ async def register(user: schemas.UserCreate, session: AsyncSession = Depends(get
 async def login(form: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_session)):
     user = await auth.authenticate(session, form.username, form.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid crsssedentials")
     
     # ✅ Check and create default "Personal Expenses" group if missing
     user_groups = await crud.get_groups(session, user)

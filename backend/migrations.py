@@ -523,6 +523,84 @@ async def migrate_debts_loans_tables():
         print("✅ Debts & Loans tables migration completed!")
 
 
+async def migrate_expenses_jar_columns():
+    """Add jar_type and is_from_jar columns to expenses table if they don't exist."""
+    async with engine.begin() as conn:
+        print("🔄 Checking expenses table for jar-related columns...")
+        
+        try:
+            # Check for jar_type
+            check_query = text("""
+                SELECT COUNT(*) as count
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'expenses'
+                AND COLUMN_NAME = 'jar_type'
+            """)
+            result = await conn.execute(check_query)
+            if not (result.fetchone()[0] > 0):
+                print("➕ Adding column: jar_type...")
+                await conn.execute(text("ALTER TABLE expenses ADD COLUMN jar_type VARCHAR(10) NULL"))
+            
+            # Check for is_from_jar
+            check_query_is = text("""
+                SELECT COUNT(*) as count
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'expenses'
+                AND COLUMN_NAME = 'is_from_jar'
+            """)
+            result_is = await conn.execute(check_query_is)
+            if not (result_is.fetchone()[0] > 0):
+                print("➕ Adding column: is_from_jar...")
+                await conn.execute(text("ALTER TABLE expenses ADD COLUMN is_from_jar BOOLEAN DEFAULT FALSE"))
+                
+            print("✅ Expenses jar tracking migration check completed!")
+        except Exception as e:
+            print(f"⚠️  Could not modify expenses table for jars: {e}")
+
+
+async def migrate_group_messages_table():
+    """Create group_messages table if it doesn't exist."""
+    async with engine.begin() as conn:
+        print("🔄 Checking group_messages table migration...")
+        
+        try:
+            check_query = text("""
+                SELECT COUNT(*) as count
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'group_messages'
+            """)
+            result = await conn.execute(check_query)
+            row = result.fetchone()
+            
+            if not (row and row[0] > 0):
+                print("➕ Creating table: group_messages...")
+                create_query = text("""
+                    CREATE TABLE group_messages (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        group_id INT NOT NULL,
+                        user_id INT NOT NULL,
+                        content VARCHAR(2000) NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        INDEX idx_group_id (group_id)
+                    )
+                """)
+                await conn.execute(create_query)
+                print("✅ Created table group_messages")
+            else:
+                print("✅ Table group_messages already exists.")
+                
+        except Exception as e:
+            print(f"⚠️  Could not create group_messages table: {e}")
+            raise
+        
+        print("✅ Group messages table migration check completed!")
+
+
 async def run_migrations():
     """Run all migrations."""
     await migrate_settlements_table()
@@ -530,4 +608,6 @@ async def run_migrations():
     await migrate_transactions_to_wallet_id()
     await migrate_transactions_transaction_type()
     await migrate_debts_loans_tables()
+    await migrate_expenses_jar_columns()
+    await migrate_group_messages_table()
 

@@ -97,13 +97,31 @@ class NotificationManager {
         }
     }
 
-    handleNotification(message) {
-        // Parse message if it's JSON (future proofing), currently string
-        // We reload notifications from server to get full object details or just prepend a temp one
-        this.loadNotifications();
+    handleNotification(messageData) {
+        let isChat = false;
+        let toastMsg = messageData;
+
+        try {
+            const parsed = JSON.parse(messageData);
+            if (parsed.type === "new_chat_message") {
+                isChat = true;
+                // Dispatch event so chat.js can pick it up
+                window.dispatchEvent(new CustomEvent('newChatMessage', { detail: parsed.message }));
+
+                // Only show a small toast for the chat
+                toastMsg = `New chat message from ${parsed.message.username}`;
+            }
+        } catch (e) {
+            // Not JSON, ignore
+        }
+
+        if (!isChat) {
+            // Reload normal notifications if it's not a chat broadcast
+            this.loadNotifications();
+        }
 
         // Show toast notification
-        this.showToast(message, "info");
+        this.showToast(toastMsg, "info");
 
         // Play sound notification
         if (this.soundEnabled) {
@@ -111,7 +129,7 @@ class NotificationManager {
         }
 
         // Refresh friends page if relevant
-        if (window.location.pathname.includes('friends.html') && message.toLowerCase().includes('friend')) {
+        if (window.location.pathname.includes('friends.html') && typeof messageData === 'string' && messageData.toLowerCase().includes('friend')) {
             if (typeof loadFriends === 'function') loadFriends();
         }
     }

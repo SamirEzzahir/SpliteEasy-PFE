@@ -1809,6 +1809,8 @@ async function submitAddExpense() {
     const walletId = document.getElementById("addWallet").value ? parseInt(document.getElementById("addWallet").value) : null;
     const note = document.getElementById("addNote").value;
     const splitType = document.querySelector('input[name="addSplitType"]:checked').value;
+    const jarType = document.getElementById("addJarType") ? document.getElementById("addJarType").value : "";
+    const isFromJar = jarType !== "";
 
     if (!groupId) return showError("No group selected");
     if (!description) return showError("Please enter a description");
@@ -1873,6 +1875,8 @@ async function submitAddExpense() {
       currency: currentGroup?.currency || "MAD",
       category,
       wallet_id: walletId,
+      jar_type: jarType || null,
+      is_from_jar: isFromJar,
       note,
       splits,
       created_at: createdAtISO
@@ -2907,6 +2911,8 @@ async function submitEditExpense() {
   const note = document.getElementById("editNote").value;
   const walletId = parseInt(document.getElementById("editWallet").value);
   const splitType = document.querySelector('input[name="splitType"]:checked').value;
+  const jarType = document.getElementById("editJarType") ? document.getElementById("editJarType").value : "";
+  const isFromJar = jarType !== "";
 
   // Validation
   if (!description.trim()) return showError("Please enter a description");
@@ -2975,6 +2981,8 @@ async function submitEditExpense() {
     category,
     note,
     wallet_id: walletId || null,
+    jar_type: jarType || null,
+    is_from_jar: isFromJar,
     splits,
     created_at: createdAtISO
   };

@@ -1,7 +1,15 @@
 // frontend/js/config.js
-//const API_URL = "http://pcrox.ddns.net:8000";
-const API_URL = "http://192.168.137.1:8000"; // local development
-// const API_URL = "http://pcrox.ddns.net:8000"; // local option
+//const API_URL = "http://pcrox.ddns.net:8800";
+//const API_URL = "http://host.docker.internal:8000";
+//const API_URL = "http://192.168.61.107:8800"; // local development
+//const API_URL = "http://192.168.137.1:8800"; // local development
+//const API_URL = "http://192.168.7.106:8800"; // local development
+//const API_URL = "http://192.168.1.104:8800"; // local option
+//const API_URL = "http://192.168.1.3:8800"; // local option
+const API_URL = "http://127.0.0.1:8000"; // local option
+//const API_URL = "http://192.168.70.1:8800"; // local option
+
+
 
 // -------------------------
 // AUTH STATE MANAGEMENT

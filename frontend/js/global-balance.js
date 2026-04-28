@@ -186,8 +186,10 @@ async function loadBalances() {
   console.log("🔄 Loading global balances...");
   const container = document.querySelector("#balancesCards");
   container.innerHTML = `
-    <div class="text-center text-text-light-secondary py-4">
-      <div class="animate-spin inline-block w-6 h-6 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading"></div>
+    <div class="col-12 text-center text-muted py-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
       <div class="mt-2">Loading balances...</div>
     </div>
   `;
@@ -207,9 +209,9 @@ async function loadBalances() {
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       container.innerHTML = `
-        <div class="text-center text-text-light-secondary py-5">
-          <span class="material-symbols-outlined text-4xl mb-3">group_off</span>
-          <h5 class="font-bold">No balances found</h5>
+        <div class="col-12 text-center text-muted py-5">
+          <i class="bi bi-people fs-1 mb-3"></i>
+          <h5>No balances found</h5>
           <p>You have no balances with your friends across all groups.</p>
         </div>
       `;
@@ -223,32 +225,42 @@ async function loadBalances() {
     data.forEach((balance) => {
       const isPositive = balance.net > 0;
       const isNegative = balance.net < 0;
-      const colorClass = isPositive ? "text-positive" : isNegative ? "text-negative" : "text-text-light-secondary";
-      const statusText = isPositive ? "John owes you" : isNegative ? "You owe John" : "Settled"; // Placeholder name
+      const color = isPositive ? "success" : isNegative ? "danger" : "secondary";
+      const icon = isPositive ? "arrow-up-circle" : isNegative ? "arrow-down-circle" : "dash-circle";
+      const statusText = isPositive ? "Owes you" : isNegative ? "You owe" : "Settled";
+
       const name = balance.username || "Unknown";
-      const avatarUrl = balance.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
 
       const card = document.createElement("div");
-      card.className = "flex items-center gap-4 p-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark";
+      card.className = "col-12 col-sm-6 col-md-4 col-lg-3";
+
       card.innerHTML = `
-        <img class="size-12 rounded-full object-cover" src="${avatarUrl}" alt="${name}"/>
-        <div class="flex-1">
-          <p class="font-semibold text-text-light-primary dark:text-text-dark-primary">${name}</p>
-          <p class="text-sm text-text-light-secondary dark:text-text-dark-secondary">
-            ${isPositive ? `${name} owes you` : isNegative ? `You owe ${name}` : 'Settled'}
-          </p>
+        <div class="card border-${color} balance-card shadow-sm h-100">
+          <div class="card-body text-center p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="card-title mb-0 fw-bold">${name}</h6>
+            </div>
+            <div class="mb-2">
+              <i class="bi bi-${icon} fs-2 text-${color}"></i>
+            </div>
+            <p class="card-text fw-bold text-${color} mb-1">
+              ${formatCurrency(Math.abs(balance.net))} MAD
+            </p>
+            <small class="text-muted">${statusText}</small>
+          </div>
         </div>
-        <p class="font-bold text-lg ${colorClass}">${formatCurrency(Math.abs(balance.net))} MAD</p>
       `;
       container.appendChild(card);
     });
   } catch (err) {
     console.error("❌ Error loading balances:", err);
     container.innerHTML = `
-      <div class="text-center text-negative py-4">
-        <span class="material-symbols-outlined text-4xl mb-3">error</span>
+      <div class="col-12 text-center text-danger py-4">
+        <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
         <h5>Error loading balances</h5>
-        <button class="mt-2 px-4 py-2 bg-primary text-white rounded-lg" onclick="loadBalances()">Retry</button>
+        <button class="btn btn-outline-primary mt-2" onclick="loadBalances()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Retry
+        </button>
       </div>
     `;
   }
@@ -261,9 +273,11 @@ async function loadSettlements() {
   const tbody = document.querySelector("#settlementsTable tbody");
   tbody.innerHTML = `
     <tr>
-      <td colspan="4" class="text-center text-text-light-secondary py-4">
-        <div class="animate-spin inline-block w-5 h-5 border-[2px] border-current border-t-transparent text-primary rounded-full"></div>
-        <span class="ml-2">Loading...</span>
+      <td colspan="4" class="text-center text-muted py-4">
+        <div class="spinner-border text-warning" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">Loading settlements...</div>
       </td>
     </tr>
   `;
@@ -279,9 +293,10 @@ async function loadSettlements() {
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="4" class="text-center text-positive py-4">
-            <span class="material-symbols-outlined text-2xl mb-2">check_circle</span>
-            <p class="font-bold">All settled up!</p>
+          <td colspan="4" class="text-center text-success py-4">
+            <i class="bi bi-check-circle fs-1 mb-3"></i>
+            <h5>All settled up! 🎉</h5>
+            <p class="mb-0">No settlements needed</p>
           </td>
         </tr>
       `;
@@ -293,15 +308,31 @@ async function loadSettlements() {
 
     data.forEach((settlement) => {
       const row = document.createElement("tr");
-      row.className = "border-b border-border-light dark:border-border-dark";
       row.innerHTML = `
-        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.from_username}</td>
-        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.to_username}</td>
-        <td class="px-6 py-4 font-bold text-right text-text-light-primary dark:text-text-dark-primary">${formatCurrency(settlement.amount)} MAD</td>
-        <td class="px-6 py-4 text-center">
-          <button class="h-8 px-3 text-xs font-bold rounded-md bg-primary text-white hover:opacity-90 transition-opacity" 
-            onclick="quickSettle('${settlement.from_username}', '${settlement.to_username}', ${settlement.amount})">
-            Settle
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+              <i class="bi bi-person"></i>
+            </div>
+            <span class="fw-semibold">${settlement.from_username}</span>
+          </div>
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+              <i class="bi bi-person-check"></i>
+            </div>
+            <span class="fw-semibold">${settlement.to_username}</span>
+          </div>
+        </td>
+        <td>
+          <span class="badge bg-warning text-dark fs-6">
+            ${formatCurrency(settlement.amount)} MAD
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-outline-primary btn-sm" onclick="quickSettle('${settlement.from_username}', '${settlement.to_username}', ${settlement.amount})">
+            <i class="bi bi-lightning me-1"></i>Quick Settle
           </button>
         </td>
       `;
@@ -318,7 +349,16 @@ async function loadSettlements() {
 // -----------------------------
 async function loadHistory() {
   const tbody = document.querySelector("#historyTable tbody");
-  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>`;
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" class="text-center text-muted py-4">
+        <div class="spinner-border text-info" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">Loading history...</div>
+      </td>
+    </tr>
+  `;
 
   try {
     const url = `${API_URL}/settle/global/history`;
@@ -329,7 +369,15 @@ async function loadHistory() {
     tbody.innerHTML = "";
 
     if (!data.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-text-light-secondary py-4">No history found</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="bi bi-clock-history fs-1 mb-3"></i>
+            <h5>No settlement history</h5>
+            <p class="mb-0">No global settlements have been recorded yet</p>
+          </td>
+        </tr>
+      `;
       document.getElementById('historyCount').textContent = '0 records';
       return;
     }
@@ -340,37 +388,66 @@ async function loadHistory() {
       const isToCurrentUser = settlement.to_user_id === currentUser.id;
       const isFromCurrentUser = settlement.from_user_id === currentUser.id;
 
-      let statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Unknown</span>`;
+      let statusBadge = '<span class="badge bg-secondary">Unknown</span>';
 
       if (settlement.status === 'pending') {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-600"><span class="size-1.5 inline-block rounded-full bg-yellow-600"></span>Pending</span>`;
+        statusBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>';
       } else if (settlement.status === 'accepted') {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-600"><span class="size-1.5 inline-block rounded-full bg-green-600"></span>Accepted</span>`;
+        statusBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Accepted</span>';
       } else if (settlement.status === 'rejected') {
-        statusBadge = `<span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-600"><span class="size-1.5 inline-block rounded-full bg-red-600"></span>Rejected</span>`;
+        statusBadge = '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>';
       }
 
       let actionButtons = '';
       if (settlement.status === 'pending' && isToCurrentUser) {
         actionButtons = `
-          <button class="text-positive hover:underline text-xs font-bold mr-2" onclick="acceptGlobalSettlement(${settlement.id})">Accept</button>
-          <button class="text-negative hover:underline text-xs font-bold" onclick="rejectGlobalSettlement(${settlement.id})">Reject</button>
+          <button class="btn btn-sm btn-success me-1" onclick="acceptGlobalSettlement(${settlement.id})">
+            <i class="bi bi-check-circle me-1"></i>Accept
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="rejectGlobalSettlement(${settlement.id})">
+            <i class="bi bi-x-circle me-1"></i>Reject
+          </button>
         `;
       } else if (settlement.status === 'rejected' && isFromCurrentUser) {
         actionButtons = `
-          <button class="text-primary hover:underline text-xs font-bold" onclick="resendGlobalSettlement(${settlement.id}, ${settlement.to_user_id}, ${settlement.amount})">Resend</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="resendGlobalSettlement(${settlement.id}, ${settlement.to_user_id}, ${settlement.amount})">
+            <i class="bi bi-arrow-repeat me-1"></i>Resend
+          </button>
         `;
       }
 
       const row = document.createElement("tr");
-      row.className = "border-b border-border-light dark:border-border-dark";
       row.innerHTML = `
-        <td class="px-6 py-4 text-text-light-secondary dark:text-text-dark-secondary">${getRelativeTime(settlement.created_at)}</td>
-        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.from_username}</td>
-        <td class="px-6 py-4 font-medium text-text-light-primary dark:text-text-dark-primary">${settlement.to_username}</td>
-        <td class="px-6 py-4 font-medium text-right text-text-light-primary dark:text-text-dark-primary">${formatCurrency(settlement.amount)} MAD</td>
-        <td class="px-6 py-4 text-center">${statusBadge}</td>
-        <td class="px-6 py-4 text-center">${actionButtons}</td>
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">
+              <i class="bi bi-person" style="font-size: 0.75rem;"></i>
+            </div>
+            <span>${settlement.from_username}</span>
+          </div>
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">
+              <i class="bi bi-person-check" style="font-size: 0.75rem;"></i>
+            </div>
+            <span>${settlement.to_username}</span>
+          </div>
+        </td>
+        <td>
+          <span class="fw-semibold text-success">
+            ${formatCurrency(settlement.amount)} MAD
+          </span>
+        </td>
+        <td>
+          ${statusBadge}
+        </td>
+        <td>
+          <small class="text-muted">${getRelativeTime(settlement.created_at)}</small>
+        </td>
+        <td>
+          ${actionButtons}
+        </td>
       `;
       tbody.appendChild(row);
     });

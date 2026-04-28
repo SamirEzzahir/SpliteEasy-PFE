@@ -34,6 +34,20 @@
       <button class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#spendModal">
         <i class="bi bi-arrow-up-circle me-2"></i>Log Expense
       </button>
+      <button class="btn btn-warning btn-lg text-dark" data-bs-toggle="modal" data-bs-target="#transferModal">
+        <i class="bi bi-arrow-left-right me-2"></i>Transfer
+      </button>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="row justify-content-center mb-5">
+      <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <canvas id="economeChart"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Balances Section -->
@@ -395,6 +409,60 @@
     </div>
   </div>
 
+  <!-- Transfer Modal -->
+  <div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-warning text-dark border-0">
+          <h5 class="modal-title fw-bold">Transfer Funds</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="transferForm">
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-uppercase">Amount</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text border-end-0 bg-light">MAD</span>
+                <input type="number" class="form-control border-start-0 bg-light fw-bold" id="transferAmount" required
+                  min="0.01" step="0.01">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-uppercase">From Jar</label>
+              <select class="form-select" id="transferFromJar" required>
+                <option value="NEC">Necessities (NEC)</option>
+                <option value="FFA">Financial Freedom (FFA)</option>
+                <option value="EDU">Education (EDU)</option>
+                <option value="LTSS">Long Term Savings (LTSS)</option>
+                <option value="PLAY">Play (PLAY)</option>
+                <option value="GIVE">Give (GIVE)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-uppercase">To Jar</label>
+              <select class="form-select" id="transferToJar" required>
+                <option value="NEC">Necessities (NEC)</option>
+                <option value="FFA">Financial Freedom (FFA)</option>
+                <option value="EDU">Education (EDU)</option>
+                <option value="LTSS">Long Term Savings (LTSS)</option>
+                <option value="PLAY">Play (PLAY)</option>
+                <option value="GIVE">Give (GIVE)</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-uppercase">Description</label>
+              <input type="text" class="form-control" id="transferDesc" placeholder="e.g. Borrowing for rent"
+                value="Manual Transfer">
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-warning btn-lg text-dark fw-bold">Transfer Now</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Edit Transaction Modal -->
   <div class="modal fade" id="editTransactionModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -443,6 +511,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/config.js"></script>
   <script src="js/navbar.js"></script>
   <script src="js/econome.js"></script>

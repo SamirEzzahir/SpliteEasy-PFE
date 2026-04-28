@@ -151,7 +151,24 @@ class GroupRead(BaseModel):
     class Config:
         from_attributes = True
 
+# ======================
+# Group Message Schemas
+# ======================
+class GroupMessageBase(BaseModel):
+    content: str
+    group_id: int
 
+class GroupMessageCreate(GroupMessageBase):
+    pass
+
+class GroupMessageRead(GroupMessageBase):
+    id: int
+    user_id: int
+    username: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # ======================
 # Membership Schemas
@@ -211,6 +228,8 @@ class ExpenseBase(BaseModel):
     category: Optional[str] = None
     wallet_id: Optional[int] = None
     split_type: Optional[str] = "equal"
+    jar_type: Optional[str] = None
+    is_from_jar: Optional[bool] = False
     note: Optional[str] = None
     photo: Optional[str] = None
    
@@ -232,6 +251,8 @@ class ExpenseRead(BaseModel):
     category: str | None = None
     wallet_id: int | None = None
     split_type: str | None = None
+    jar_type: str | None = None
+    is_from_jar: bool | None = False
     note: str | None = None
     photo: str | None = None
     created_at: datetime
@@ -253,6 +274,8 @@ class ExpenseUpdate(BaseModel):
     category: Optional[str] = None
     wallet_id: Optional[int] = None
     split_type: Optional[str] = None
+    jar_type: Optional[str] = None
+    is_from_jar: Optional[bool] = None
     note: Optional[str] = None
     photo: Optional[str] = None
     splits: Optional[List[SplitCreate]] = None

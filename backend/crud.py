@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, func
 from sqlalchemy.orm import selectinload
 
-from .models import Income, IncomeType, Settlement, User, Group, Membership, Expense, Split, ActivityLog, Wallet, Friend, FriendStatus, GlobalSettlement
+from .models import Income, IncomeType, Settlement, User, Group, Membership, Expense, Split, ActivityLog, Wallet, Friend, FriendStatus, GlobalSettlement, JarTransaction
 from .utils import hash_password
 from .schemas import ExpenseUpdate, IncomeCreate, IncomeRead, IncomeUpdate, SplitRead, UserCreate, UserRead, GroupCreate, GroupRead, MembershipRead, ExpenseCreate, ExpenseRead
 from decimal import Decimal, ROUND_HALF_UP
@@ -275,6 +275,58 @@ async def leave_group(session: AsyncSession, user_id: int, group_id: int):
     return True
 
 # ------------------------
+# Group Chat Messages
+# ------------------------
+from .models import GroupMessage
+from .schemas import GroupMessageRead, GroupMessageCreate
+
+async def add_group_message(session: AsyncSession, group_id: int, user_id: int, content: str) -> GroupMessageRead:
+    msg = GroupMessage(
+        group_id=group_id,
+        user_id=user_id,
+        content=content
+    )
+    session.add(msg)
+    await session.commit()
+    await session.refresh(msg)
+    
+    # Needs the user username for the Read schema
+    await session.refresh(msg, ['user'])
+    
+    return GroupMessageRead(
+        id=msg.id,
+        group_id=msg.group_id,
+        user_id=msg.user_id,
+        content=msg.content,
+        username=msg.user.username if msg.user else None,
+        created_at=msg.created_at
+    )
+
+async def get_group_messages(session: AsyncSession, group_id: int, limit: int = 50) -> list[GroupMessageRead]:
+    result = await session.execute(
+        select(GroupMessage)
+        .where(GroupMessage.group_id == group_id)
+        .options(selectinload(GroupMessage.user))
+        .order_by(GroupMessage.created_at.desc())
+        .limit(limit)
+    )
+    messages = result.scalars().all()
+    
+    output = []
+    for msg in messages:
+        output.append(GroupMessageRead(
+            id=msg.id,
+            group_id=msg.group_id,
+            user_id=msg.user_id,
+            content=msg.content,
+            username=msg.user.username if msg.user else None,
+            created_at=msg.created_at
+        ))
+    
+    # Return chronologically (oldest to newest) for frontend
+    return output[::-1]
+
+# ------------------------
 # Expennse
 # ------------------------
 
@@ -314,6 +366,8 @@ async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[i
         category=expense_data.category,
         wallet_id=expense_data.wallet_id,
         split_type=expense_data.split_type,
+        jar_type=expense_data.jar_type,
+        is_from_jar=expense_data.is_from_jar,
         note=expense_data.note,
         photo=expense_data.photo,
         created_at=expense_data.created_at,
@@ -321,6 +375,17 @@ async def add_expense(session, expense_data: ExpenseCreate, splits: list[tuple[i
     )
     session.add(exp)
     await session.flush()
+
+    # Handle JarTransaction if funded from a jar
+    if expense_data.jar_type and expense_data.is_from_jar:
+        jar_txn = JarTransaction(
+            user_id=expense_data.payer_id or current_user_id,
+            jar_type=expense_data.jar_type,
+            amount= -float(total_amount),
+            description=f"Group Expense: {expense_data.description}",
+            date=expense_data.created_at or datetime.utcnow()
+        )
+        session.add(jar_txn)
 
     total = Decimal("0.00")
     split_objs = []

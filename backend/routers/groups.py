@@ -57,3 +57,57 @@ async def can_leave_group_ep(
 ):
     can_leave = await crud.can_leave_group(session, current.id, group_id)
     return {"can_leave": can_leave}
+
+# 🔹 Fetch Group Messages
+@router.get("/{group_id}/messages", response_model=list[schemas.GroupMessageRead])
+async def fetch_group_messages_ep(
+    group_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    await crud.ensure_user_in_group(session, current.id, group_id)
+    return await crud.get_group_messages(session, group_id)
+
+# 🔹 Send Group Message
+@router.post("/{group_id}/messages", response_model=schemas.GroupMessageRead)
+async def send_group_message_ep(
+    group_id: int,
+    payload: schemas.GroupMessageCreate,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    await crud.ensure_user_in_group(session, current.id, group_id)
+    
+    # Save to db
+    msg = await crud.add_group_message(session, group_id, current.id, payload.content)
+    
+    # Broadcast to other members in the group via websocket
+    from backend.routers.notifications import active_connections
+    import json
+
+    memberships = await crud.get_group_members(session, group_id)
+    
+    msg_data = {
+        "type": "new_chat_message",
+        "message": {
+            "id": msg.id,
+            "group_id": msg.group_id,
+            "user_id": msg.user_id,
+            "username": msg.username,
+            "content": msg.content,
+            "created_at": msg.created_at.isoformat()
+        }
+    }
+    
+    for member in memberships:
+        if member.user_id == current.id:
+            continue
+            
+        websocket = active_connections.get(member.user_id)
+        if websocket:
+            try:
+                await websocket.send_text(json.dumps(msg_data))
+            except Exception as e:
+                print(f"Failed to send chat message to user {member.user_id}: {e}")
+                
+    return msg
