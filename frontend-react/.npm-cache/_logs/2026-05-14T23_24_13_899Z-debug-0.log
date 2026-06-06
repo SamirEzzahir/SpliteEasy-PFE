@@ -1,0 +1,581 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.3
+2 info using node@v22.19.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\.npmrc
+5 silly config load:file:C:\Users\samir\.npmrc
+6 silly config load:file:C:\Users\samir\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm uninstall bootstrap
+8 verbose argv "uninstall" "bootstrap" "--cache" "./.npm-cache"
+9 verbose logfile logs-max:10 dir:C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\.npm-cache\_logs\2026-05-14T23_24_13_899Z-
+10 verbose logfile C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\.npm-cache\_logs\2026-05-14T23_24_13_899Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+13 silly idealTree buildDeps
+14 silly reify mark retired [
+14 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@popperjs\\core'
+14 silly reify ]
+15 silly reify mark retired [
+15 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\bootstrap'
+15 silly reify ]
+16 silly reify moves {
+16 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@popperjs\\core': 'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@popperjs\\.core-WbeWulcv',
+16 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\bootstrap': 'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\.bootstrap-Ao01jEJA'
+16 silly reify }
+17 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-wasm32-wasi
+18 silly reify mark deleted [
+18 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-wasm32-wasi'
+18 silly reify ]
+19 silly audit bulk request {
+19 silly audit   '@babel/code-frame': [ '7.29.0' ],
+19 silly audit   '@babel/compat-data': [ '7.29.0' ],
+19 silly audit   '@babel/core': [ '7.29.0' ],
+19 silly audit   '@babel/generator': [ '7.29.1' ],
+19 silly audit   '@babel/helper-compilation-targets': [ '7.28.6' ],
+19 silly audit   '@babel/helper-globals': [ '7.28.0' ],
+19 silly audit   '@babel/helper-module-imports': [ '7.28.6' ],
+19 silly audit   '@babel/helper-module-transforms': [ '7.28.6' ],
+19 silly audit   '@babel/helper-plugin-utils': [ '7.28.6' ],
+19 silly audit   '@babel/helper-string-parser': [ '7.27.1' ],
+19 silly audit   '@babel/helper-validator-identifier': [ '7.28.5' ],
+19 silly audit   '@babel/helper-validator-option': [ '7.27.1' ],
+19 silly audit   '@babel/helpers': [ '7.29.2' ],
+19 silly audit   '@babel/parser': [ '7.29.2' ],
+19 silly audit   '@babel/plugin-transform-react-jsx-self': [ '7.27.1' ],
+19 silly audit   '@babel/plugin-transform-react-jsx-source': [ '7.27.1' ],
+19 silly audit   '@babel/template': [ '7.28.6' ],
+19 silly audit   '@babel/traverse': [ '7.29.0' ],
+19 silly audit   '@babel/types': [ '7.29.0' ],
+19 silly audit   '@esbuild/aix-ppc64': [ '0.21.5' ],
+19 silly audit   '@esbuild/android-arm': [ '0.21.5' ],
+19 silly audit   '@esbuild/android-arm64': [ '0.21.5' ],
+19 silly audit   '@esbuild/android-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/darwin-arm64': [ '0.21.5' ],
+19 silly audit   '@esbuild/darwin-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/freebsd-arm64': [ '0.21.5' ],
+19 silly audit   '@esbuild/freebsd-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-arm': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-arm64': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-ia32': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-loong64': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-mips64el': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-ppc64': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-riscv64': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-s390x': [ '0.21.5' ],
+19 silly audit   '@esbuild/linux-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/netbsd-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/openbsd-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/sunos-x64': [ '0.21.5' ],
+19 silly audit   '@esbuild/win32-arm64': [ '0.21.5' ],
+19 silly audit   '@esbuild/win32-ia32': [ '0.21.5' ],
+19 silly audit   '@esbuild/win32-x64': [ '0.21.5' ],
+19 silly audit   '@jridgewell/gen-mapping': [ '0.3.13' ],
+19 silly audit   '@jridgewell/remapping': [ '2.3.5' ],
+19 silly audit   '@jridgewell/resolve-uri': [ '3.1.2' ],
+19 silly audit   '@jridgewell/sourcemap-codec': [ '1.5.5' ],
+19 silly audit   '@jridgewell/trace-mapping': [ '0.3.31' ],
+19 silly audit   '@remix-run/router': [ '1.23.2' ],
+19 silly audit   '@rolldown/pluginutils': [ '1.0.0-beta.27' ],
+19 silly audit   '@rollup/rollup-android-arm-eabi': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-android-arm64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-darwin-arm64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-darwin-x64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-freebsd-arm64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-freebsd-x64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-arm-gnueabihf': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-arm-musleabihf': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-arm64-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-arm64-musl': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-loong64-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-loong64-musl': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-ppc64-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-ppc64-musl': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-riscv64-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-riscv64-musl': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-s390x-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-x64-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-linux-x64-musl': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-openbsd-x64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-openharmony-arm64': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-win32-arm64-msvc': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-win32-ia32-msvc': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-win32-x64-gnu': [ '4.60.2' ],
+19 silly audit   '@rollup/rollup-win32-x64-msvc': [ '4.60.2' ],
+19 silly audit   '@tailwindcss/node': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-android-arm64': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-darwin-arm64': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-darwin-x64': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-freebsd-x64': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-linux-arm-gnueabihf': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-linux-arm64-gnu': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-linux-arm64-musl': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-linux-x64-gnu': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-linux-x64-musl': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-win32-arm64-msvc': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/oxide-win32-x64-msvc': [ '4.3.0' ],
+19 silly audit   '@tailwindcss/vite': [ '4.3.0' ],
+19 silly audit   '@types/babel__core': [ '7.20.5' ],
+19 silly audit   '@types/babel__generator': [ '7.27.0' ],
+19 silly audit   '@types/babel__template': [ '7.4.4' ],
+19 silly audit   '@types/babel__traverse': [ '7.28.0' ],
+19 silly audit   '@types/estree': [ '1.0.8' ],
+19 silly audit   '@types/prop-types': [ '15.7.15' ],
+19 silly audit   '@types/react': [ '18.3.28' ],
+19 silly audit   '@types/react-dom': [ '18.3.7' ],
+19 silly audit   '@vitejs/plugin-react': [ '4.7.0' ],
+19 silly audit   asynckit: [ '0.4.0' ],
+19 silly audit   axios: [ '1.15.2' ],
+19 silly audit   'baseline-browser-mapping': [ '2.10.24' ],
+19 silly audit   'bootstrap-icons': [ '1.13.1' ],
+19 silly audit   browserslist: [ '4.28.2' ],
+19 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+19 silly audit   'caniuse-lite': [ '1.0.30001791' ],
+19 silly audit   'combined-stream': [ '1.0.8' ],
+19 silly audit   'convert-source-map': [ '2.0.0' ],
+19 silly audit   csstype: [ '3.2.3' ],
+19 silly audit   debug: [ '4.4.3' ],
+19 silly audit   'delayed-stream': [ '1.0.0' ],
+19 silly audit   'detect-libc': [ '2.1.2' ],
+19 silly audit   'dunder-proto': [ '1.0.1' ],
+19 silly audit   'electron-to-chromium': [ '1.5.344' ],
+19 silly audit   'enhanced-resolve': [ '5.21.3' ],
+19 silly audit   'es-define-property': [ '1.0.1' ],
+19 silly audit   'es-errors': [ '1.3.0' ],
+19 silly audit   'es-object-atoms': [ '1.1.1' ],
+19 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+19 silly audit   esbuild: [ '0.21.5' ],
+19 silly audit   escalade: [ '3.2.0' ],
+19 silly audit   'follow-redirects': [ '1.16.0' ],
+19 silly audit   'form-data': [ '4.0.5' ],
+19 silly audit   fsevents: [ '2.3.3' ],
+19 silly audit   'function-bind': [ '1.1.2' ],
+19 silly audit   gensync: [ '1.0.0-beta.2' ],
+19 silly audit   'get-intrinsic': [ '1.3.0' ],
+19 silly audit   'get-proto': [ '1.0.1' ],
+19 silly audit   gopd: [ '1.2.0' ],
+19 silly audit   'graceful-fs': [ '4.2.11' ],
+19 silly audit   'has-symbols': [ '1.1.0' ],
+19 silly audit   'has-tostringtag': [ '1.0.2' ],
+19 silly audit   hasown: [ '2.0.3' ],
+19 silly audit   jiti: [ '2.7.0' ],
+19 silly audit   'js-tokens': [ '4.0.0' ],
+19 silly audit   jsesc: [ '3.1.0' ],
+19 silly audit   json5: [ '2.2.3' ],
+19 silly audit   lightningcss: [ '1.32.0' ],
+19 silly audit   'lightningcss-android-arm64': [ '1.32.0' ],
+19 silly audit   'lightningcss-darwin-arm64': [ '1.32.0' ],
+19 silly audit   'lightningcss-darwin-x64': [ '1.32.0' ],
+19 silly audit   'lightningcss-freebsd-x64': [ '1.32.0' ],
+19 silly audit   'lightningcss-linux-arm-gnueabihf': [ '1.32.0' ],
+19 silly audit   'lightningcss-linux-arm64-gnu': [ '1.32.0' ],
+19 silly audit   'lightningcss-linux-arm64-musl': [ '1.32.0' ],
+19 silly audit   'lightningcss-linux-x64-gnu': [ '1.32.0' ],
+19 silly audit   'lightningcss-linux-x64-musl': [ '1.32.0' ],
+19 silly audit   'lightningcss-win32-arm64-msvc': [ '1.32.0' ],
+19 silly audit   'lightningcss-win32-x64-msvc': [ '1.32.0' ],
+19 silly audit   'loose-envify': [ '1.4.0' ],
+19 silly audit   'lru-cache': [ '5.1.1' ],
+19 silly audit   'magic-string': [ '0.30.21' ],
+19 silly audit   'math-intrinsics': [ '1.1.0' ],
+19 silly audit   'mime-db': [ '1.52.0' ],
+19 silly audit   'mime-types': [ '2.1.35' ],
+19 silly audit   ms: [ '2.1.3' ],
+19 silly audit   nanoid: [ '3.3.11' ],
+19 silly audit   'node-releases': [ '2.0.38' ],
+19 silly audit   picocolors: [ '1.1.1' ],
+19 silly audit   postcss: [ '8.5.12' ],
+19 silly audit   'proxy-from-env': [ '2.1.0' ],
+19 silly audit   react: [ '18.3.1' ],
+19 silly audit   'react-dom': [ '18.3.1' ],
+19 silly audit   'react-refresh': [ '0.17.0' ],
+19 silly audit   'react-router': [ '6.30.3' ],
+19 silly audit   'react-router-dom': [ '6.30.3' ],
+19 silly audit   rollup: [ '4.60.2' ],
+19 silly audit   scheduler: [ '0.23.2' ],
+19 silly audit   semver: [ '6.3.1' ],
+19 silly audit   'source-map-js': [ '1.2.1' ],
+19 silly audit   tailwindcss: [ '4.3.0' ],
+19 silly audit   tapable: [ '2.3.3' ],
+19 silly audit   typescript: [ '5.9.3' ],
+19 silly audit   'update-browserslist-db': [ '1.2.3' ],
+19 silly audit   vite: [ '5.4.21' ],
+19 silly audit   yallist: [ '3.1.1' ],
+19 silly audit   '@tailwindcss/oxide-wasm32-wasi': [ '4.3.0' ]
+19 silly audit }
+20 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-win32-arm64-msvc
+21 silly reify mark deleted [
+21 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-win32-arm64-msvc'
+21 silly reify ]
+22 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-linux-x64-musl
+23 silly reify mark deleted [
+23 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-linux-x64-musl'
+23 silly reify ]
+24 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-linux-x64-gnu
+25 silly reify mark deleted [
+25 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-linux-x64-gnu'
+25 silly reify ]
+26 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-linux-arm64-musl
+27 silly reify mark deleted [
+27 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-linux-arm64-musl'
+27 silly reify ]
+28 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-linux-arm64-gnu
+29 silly reify mark deleted [
+29 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-linux-arm64-gnu'
+29 silly reify ]
+30 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-linux-arm-gnueabihf
+31 silly reify mark deleted [
+31 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-linux-arm-gnueabihf'
+31 silly reify ]
+32 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-freebsd-x64
+33 silly reify mark deleted [
+33 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-freebsd-x64'
+33 silly reify ]
+34 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-darwin-x64
+35 silly reify mark deleted [
+35 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-darwin-x64'
+35 silly reify ]
+36 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-darwin-arm64
+37 silly reify mark deleted [
+37 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-darwin-arm64'
+37 silly reify ]
+38 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\lightningcss-android-arm64
+39 silly reify mark deleted [
+39 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\lightningcss-android-arm64'
+39 silly reify ]
+40 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\fsevents
+41 silly reify mark deleted [
+41 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\fsevents'
+41 silly reify ]
+42 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-win32-arm64-msvc
+43 silly reify mark deleted [
+43 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-win32-arm64-msvc'
+43 silly reify ]
+44 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-linux-x64-musl
+45 silly reify mark deleted [
+45 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-linux-x64-musl'
+45 silly reify ]
+46 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-linux-x64-gnu
+47 silly reify mark deleted [
+47 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-linux-x64-gnu'
+47 silly reify ]
+48 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-linux-arm64-musl
+49 silly reify mark deleted [
+49 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-linux-arm64-musl'
+49 silly reify ]
+50 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-linux-arm64-gnu
+51 silly reify mark deleted [
+51 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-linux-arm64-gnu'
+51 silly reify ]
+52 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-linux-arm-gnueabihf
+53 silly reify mark deleted [
+53 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-linux-arm-gnueabihf'
+53 silly reify ]
+54 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-freebsd-x64
+55 silly reify mark deleted [
+55 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-freebsd-x64'
+55 silly reify ]
+56 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-darwin-x64
+57 silly reify mark deleted [
+57 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-darwin-x64'
+57 silly reify ]
+58 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-darwin-arm64
+59 silly reify mark deleted [
+59 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-darwin-arm64'
+59 silly reify ]
+60 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@tailwindcss\oxide-android-arm64
+61 silly reify mark deleted [
+61 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@tailwindcss\\oxide-android-arm64'
+61 silly reify ]
+62 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-win32-ia32-msvc
+63 silly reify mark deleted [
+63 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-win32-ia32-msvc'
+63 silly reify ]
+64 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-win32-arm64-msvc
+65 silly reify mark deleted [
+65 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-win32-arm64-msvc'
+65 silly reify ]
+66 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-openharmony-arm64
+67 silly reify mark deleted [
+67 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-openharmony-arm64'
+67 silly reify ]
+68 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-openbsd-x64
+69 silly reify mark deleted [
+69 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-openbsd-x64'
+69 silly reify ]
+70 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-x64-musl
+71 silly reify mark deleted [
+71 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-x64-musl'
+71 silly reify ]
+72 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-x64-gnu
+73 silly reify mark deleted [
+73 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-x64-gnu'
+73 silly reify ]
+74 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-s390x-gnu
+75 silly reify mark deleted [
+75 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-s390x-gnu'
+75 silly reify ]
+76 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-riscv64-musl
+77 silly reify mark deleted [
+77 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-riscv64-musl'
+77 silly reify ]
+78 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-riscv64-gnu
+79 silly reify mark deleted [
+79 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-riscv64-gnu'
+79 silly reify ]
+80 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-ppc64-musl
+81 silly reify mark deleted [
+81 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-ppc64-musl'
+81 silly reify ]
+82 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-ppc64-gnu
+83 silly reify mark deleted [
+83 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-ppc64-gnu'
+83 silly reify ]
+84 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-loong64-musl
+85 silly reify mark deleted [
+85 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-loong64-musl'
+85 silly reify ]
+86 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-loong64-gnu
+87 silly reify mark deleted [
+87 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-loong64-gnu'
+87 silly reify ]
+88 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-arm64-musl
+89 silly reify mark deleted [
+89 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-arm64-musl'
+89 silly reify ]
+90 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-arm64-gnu
+91 silly reify mark deleted [
+91 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-arm64-gnu'
+91 silly reify ]
+92 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-arm-musleabihf
+93 silly reify mark deleted [
+93 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-arm-musleabihf'
+93 silly reify ]
+94 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-linux-arm-gnueabihf
+95 silly reify mark deleted [
+95 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-linux-arm-gnueabihf'
+95 silly reify ]
+96 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-freebsd-x64
+97 silly reify mark deleted [
+97 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-freebsd-x64'
+97 silly reify ]
+98 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-freebsd-arm64
+99 silly reify mark deleted [
+99 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-freebsd-arm64'
+99 silly reify ]
+100 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-darwin-x64
+101 silly reify mark deleted [
+101 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-darwin-x64'
+101 silly reify ]
+102 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-darwin-arm64
+103 silly reify mark deleted [
+103 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-darwin-arm64'
+103 silly reify ]
+104 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-android-arm64
+105 silly reify mark deleted [
+105 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-android-arm64'
+105 silly reify ]
+106 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@rollup\rollup-android-arm-eabi
+107 silly reify mark deleted [
+107 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@rollup\\rollup-android-arm-eabi'
+107 silly reify ]
+108 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\win32-ia32
+109 silly reify mark deleted [
+109 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\win32-ia32'
+109 silly reify ]
+110 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\win32-arm64
+111 silly reify mark deleted [
+111 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\win32-arm64'
+111 silly reify ]
+112 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\sunos-x64
+113 silly reify mark deleted [
+113 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\sunos-x64'
+113 silly reify ]
+114 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\openbsd-x64
+115 silly reify mark deleted [
+115 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\openbsd-x64'
+115 silly reify ]
+116 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\netbsd-x64
+117 silly reify mark deleted [
+117 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\netbsd-x64'
+117 silly reify ]
+118 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-x64
+119 silly reify mark deleted [
+119 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-x64'
+119 silly reify ]
+120 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-s390x
+121 silly reify mark deleted [
+121 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-s390x'
+121 silly reify ]
+122 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-riscv64
+123 silly reify mark deleted [
+123 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-riscv64'
+123 silly reify ]
+124 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-ppc64
+125 silly reify mark deleted [
+125 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-ppc64'
+125 silly reify ]
+126 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-mips64el
+127 silly reify mark deleted [
+127 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-mips64el'
+127 silly reify ]
+128 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-loong64
+129 silly reify mark deleted [
+129 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-loong64'
+129 silly reify ]
+130 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-ia32
+131 silly reify mark deleted [
+131 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-ia32'
+131 silly reify ]
+132 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-arm64
+133 silly reify mark deleted [
+133 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-arm64'
+133 silly reify ]
+134 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\linux-arm
+135 silly reify mark deleted [
+135 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\linux-arm'
+135 silly reify ]
+136 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\freebsd-x64
+137 silly reify mark deleted [
+137 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\freebsd-x64'
+137 silly reify ]
+138 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\freebsd-arm64
+139 silly reify mark deleted [
+139 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\freebsd-arm64'
+139 silly reify ]
+140 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\darwin-x64
+141 silly reify mark deleted [
+141 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\darwin-x64'
+141 silly reify ]
+142 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\darwin-arm64
+143 silly reify mark deleted [
+143 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\darwin-arm64'
+143 silly reify ]
+144 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\android-x64
+145 silly reify mark deleted [
+145 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\android-x64'
+145 silly reify ]
+146 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\android-arm64
+147 silly reify mark deleted [
+147 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\android-arm64'
+147 silly reify ]
+148 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\android-arm
+149 silly reify mark deleted [
+149 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\android-arm'
+149 silly reify ]
+150 verbose reify failed optional dependency C:\Users\samir\Desktop\coding\SplitEasy\frontend-react\node_modules\@esbuild\aix-ppc64
+151 silly reify mark deleted [
+151 silly reify   'C:\\Users\\samir\\Desktop\\coding\\SplitEasy\\frontend-react\\node_modules\\@esbuild\\aix-ppc64'
+151 silly reify ]
+152 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 1483ms
+153 silly audit report {
+153 silly audit report   esbuild: [
+153 silly audit report     {
+153 silly audit report       id: 1102341,
+153 silly audit report       url: 'https://github.com/advisories/GHSA-67mh-4wv8-2f99',
+153 silly audit report       title: 'esbuild enables any website to send any requests to the development server and read the response',
+153 silly audit report       severity: 'moderate',
+153 silly audit report       vulnerable_versions: '<=0.24.2',
+153 silly audit report       cwe: [Array],
+153 silly audit report       cvss: [Object]
+153 silly audit report     }
+153 silly audit report   ],
+153 silly audit report   vite: [
+153 silly audit report     {
+153 silly audit report       id: 1116229,
+153 silly audit report       url: 'https://github.com/advisories/GHSA-4w7w-66w2-5vf9',
+153 silly audit report       title: 'Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling',
+153 silly audit report       severity: 'moderate',
+153 silly audit report       vulnerable_versions: '<=6.4.1',
+153 silly audit report       cwe: [Array],
+153 silly audit report       cvss: [Object]
+153 silly audit report     }
+153 silly audit report   ]
+153 silly audit report }
+154 silly packumentCache corgi:https://registry.npmjs.org/esbuild cache-miss
+155 silly packumentCache corgi:https://registry.npmjs.org/vite cache-miss
+156 http fetch GET 200 https://registry.npmjs.org/esbuild 274ms (cache revalidated)
+157 silly packumentCache corgi:https://registry.npmjs.org/esbuild set size:885757 disposed:false
+158 http fetch GET 200 https://registry.npmjs.org/vite 495ms (cache revalidated)
+159 silly packumentCache corgi:https://registry.npmjs.org/vite set size:2246766 disposed:false
+160 silly packumentCache corgi:https://registry.npmjs.org/@tailwindcss%2fvite cache-miss
+161 silly packumentCache corgi:https://registry.npmjs.org/@vitejs%2fplugin-react cache-miss
+162 http fetch GET 200 https://registry.npmjs.org/@vitejs%2fplugin-react 269ms (cache revalidated)
+163 silly packumentCache corgi:https://registry.npmjs.org/@vitejs%2fplugin-react set size:113751 disposed:false
+164 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2fvite 469ms (cache revalidated)
+165 silly packumentCache corgi:https://registry.npmjs.org/@tailwindcss%2fvite set size:823775 disposed:false
+166 silly ADD
+167 silly ADD
+168 silly ADD
+169 silly ADD
+170 silly ADD
+171 silly ADD
+172 silly ADD
+173 silly ADD
+174 silly ADD
+175 silly ADD
+176 silly ADD
+177 silly ADD
+178 silly ADD
+179 silly ADD
+180 silly ADD
+181 silly ADD
+182 silly ADD
+183 silly ADD
+184 silly ADD
+185 silly ADD
+186 silly ADD
+187 silly ADD
+188 silly ADD
+189 silly ADD
+190 silly ADD
+191 silly ADD
+192 silly ADD
+193 silly ADD
+194 silly ADD
+195 silly ADD
+196 silly ADD
+197 silly ADD
+198 silly ADD
+199 silly ADD
+200 silly ADD
+201 silly ADD
+202 silly ADD
+203 silly ADD
+204 silly ADD
+205 silly ADD
+206 silly ADD
+207 silly ADD
+208 silly ADD
+209 silly ADD
+210 silly ADD
+211 silly ADD
+212 silly ADD
+213 silly ADD
+214 silly ADD
+215 silly ADD
+216 silly ADD
+217 silly ADD
+218 silly ADD
+219 silly ADD
+220 silly ADD
+221 silly ADD
+222 silly ADD
+223 silly ADD
+224 silly ADD
+225 silly ADD
+226 silly ADD
+227 silly ADD
+228 silly ADD
+229 silly ADD
+230 silly ADD
+231 silly ADD
+232 silly ADD
+233 silly REMOVE node_modules/bootstrap
+234 silly REMOVE node_modules/@popperjs/core
+235 verbose cwd C:\Users\samir\Desktop\coding\SplitEasy\frontend-react
+236 verbose os Windows_NT 10.0.19045
+237 verbose node v22.19.0
+238 verbose npm  v10.9.3
+239 verbose exit 0
+240 info ok

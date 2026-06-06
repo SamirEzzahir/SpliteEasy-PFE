@@ -6,7 +6,7 @@
 //const API_URL = "http://192.168.7.106:8800"; // local development
 //const API_URL = "http://192.168.1.104:8800"; // local option
 //const API_URL = "http://192.168.1.3:8800"; // local option
-const API_URL = "http://127.0.0.1:8000"; // local option
+const API_URL = "http://localhost:8800"; // local option
 //const API_URL = "http://192.168.70.1:8800"; // local option
 
 

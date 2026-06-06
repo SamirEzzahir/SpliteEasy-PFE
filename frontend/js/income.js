@@ -1,7 +1,26 @@
 // =================== Global Variables ===================
-let editIncomeModal, typeModal, addWalletModal, editWalletModal, transferModal;
+let addIncomeModal, editIncomeModal, typeModal, addWalletModal, editWalletModal, transferModal;
 let wallets = [];
 let types = [];
+
+function cleanupModalState() {
+    setTimeout(() => {
+        document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+    }, 50);
+}
+
+function hideModalSafely(modalInstance, modalElement) {
+    if (modalInstance) {
+        modalInstance.hide();
+    } else if (modalElement) {
+        const fallback = bootstrap.Modal.getOrCreateInstance(modalElement);
+        fallback.hide();
+    }
+    cleanupModalState();
+}
 
 // =================== DOMContentLoaded ===================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -37,11 +56,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Initialize modals
-    editIncomeModal = new bootstrap.Modal(document.getElementById("editIncomeModal"));
-    typeModal = new bootstrap.Modal(document.getElementById("typeModal"));
-    addWalletModal = new bootstrap.Modal(document.getElementById("addWalletModal"));
-    editWalletModal = new bootstrap.Modal(document.getElementById("editWalletModal"));
-    transferModal = new bootstrap.Modal(document.getElementById("transferModal"));
+    const addIncomeModalEl = document.getElementById("addIncomeModal");
+    const editIncomeModalEl = document.getElementById("editIncomeModal");
+    const typeModalEl = document.getElementById("typeModal");
+    const addWalletModalEl = document.getElementById("addWalletModal");
+    const editWalletModalEl = document.getElementById("editWalletModal");
+    const transferModalEl = document.getElementById("transferModal");
+
+    addIncomeModal = new bootstrap.Modal(addIncomeModalEl);
+    editIncomeModal = new bootstrap.Modal(editIncomeModalEl);
+    typeModal = new bootstrap.Modal(typeModalEl);
+    addWalletModal = new bootstrap.Modal(addWalletModalEl);
+    editWalletModal = new bootstrap.Modal(editWalletModalEl);
+    transferModal = new bootstrap.Modal(transferModalEl);
+
+    [addIncomeModalEl, editIncomeModalEl, typeModalEl, addWalletModalEl, editWalletModalEl, transferModalEl]
+        .filter(Boolean)
+        .forEach((modalEl) => {
+            modalEl.addEventListener("hidden.bs.modal", cleanupModalState);
+            modalEl.addEventListener("hidePrevented.bs.modal", cleanupModalState);
+        });
 
     // Load data sequentially to avoid race conditions
     try {
@@ -528,9 +562,8 @@ async function addIncome() {
         categoryInput.value = "";
         walletInput.value = "";
 
-        // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById("addIncomeModal"));
-        if (modal) modal.hide();
+        // Close modal and force Bootstrap backdrop/body cleanup.
+        hideModalSafely(addIncomeModal, document.getElementById("addIncomeModal"));
 
         // Show success
         alert("✅ Income added!");
@@ -617,7 +650,7 @@ async function saveIncomeChanges() {
         });
 
         if (res.ok) {
-            editIncomeModal.hide();
+            hideModalSafely(editIncomeModal, document.getElementById("editIncomeModal"));
             await loadIncomes();
             await loadWallets(); // Refresh wallet balances
         } else {
@@ -708,7 +741,7 @@ async function saveType() {
 
         const action = id ? "updated" : "added";
         alert(`✅ Income type ${action}!`);
-        typeModal.hide();
+        hideModalSafely(typeModal, document.getElementById("typeModal"));
         loadTypes();
     } catch (err) {
         console.error(err);
@@ -864,7 +897,5 @@ async function executeTransfer() {
         executeBtn.innerHTML = "💸 Transfer";
     }
 }
-
-
 
 

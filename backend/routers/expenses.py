@@ -69,32 +69,32 @@ async def create_expense_ep(payload: schemas.ExpenseCreate, session: AsyncSessio
 async def get_all_user_expenses(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
+    limit: int = 500,
 ):
-    # Get all expenses from groups where the user is a member
+    from sqlalchemy.orm import joinedload
+
+    # Single query: join membership filter + eager-load all relations at once.
     result = await session.execute(
         select(Expense)
-        .join(Group)
-        .join(Membership, Membership.group_id == Group.id)
+        .join(Membership, Membership.group_id == Expense.group_id)
         .where(Membership.user_id == current.id)
         .options(
-            selectinload(Expense.group),
-            selectinload(Expense.added_by_user),
-            selectinload(Expense.payer),
-            selectinload(Expense.splits).selectinload(Split.user)
+            joinedload(Expense.group),
+            joinedload(Expense.payer),
+            joinedload(Expense.added_by_user),
+            selectinload(Expense.splits).joinedload(Split.user),
         )
         .order_by(Expense.created_at.desc())
+        .limit(limit)
     )
-    expenses = result.scalars().all()
+    expenses = result.unique().scalars().all()
 
-    # Convert to ExpenseRead with additional fields
+    # Build response — all related data already loaded, no extra queries.
     expense_list = []
     for expense in expenses:
         expense_data = schemas.ExpenseRead.model_validate(expense)
-        # Add group name
         expense_data.group_name = expense.group.title if expense.group else "Unknown Group"
-        # Add payer name
         expense_data.payer_name = expense.payer.username if expense.payer else "Unknown"
-        # Add added by name
         expense_data.added_by_username = expense.added_by_user.username if expense.added_by_user else "Unknown"
         expense_list.append(expense_data)
 

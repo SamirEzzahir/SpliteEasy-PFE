@@ -1,5 +1,5 @@
 // =================== Global Variables ===================
-let editIncomeModal, typeModal, addWalletModal, editWalletModal, transferModal;
+let addIncomeModal, editIncomeModal, typeModal, addWalletModal, editWalletModal, transferModal;
 let addDebtModal, addLoanModal, repayDebtModal, receiveLoanRepaymentModal;
 let wallets = [];
 let types = [];
@@ -7,6 +7,24 @@ let incomes = [];
 let debts = [];
 let loans = [];
 let summary = null;
+
+function cleanupModalState() {
+    setTimeout(() => {
+        document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
+        document.body.classList.remove("modal-open");
+        document.body.style.removeProperty("overflow");
+        document.body.style.removeProperty("padding-right");
+    }, 50);
+}
+
+function hideModalSafely(modalInstance, modalElement) {
+    if (modalInstance) {
+        modalInstance.hide();
+    } else if (modalElement) {
+        bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+    }
+    cleanupModalState();
+}
 
 // =================== DOMContentLoaded ===================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -36,16 +54,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (incomeDateInput) incomeDateInput.value = today;
 
     // Initialize Modals
-    editIncomeModal = new bootstrap.Modal(document.getElementById("editIncomeModal"));
-    typeModal = new bootstrap.Modal(document.getElementById("typeModal"));
-    addWalletModal = new bootstrap.Modal(document.getElementById("addWalletModal"));
-    editWalletModal = new bootstrap.Modal(document.getElementById("editWalletModal"));
-    transferModal = new bootstrap.Modal(document.getElementById("transferModal"));
+    const addIncomeModalEl = document.getElementById("addIncomeModal");
+    const editIncomeModalEl = document.getElementById("editIncomeModal");
+    const typeModalEl = document.getElementById("typeModal");
+    const addWalletModalEl = document.getElementById("addWalletModal");
+    const editWalletModalEl = document.getElementById("editWalletModal");
+    const transferModalEl = document.getElementById("transferModal");
+    const addDebtModalEl = document.getElementById("addDebtModal");
+    const addLoanModalEl = document.getElementById("addLoanModal");
+    const repayDebtModalEl = document.getElementById("repayDebtModal");
+    const receiveLoanRepaymentModalEl = document.getElementById("receiveLoanRepaymentModal");
 
-    addDebtModal = new bootstrap.Modal(document.getElementById("addDebtModal"));
-    addLoanModal = new bootstrap.Modal(document.getElementById("addLoanModal"));
-    repayDebtModal = new bootstrap.Modal(document.getElementById("repayDebtModal"));
-    receiveLoanRepaymentModal = new bootstrap.Modal(document.getElementById("receiveLoanRepaymentModal"));
+    addIncomeModal = new bootstrap.Modal(addIncomeModalEl);
+    editIncomeModal = new bootstrap.Modal(editIncomeModalEl);
+    typeModal = new bootstrap.Modal(typeModalEl);
+    addWalletModal = new bootstrap.Modal(addWalletModalEl);
+    editWalletModal = new bootstrap.Modal(editWalletModalEl);
+    transferModal = new bootstrap.Modal(transferModalEl);
+
+    addDebtModal = new bootstrap.Modal(addDebtModalEl);
+    addLoanModal = new bootstrap.Modal(addLoanModalEl);
+    repayDebtModal = new bootstrap.Modal(repayDebtModalEl);
+    receiveLoanRepaymentModal = new bootstrap.Modal(receiveLoanRepaymentModalEl);
+
+    [
+        addIncomeModalEl, editIncomeModalEl, typeModalEl, addWalletModalEl, editWalletModalEl,
+        transferModalEl, addDebtModalEl, addLoanModalEl, repayDebtModalEl, receiveLoanRepaymentModalEl
+    ].filter(Boolean).forEach((modalEl) => {
+        modalEl.addEventListener("hidden.bs.modal", cleanupModalState);
+        modalEl.addEventListener("hidePrevented.bs.modal", cleanupModalState);
+    });
 
     // Load Initial Data
     try {
@@ -422,7 +460,7 @@ async function addIncome() {
         if (!res.ok) throw new Error(await res.text());
 
         alert("✅ Income added!");
-        bootstrap.Modal.getInstance(document.getElementById("addIncomeModal")).hide();
+        hideModalSafely(addIncomeModal, document.getElementById("addIncomeModal"));
         document.getElementById("addIncomeForm").reset();
         loadIncomes();
         loadWallets();
@@ -468,7 +506,7 @@ async function saveIncomeChanges() {
         });
         if (!res.ok) throw new Error(await res.text());
 
-        editIncomeModal.hide();
+        hideModalSafely(editIncomeModal, document.getElementById("editIncomeModal"));
         loadIncomes();
         loadWallets();
     } catch (err) {

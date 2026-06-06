@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from backend.db import get_session
 from backend import schemas, crud
-from backend.models import Membership
+from backend.models import Group, Membership
 from backend.auth import get_current_user
 from backend.models import User
 
@@ -37,6 +37,54 @@ async def route_delete_group(group_id: int, session: AsyncSession = Depends(get_
     await crud.delete_group(session, group_id, current)
     return
  
+
+# 🔹 Join via invitation link (GET to preview, POST to join)
+@router.get("/join/{group_id}/info")
+async def join_group_info(
+    group_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    group = await session.get(Group, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found.")
+    existing = await session.execute(
+        select(Membership).where(Membership.group_id == group_id, Membership.user_id == current.id)
+    )
+    already_member = existing.scalar_one_or_none() is not None
+    member_count_res = await session.execute(
+        select(Membership).where(Membership.group_id == group_id)
+    )
+    member_count = len(member_count_res.scalars().all())
+    return {
+        "id": group.id,
+        "title": group.title,
+        "type": group.type,
+        "currency": group.currency,
+        "member_count": member_count,
+        "already_member": already_member,
+    }
+
+
+@router.post("/join/{group_id}")
+async def join_group_via_link(
+    group_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    group = await session.get(Group, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found.")
+    existing = await session.execute(
+        select(Membership).where(Membership.group_id == group_id, Membership.user_id == current.id)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="You are already a member of this group.")
+    membership = Membership(user_id=current.id, group_id=group_id, is_admin=False)
+    session.add(membership)
+    await session.commit()
+    return {"detail": f"Successfully joined {group.title}!", "group_id": group.id}
+
 
 # 🔹 Leave group
 @router.post("/{group_id}/leave")
@@ -111,3 +159,34 @@ async def send_group_message_ep(
                 print(f"Failed to send chat message to user {member.user_id}: {e}")
                 
     return msg
+
+
+# 🔹 Typing indicator — broadcast to other group members via WebSocket
+@router.post("/{group_id}/typing", status_code=204)
+async def broadcast_typing_ep(
+    group_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    await crud.ensure_user_in_group(session, current.id, group_id)
+
+    from backend.routers.notifications import active_connections
+    import json
+
+    memberships = await crud.get_group_members(session, group_id)
+    payload = json.dumps({
+        "type": "typing",
+        "group_id": group_id,
+        "user_id": current.id,
+        "username": current.username,
+    })
+
+    for member in memberships:
+        if member.user_id == current.id:
+            continue
+        ws = active_connections.get(member.user_id)
+        if ws:
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                pass

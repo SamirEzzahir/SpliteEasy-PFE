@@ -7,6 +7,10 @@ body {
   /* adjust if your navbar height changes */
 }
 
+.modal.fade:not(.show) {
+  pointer-events: none;
+}
+
 
 #navbarMobile nav {
   z-index: 1030;

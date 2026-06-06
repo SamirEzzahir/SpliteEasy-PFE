@@ -1,0 +1,17 @@
+ ⨯ Failed to start server
+Error: listen EACCES: permission denied 127.0.0.1:3000
+    at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EACCES',
+  errno: -4092,
+  syscall: 'listen',
+  address: '127.0.0.1',
+  port: 3000
+}
+npm notice
+npm notice New major version of npm available! 10.9.3 -> 11.15.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+npm notice To update run: npm install -g npm@11.15.0
+npm notice

@@ -26,6 +26,12 @@ allowed_origins = [origin.strip() for origin in origins_string.split(",")] if or
 dev_origins = [
     "http://41.142.215.163:8000",
     "http://localhost",
+    "http://localhost:3000",
+    "http://192.168.1.3",
+    "http://192.168.1.3:5173",
+    "http://192.168.1.3:5500",
+    "http://192.168.1.3:5555",
+    "http://192.168.1.3:8800",
     "http://pcrox.ddns.net",
     "http://localhost:5500", 
     "http://pcrox.ddns.net:5500",
@@ -34,16 +40,23 @@ dev_origins = [
     "https://pcrox.ddns.net:5500", # Add HTTPS version
     "http://pcrox.ddns.net:5555",
     "https://pcrox.ddns.net:5555",
+    "https://192.168.1.3:8081",
+    
 ]
 
 # Production origins  
 prod_origins = [
     "http://41.142.215.163:8000",
+    "http://192.168.1.3",
+    "http://192.168.1.3:5173",
     "http://192.168.1.3:5500",
+    "http://192.168.1.3:5555",
+    "http://192.168.1.3:8800",
     "http://pcrox.ddns.net:5555",
     "https://pcrox.ddns.net:5555",
     "http://pcrox.ddns.net:5500",
     "https://pcrox.ddns.net:5500",
+    "https://192.168.1.3:8081",
 ]
 
 # Choose based on environment
@@ -54,7 +67,7 @@ else:
 
 app.add_middleware(
     CORSMiddleware, 
-    allow_origins=["*"],   #allowed_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"], 
     allow_headers=["*"],

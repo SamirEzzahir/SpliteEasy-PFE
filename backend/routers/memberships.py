@@ -35,12 +35,8 @@ async def add_members(group_id: int, payload: dict, session: AsyncSession = Depe
     group = await session.get(Group, group_id)
     group_name = group.title if group else f"ID {group_id}"
     
-    # Fetch usernames of added members
-    added_users = []
-    for user_id in payload["user_ids"]:
-        user = await session.get(User, user_id)
-        if user:
-            added_users.append(user.username)
+    users_res = await session.execute(select(User.username).where(User.id.in_(payload["user_ids"])))
+    added_users = [row[0] for row in users_res.all()]
     
     # Log activity
     await log_activity(
@@ -70,17 +66,10 @@ async def update_member(group_id: int, member_id: int, payload: MembershipUpdate
 async def delete_member(group_id: int, member_id: int, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
     await ensure_user_is_admin(session, current.id, group_id)
     await remove_member(session, group_id, member_id)
-    # Get username of deleted member
     user = await session.get(User, member_id)
     username = user.username if user else f"ID {member_id}"
-    
-    # Fetch the group
     group = await session.get(Group, group_id)
     group_name = group.title if group else f"ID {group_id}"
-
-    # Get username of deleted member
-    user = await session.get(User, member_id)
-    username = user.username if user else f"ID {member_id}"
 
     # Log activity
     await log_activity(

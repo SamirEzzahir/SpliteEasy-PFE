@@ -564,16 +564,7 @@ async def group_balances(
     try:
         await ensure_user_in_group(session, current.id, group_id)
         
-        # Get user's global settlement mode preference
-        # Reload user from database to ensure we have the latest mode
-        try:
-            # Reload the user to get the latest global_settlement_mode
-            await session.refresh(current)
-            mode = current.global_settlement_mode.value if current.global_settlement_mode else "separate"
-        except Exception as e:
-            print(f"⚠️ Warning: Could not refresh user, using current value: {e}")
-            # Fallback to current value if refresh fails
-            mode = current.global_settlement_mode.value if current.global_settlement_mode else "separate"
+        mode = current.global_settlement_mode.value if current.global_settlement_mode else "separate"
         
         print(f"🔍 Group {group_id} balances - User {current.id}, Mode: {mode}")
         
