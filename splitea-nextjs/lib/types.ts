@@ -64,6 +64,8 @@ export interface Group {
   total: number;
   balance: number;
   updated: string;
+  ownerUsername?: string;
+  ownerId?: number;
 }
 
 export interface Expense {

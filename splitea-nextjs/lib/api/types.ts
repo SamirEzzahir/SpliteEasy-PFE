@@ -44,6 +44,9 @@ export interface ApiMembership {
   group_id: number;
   user_id: number;
   is_admin: boolean;
+  username?: string | null;
+  email?: string | null;
+  full_name?: string | null;
   user?: ApiUser;
 }
 

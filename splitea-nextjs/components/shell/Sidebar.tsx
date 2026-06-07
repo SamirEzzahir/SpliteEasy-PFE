@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 
 interface NavItem { id: string; label: string; icon: string; href: string; }
 
+// Splitea is an expense-sharing app: nav is groups / expenses / settlements /
+// balances / members(friends) / activity. No wallet, savings, or reports.
 const NAV: NavItem[] = [
   { id: "dashboard",   label: "Dashboard",      icon: "dashboard", href: "/dashboard" },
   { id: "groups",      label: "Groups",         icon: "groups",    href: "/groups" },
@@ -15,7 +17,6 @@ const NAV: NavItem[] = [
   { id: "settlements", label: "Settlements",    icon: "settle",    href: "/settlements" },
   { id: "balances",    label: "Balances",       icon: "money",     href: "/balances" },
   { id: "friends",     label: "Friends",        icon: "friends",   href: "/friends" },
-  { id: "reports",     label: "Reports",        icon: "reports",   href: "/reports" },
   { id: "activity",    label: "Activity",       icon: "activity",  href: "/activity" },
   { id: "settings",    label: "Settings",       icon: "settings",  href: "/settings" },
 ];
@@ -67,21 +68,6 @@ export default function Sidebar({ dark, onToggleDark }: SidebarProps) {
             <div className="sub">View profile</div>
           </div>
           <Icon name="chev" size={14} className="chev" />
-        </div>
-        <div className="sb-wallet">
-          <div className="sb-wallet-head">
-            <span className="sb-wallet-lbl">Wallet Balance</span>
-            <span className="sb-wallet-cur">
-              {user?.preferred_currency || "USD"} <Icon name="chev" size={10} />
-            </span>
-          </div>
-          <div className="sb-wallet-v num">—</div>
-          <div className="sb-wallet-trend">
-            ↑ 12.5%{" "}
-            <span style={{ color: "#9ea4b2", fontWeight: 400, marginLeft: 2 }}>
-              vs last month
-            </span>
-          </div>
         </div>
         <div className="sb-toggle">
           <span className="sb-toggle-nm">

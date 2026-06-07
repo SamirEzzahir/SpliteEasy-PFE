@@ -62,6 +62,8 @@ class MembershipBase(BaseModel):
     group_id: int
     is_admin: Optional[bool] = False
     username: Optional[str] = None
+    email: Optional[str] = None
+    full_name: Optional[str] = None
 
 
 class MembershipCreate(MembershipBase):

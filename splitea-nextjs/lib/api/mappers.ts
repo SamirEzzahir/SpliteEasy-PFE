@@ -108,6 +108,8 @@ export function mapGroup(g: ApiGroup, extras: GroupExtras): Group {
     total: extras.total || g.total_amount || 0,
     balance: extras.balance,
     updated: formatRelativeDate(g.created_at),
+    ownerUsername: g.owner_username ?? undefined,
+    ownerId: g.owner_id,
     ...palette,
   };
 }

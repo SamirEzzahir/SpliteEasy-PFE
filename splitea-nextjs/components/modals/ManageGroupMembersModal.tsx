@@ -156,11 +156,14 @@ export default function ManageGroupMembersModal({ group, onClose, onChanged, onT
     }
   };
 
-  const fallbackMembers = group.memberIds.map((id, index) => ({
+  const fallbackMembers: ApiMembership[] = group.memberIds.map((id, index) => ({
     id: index,
     user_id: Number(id) || index,
     group_id: Number(group.id) || 0,
     is_admin: index === 0,
+    username: null,
+    email: null,
+    full_name: null,
     user: undefined,
   }));
   const rows = members.length ? members : fallbackMembers;
@@ -268,15 +271,21 @@ export default function ManageGroupMembersModal({ group, onClose, onChanged, onT
 
             <div className="gm-members">
               {rows.map((member) => {
-                const person = member.user
-                  ? {
-                      name: member.user.full_name || member.user.username,
-                      email: member.user.email,
-                    }
-                  : {
-                      name: personById(String(member.user_id)).name,
-                      email: personById(String(member.user_id)).email || "member@spliteasy.local",
-                    };
+                // Resolve name/email from the membership payload directly (backend now
+                // sends username/email/full_name for every member regardless of friendship),
+                // then fall back to the people-cache, then to a neutral placeholder.
+                const cached = personById(String(member.user_id));
+                const name =
+                  member.full_name ||
+                  member.username ||
+                  member.user?.full_name ||
+                  member.user?.username ||
+                  (cached.name !== "Unknown" ? cached.name : `User ${member.user_id}`);
+                const email =
+                  member.email ||
+                  member.user?.email ||
+                  (cached.email || "");
+                const person = { name, email };
                 return (
                   <div key={member.user_id} className="gm-member-row">
                     <Avatar id={String(member.user_id)} size="lg" />
@@ -285,7 +294,7 @@ export default function ManageGroupMembersModal({ group, onClose, onChanged, onT
                         {person.name}
                         {member.is_admin && <span>Admin <Icon name="crown" size={11} /></span>}
                       </div>
-                      <div className="gm-member-mail">{person.email}</div>
+                      {person.email && <div className="gm-member-mail">{person.email}</div>}
                     </div>
                     <button
                       className={"gm-role-btn" + (member.is_admin ? " active" : "")}

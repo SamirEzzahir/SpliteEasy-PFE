@@ -11,7 +11,6 @@ import { useApp } from "@/lib/store";
 import CelebrateOverlay from "@/components/modals/CelebrateOverlay";
 import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
 import CreateGroupModal from "@/components/modals/CreateGroupModal";
-import LogIncomeModal from "@/components/modals/LogIncomeModal";
 
 type ThemeChoice = "system" | "light" | "dark";
 
@@ -29,7 +28,7 @@ function applyTheme(choice: ThemeChoice) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { toast, celebrate, closeCelebrate, jars, addExpense, logIncome } = useApp();
+  const { toast, celebrate, closeCelebrate, addExpense } = useApp();
   const pathname = usePathname();
 
   // Detect if we're on a group detail page and extract the group id
@@ -40,7 +39,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const [showAddExpense,  setShowAddExpense]  = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [showAddIncome,   setShowAddIncome]   = useState(false);
 
   useEffect(() => {
     const stored = (localStorage.getItem("spliteasy.theme") as ThemeChoice | null) || "light";
@@ -82,7 +80,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MobileBottomNav
         onAddExpense={() => setShowAddExpense(true)}
         onCreateGroup={() => setShowCreateGroup(true)}
-        onAddIncome={() => setShowAddIncome(true)}
       />
 
       {showAddExpense && (
@@ -96,13 +93,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <CreateGroupModal
           onClose={() => setShowCreateGroup(false)}
           onSubmit={() => setShowCreateGroup(false)}
-        />
-      )}
-      {showAddIncome && (
-        <LogIncomeModal
-          jars={jars}
-          onClose={() => setShowAddIncome(false)}
-          onLog={(amount, label) => { logIncome(amount, label); setShowAddIncome(false); }}
         />
       )}
 

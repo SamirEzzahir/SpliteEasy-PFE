@@ -192,7 +192,7 @@ export default function GroupChat({ groupId, groupName }: Props) {
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="gc-wrap">
+    <div className={"gc-wrap" + (open ? " gc-wrap--open" : "")}>
       {/* Floating bubble button */}
       <button
         className="gc-bubble"
@@ -205,21 +205,28 @@ export default function GroupChat({ groupId, groupName }: Props) {
         )}
       </button>
 
+      {/* Mobile-only backdrop behind the full-screen sheet */}
+      {open && <div className="gc-backdrop" onClick={() => setOpen(false)} />}
+
       {/* Chat panel */}
       {open && (
-        <div className="gc-panel">
+        <div className="gc-panel" role="dialog" aria-modal="true" aria-label={`${groupName} chat`}>
           {/* Header */}
           <div className="gc-header">
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Mobile back chevron — reads as "close sheet" */}
+            <button className="gc-back" onClick={() => setOpen(false)} aria-label="Close chat">
+              <Icon name="chevR" size={18} style={{ color: "#fff", transform: "rotate(180deg)" }} />
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <div className="gc-header-icon">
                 <Icon name="chat" size={16} style={{ color: "#fff" }} />
               </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#fff" }}>{groupName}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{groupName}</div>
                 <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.7)" }}>Group Chat</div>
               </div>
             </div>
-            <button className="gc-close" onClick={() => setOpen(false)}>
+            <button className="gc-close" onClick={() => setOpen(false)} aria-label="Close chat">
               <Icon name="x" size={15} style={{ color: "#fff" }} />
             </button>
           </div>
@@ -276,7 +283,7 @@ export default function GroupChat({ groupId, groupName }: Props) {
                         {showName && (
                           <div className="gc-username">{msg.username}</div>
                         )}
-                        <div className={`gc-bubble ${isMe ? "mine" : "theirs"}`}>
+                        <div className={`gc-msg-bubble ${isMe ? "mine" : "theirs"}`}>
                           {msg.content}
                         </div>
                         {/* Show time on last message of a group */}

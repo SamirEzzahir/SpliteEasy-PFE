@@ -8,7 +8,6 @@ import Icon from "@/components/Icon";
 interface Props {
   onAddExpense: () => void;
   onCreateGroup: () => void;
-  onAddIncome: () => void;
 }
 
 const NAV_ITEMS = [
@@ -18,7 +17,7 @@ const NAV_ITEMS = [
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
 
-export default function MobileBottomNav({ onAddExpense, onCreateGroup, onAddIncome }: Props) {
+export default function MobileBottomNav({ onAddExpense, onCreateGroup }: Props) {
   const pathname = usePathname();
   const router   = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -106,16 +105,7 @@ export default function MobileBottomNav({ onAddExpense, onCreateGroup, onAddInco
                 <span className="mob-action-ic" style={{ background: "#fce7f3", color: "#ec4899" }}>
                   <Icon name="settle" size={18} />
                 </span>
-                Record Settlement
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => trigger(onAddIncome)}
-              >
-                <span className="mob-action-ic" style={{ background: "#fff7ed", color: "#f97316" }}>
-                  <Icon name="wallet" size={18} />
-                </span>
-                Add Income
+                Settle Up
               </button>
             </div>
           )}

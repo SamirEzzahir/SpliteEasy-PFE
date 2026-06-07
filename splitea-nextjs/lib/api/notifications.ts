@@ -5,7 +5,7 @@ import type { ApiNotification } from "./types";
 
 export const notificationsApi = {
   async list(): Promise<ApiNotification[]> {
-    const r = await api.get<ApiNotification[]>("/Notifications/", { skipAuthRedirect: true });
+    const r = await api.get<ApiNotification[]>("/Notifications", { skipAuthRedirect: true });
     return r.data;
   },
   async markRead(id: number): Promise<void> {

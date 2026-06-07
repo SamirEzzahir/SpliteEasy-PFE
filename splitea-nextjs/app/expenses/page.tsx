@@ -9,12 +9,17 @@ import { Avatar, AvatarStack } from "@/components/Avatar";
 import CategoryDonut from "@/components/expenses/CategoryDonut";
 import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
 import EditExpenseFullModal from "@/components/modals/EditExpenseFullModal";
+import ExpenseDetailModal from "@/components/modals/ExpenseDetailModal";
 import { CATEGORIES, categoryById, personById } from "@/lib/data";
 import { fmt } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { expensesApi } from "@/lib/api/expenses";
 import { SkeletonStatCard, SkeletonExpenseRow } from "@/components/Skeleton";
+import StatCard from "@/components/ui/StatCard";
+import FilterDropdown from "@/components/ui/FilterDropdown";
+import Pagination from "@/components/ui/Pagination";
+import SharePill from "@/components/ui/SharePill";
 import type { Expense } from "@/lib/types";
 
 const PER_PAGE = 7;
@@ -23,122 +28,47 @@ type SortCol = "date" | "amount" | "group";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function parseExpenseDate(dateStr: string): Date {
-  return new Date(dateStr);
+// e.date is a pre-formatted display string ("6 days ago"); date math must use the
+// raw ISO timestamp in e._rawDate (same approach as the group detail page).
+function rawTs(e: Expense): number {
+  const iso = e._rawDate;
+  if (!iso) return NaN;
+  return new Date(iso.endsWith("Z") ? iso : iso + "Z").getTime();
 }
 
-function isThisMonth(dateStr: string): boolean {
-  const d = parseExpenseDate(dateStr);
+function isThisMonth(e: Expense): boolean {
+  const t = rawTs(e);
+  if (Number.isNaN(t)) return false;
+  const d = new Date(t);
   const now = new Date();
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
-function isLastMonth(dateStr: string): boolean {
-  const d = parseExpenseDate(dateStr);
+function isLastMonth(e: Expense): boolean {
+  const t = rawTs(e);
+  if (Number.isNaN(t)) return false;
+  const d = new Date(t);
   const now = new Date();
   const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   return d.getMonth() === last.getMonth() && d.getFullYear() === last.getFullYear();
 }
 
-function smartDate(dateStr: string): string {
-  const d = parseExpenseDate(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (d.getFullYear() === now.getFullYear())
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 // myId param replaces hardcoded ME constant — fixes data correctness for all users
 function myShareInfo(e: Expense, myId: string) {
+  const youArePayer = e.paidBy === myId;
   const inSplit = e.splitIds.includes(myId);
-  if (!inSplit) return null;
+  if (!youArePayer && !inSplit) return null; // truly not involved → "—"
+  // You paid and you're the only participant → "Not Split" (neutral, no lend/owe)
+  const onlyYou = youArePayer && (e.splitIds.length === 0 || (e.splitIds.length === 1 && e.splitIds[0] === myId));
+  if (onlyYou) return { label: `Not Split ${fmt(e.amount, e.currency)}`, type: "self" as const, amount: 0 };
   const share = e.amount / Math.max(1, e.splitIds.length);
-  if (e.paidBy === myId) {
+  if (youArePayer) {
     const lent = e.amount - share;
-    return lent > 0 ? { label: `Lent ${fmt(lent, e.currency)}`, type: "lent" as const, amount: lent } : null;
+    return { label: `Lent ${fmt(lent, e.currency)}`, type: "lent" as const, amount: lent };
   }
   return { label: `Owe ${fmt(share, e.currency)}`, type: "owe" as const, amount: share };
 }
 
-// ── FilterDropdown ────────────────────────────────────────────────────────────
-
-function FilterDropdown({
-  icon, label, options, value, onChange,
-}: {
-  icon: string;
-  label: string;
-  options: { id: string; label: string }[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const active = value !== options[0]?.id;
-  const selected = options.find((o) => o.id === value);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const keyHandler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("keydown", keyHandler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("keydown", keyHandler);
-    };
-  }, [open]);
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button
-        className="dropdown"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        style={active ? { borderColor: "var(--primary)", background: "var(--primary-soft)", color: "var(--primary)" } : undefined}
-      >
-        <Icon name={icon} size={14} className="ic" style={active ? { color: "var(--primary)" } : undefined} />
-        {selected?.label ?? label}
-        {active && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)", flexShrink: 0 }} />}
-        <Icon name="chev" size={12} className="chev" />
-      </button>
-      {open && (
-        <div role="listbox" style={{
-          position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 50,
-          background: "var(--surface)", border: "1px solid var(--line)",
-          borderRadius: 12, boxShadow: "var(--shadow-lg)", minWidth: 190, padding: "6px 0",
-        }}>
-          {options.map((o) => (
-            <button
-              key={o.id}
-              role="option"
-              aria-selected={o.id === value}
-              onClick={() => { onChange(o.id); setOpen(false); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                width: "100%", padding: "9px 14px", background: "none",
-                border: "none", fontSize: 13, cursor: "pointer", textAlign: "left",
-                color: o.id === value ? "var(--primary)" : "var(--ink)",
-                fontWeight: o.id === value ? 600 : 400,
-              }}
-            >
-              {o.id === value
-                ? <Icon name="check" size={13} style={{ color: "var(--primary)", flexShrink: 0 }} />
-                : <span style={{ width: 13, flexShrink: 0 }} />}
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── SortTh — reusable sortable column header ──────────────────────────────────
 
@@ -191,6 +121,7 @@ export default function ExpensesPage() {
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
+  const [viewExpenseId, setViewExpenseId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState<SortCol>("date");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
@@ -243,17 +174,22 @@ export default function ExpensesPage() {
   const filtered = useMemo(() => {
     let list = expenses;
     if (filter === "personal") list = list.filter((e) => e.paidBy === myId);
-    if (dateFilter === "thisMonth") list = list.filter((e) => isThisMonth(e.date));
-    if (dateFilter === "lastMonth") list = list.filter((e) => isLastMonth(e.date));
+    if (dateFilter === "thisMonth") list = list.filter((e) => isThisMonth(e));
+    if (dateFilter === "lastMonth") list = list.filter((e) => isLastMonth(e));
     if (groupFilter !== "all") list = list.filter((e) => e.groupId === groupFilter);
     if (categoryFilter !== "all") list = list.filter((e) => e.categoryId === categoryFilter);
     if (query.trim()) {
       const q = query.toLowerCase();
-      list = list.filter((e) => e.title.toLowerCase().includes(q));
+      // Search by expense name AND by participant/payer names (same model as /groups)
+      list = list.filter((e) => {
+        if (e.title.toLowerCase().includes(q)) return true;
+        const ids = [e.paidBy, ...e.splitIds];
+        return ids.some((id) => personById(id).name.toLowerCase().includes(q));
+      });
     }
     list = [...list].sort((a, b) => {
       let cmp = 0;
-      if (sortCol === "date") cmp = parseExpenseDate(a.date).getTime() - parseExpenseDate(b.date).getTime();
+      if (sortCol === "date") cmp = (rawTs(a) || 0) - (rawTs(b) || 0);
       if (sortCol === "amount") cmp = a.amount - b.amount;
       if (sortCol === "group") cmp = (a.groupId ?? "").localeCompare(b.groupId ?? "");
       return sortDir === "desc" ? -cmp : cmp;
@@ -280,25 +216,11 @@ export default function ExpensesPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const pageNumbers = useMemo(() => {
-    const pages: (number | "…")[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push("…");
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
-      if (page < totalPages - 2) pages.push("…");
-      pages.push(totalPages);
-    }
-    return pages;
-  }, [page, totalPages]);
-
   // ── Stat calculations ────────────────────────────────────────────────────────
   const totals = useMemo(() => {
     const total = expenses.reduce((s, e) => s + e.amount, 0);
-    const thisMonthExp = expenses.filter((e) => isThisMonth(e.date));
-    const lastMonthExp = expenses.filter((e) => isLastMonth(e.date));
+    const thisMonthExp = expenses.filter((e) => isThisMonth(e));
+    const lastMonthExp = expenses.filter((e) => isLastMonth(e));
     const thisMonthTotal = thisMonthExp.reduce((s, e) => s + e.amount, 0);
     const lastMonthTotal = lastMonthExp.reduce((s, e) => s + e.amount, 0);
     const monthDelta = lastMonthTotal > 0
@@ -464,25 +386,20 @@ export default function ExpensesPage() {
         </td>
         <td>
           {share ? (
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 4,
-              padding: "2px 8px", borderRadius: 6, fontSize: 12, fontWeight: 700,
-              background: share.type === "owe" ? "var(--rose-soft)" : "var(--success-soft)",
-              color: share.type === "owe" ? "var(--rose)" : "var(--success)",
-              fontVariantNumeric: "tabular-nums",
-            }}>
-              {share.label}
-            </div>
+            <SharePill kind={share.type === "owe" ? "owe" : share.type === "lent" ? "lent" : "neutral"}>{share.label}</SharePill>
           ) : (
-            <span style={{ fontSize: 12, color: "var(--ink-4)" }}>—</span>
+            <SharePill kind="neutral">—</SharePill>
           )}
         </td>
         <td style={{ whiteSpace: "nowrap" }}>
-          <div className="exp-date">{smartDate(e.date)}</div>
+          <div className="exp-date">{e.date || "No date"}</div>
           <div className="exp-time">{e.time}</div>
         </td>
         <td>
           <div className="tbl-actions" style={{ justifyContent: "flex-end" }}>
+            <button className="tbl-act" aria-label="View" onClick={() => setViewExpenseId(e.id)}>
+              <Icon name="search" size={14} />
+            </button>
             <button className="tbl-act" aria-label="Edit" onClick={() => setEditExpenseId(e.id)}>
               <Icon name="edit" size={14} />
             </button>
@@ -516,59 +433,23 @@ export default function ExpensesPage() {
       <div className="page-2col">
         <div>
           {/* ── Stat cards ── */}
-          <div className="stat-grid-4">
+          <div className="ui-stat-grid cols-4">
             {loading ? (
               <><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /></>
             ) : (
               <>
-                <div className="card stat-c">
-                  <div className="ic" style={{ background: "#eeecff", color: "#5b4ef0" }}>
-                    <Icon name="wallet" size={22} />
-                  </div>
-                  <div>
-                    <div className="lbl">Total Spent</div>
-                    <div className="v num">{fmt(totals.total, userCurrency)}</div>
-                    <div className="sub">{expenses.length} transactions · all time</div>
-                  </div>
-                </div>
-
-                <div className="card stat-c">
-                  <div className="ic" style={{ background: "#fce7f3", color: "#ec4899" }}>
-                    <Icon name="receipt" size={22} />
-                  </div>
-                  <div>
-                    <div className="lbl">This Month</div>
-                    <div className="v num">{fmt(totals.thisMonth, userCurrency)}</div>
-                    <div className="sub">{renderDelta(totals.monthDelta)}</div>
-                  </div>
-                </div>
-
-                {/* Replaced "Avg per Expense" with "You Are Owed" — higher value metric */}
-                <div className="card stat-c">
-                  <div className="ic" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
-                    <Icon name="coin" size={22} />
-                  </div>
-                  <div>
-                    <div className="lbl">You Are Owed</div>
-                    <div className="v num" style={{ color: totals.youAreOwed > 0 ? "var(--success)" : "var(--ink-3)" }}>
-                      {fmt(totals.youAreOwed, userCurrency)}
-                    </div>
-                    <div className="sub">others owe you</div>
-                  </div>
-                </div>
-
-                <div className="card stat-c">
-                  <div className="ic" style={{ background: "#fff1f2", color: "#f43f5e" }}>
-                    <Icon name="wallet" size={22} />
-                  </div>
-                  <div>
-                    <div className="lbl">You Owe</div>
-                    <div className="v num" style={{ color: totals.iOwe > 0 ? "#f43f5e" : "var(--success)" }}>
-                      {fmt(totals.iOwe, userCurrency)}
-                    </div>
-                    <div className="sub">across all groups</div>
-                  </div>
-                </div>
+                <StatCard icon="wallet" tone="primary" label="Total Spent"
+                  value={totals.total} currency={userCurrency}
+                  sub={`${expenses.length} transactions · all time`} />
+                <StatCard icon="receipt" tone="neutral" label="This Month"
+                  value={fmt(totals.thisMonth, userCurrency)}
+                  sub={renderDelta(totals.monthDelta)} />
+                <StatCard icon="coin" tone="success" label="You Are Owed"
+                  value={totals.youAreOwed} currency={userCurrency}
+                  colorValue={totals.youAreOwed > 0} sub="others owe you" />
+                <StatCard icon="wallet" tone="danger" label="You Owe"
+                  value={totals.iOwe} currency={userCurrency}
+                  colorValue={totals.iOwe > 0} sub="across all groups" />
               </>
             )}
           </div>
@@ -733,35 +614,12 @@ export default function ExpensesPage() {
                   </table>
                 </div>
 
-                {/* Pagination */}
-                <div className="pag">
-                  <span>
-                    {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length} expenses
-                  </span>
-                  <div className="pag-pages">
-                    <button className="pag-btn" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label="Previous page">
-                      <Icon name="chevR" size={12} style={{ transform: "rotate(180deg)" }} />
-                    </button>
-                    {pageNumbers.map((n, i) =>
-                      n === "…" ? (
-                        <span key={`el-${i}`} style={{ padding: "0 2px", color: "var(--ink-4)", fontSize: 13 }}>…</span>
-                      ) : (
-                        <button
-                          key={n}
-                          className={"pag-btn" + (n === page ? " active" : "")}
-                          onClick={() => setPage(n as number)}
-                          aria-label={`Page ${n}`}
-                          aria-current={n === page ? "page" : undefined}
-                        >
-                          {n}
-                        </button>
-                      )
-                    )}
-                    <button className="pag-btn" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} aria-label="Next page">
-                      <Icon name="chevR" size={12} />
-                    </button>
-                  </div>
-                </div>
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onChange={setPage}
+                  summary={`${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, filtered.length)} of ${filtered.length} expenses`}
+                />
               </>
             )}
           </div>
@@ -835,6 +693,19 @@ export default function ExpensesPage() {
             onClose={() => setEditExpenseId(null)}
             onSaved={async () => { setEditExpenseId(null); await refetchSplitting(); }}
             showToast={showToast}
+          />
+        ) : null;
+      })()}
+
+      {(() => {
+        const exp = viewExpenseId ? expenses.find((e) => e.id === viewExpenseId) : null;
+        const g = exp ? groups.find((x) => x.id === exp.groupId) : null;
+        return exp && g ? (
+          <ExpenseDetailModal
+            expense={exp}
+            group={g}
+            onClose={() => setViewExpenseId(null)}
+            onEdit={() => { setViewExpenseId(null); setEditExpenseId(exp.id); }}
           />
         ) : null;
       })()}

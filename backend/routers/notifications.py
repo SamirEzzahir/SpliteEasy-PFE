@@ -83,7 +83,10 @@ async def send_notification(session: AsyncSession, user_id: int, message: str, t
 
 # ================== REST ENDPOINTS ==================
 
-@router.get("/", response_model=List[schemas.NotificationRead])
+# Served at the no-slash path ("/Notifications") so the Next.js proxy — which
+# strips trailing slashes — hits it directly without a 307 redirect. The 307
+# was dropping the Authorization header and causing 401s.
+@router.get("", response_model=List[schemas.NotificationRead])
 async def get_my_notifications(
     limit: int = 20, 
     offset: int = 0,

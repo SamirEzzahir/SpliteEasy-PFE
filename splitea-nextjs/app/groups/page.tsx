@@ -3,6 +3,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 import Icon from "@/components/Icon";
 import { Avatar, AvatarStack } from "@/components/Avatar";
 import CreateGroupModal from "@/components/modals/CreateGroupModal";
@@ -13,7 +15,9 @@ import { fmt } from "@/lib/format";
 import { groupsApi } from "@/lib/api/groups";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { SkeletonGroupCard } from "@/components/Skeleton";
+import { SkeletonGroupCard, SkeletonStatCard } from "@/components/Skeleton";
+import StatCard from "@/components/ui/StatCard";
+import Pagination from "@/components/ui/Pagination";
 import type { Group, GroupType } from "@/lib/types";
 
 type ViewMode = "grid" | "list";
@@ -67,12 +71,17 @@ function settlementPct(group: Group) {
 export default function GroupsPage() {
   const { groups, createGroup, expenses, refetchSplitting, showToast, loading } = useApp();
   const { user } = useAuth();
-  const userCurrency = user?.preferred_currency || "USD";
+  const router = useRouter();
+  const userCurrency = user?.preferred_currency || "MAD";
+  const myId = user?.id;
+
   const [selectedId, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<ViewMode>("grid");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [sort, setSort] = useState<SortMode>("recent");
+  // P1.4 — balance quick-filter driven by summary bar clicks
+  const [balanceFilter, setBalanceFilter] = useState<"all" | "owe" | "owed">("all");
   const [showCreate, setShowCreate] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
@@ -107,6 +116,12 @@ export default function GroupsPage() {
     const q = query.trim().toLowerCase();
     return groups
       .filter((group) => typeFilter === "all" || group.type === typeFilter)
+      // P1.4 — balance quick-filter from summary bar
+      .filter((group) => {
+        if (balanceFilter === "owe") return group.balance < 0;
+        if (balanceFilter === "owed") return group.balance > 0;
+        return true;
+      })
       .filter((group) => {
         if (!q) return true;
         const memberMatch = group.memberIds.some((id) => {
@@ -119,13 +134,17 @@ export default function GroupsPage() {
         if (sort === "name") return a.name.localeCompare(b.name);
         if (sort === "total") return b.total - a.total;
         if (sort === "balance") return Math.abs(b.balance) - Math.abs(a.balance);
+        // P1.5 — "recent" now sorts by group.id descending (higher id = created later)
+        // group.updated is a formatted string ("Jun 1, 2026") not sortable as-is;
+        // group.id is a reliable proxy for creation order until backend exposes updated_at
+        if (sort === "recent") return Number(b.id) - Number(a.id);
         return 0;
       });
-  }, [groups, query, sort, typeFilter]);
+  }, [groups, query, sort, typeFilter, balanceFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [query, sort, typeFilter, view]);
+  }, [query, sort, typeFilter, view, balanceFilter]);
 
   const selected = groups.find((group) => group.id === selectedId) || filtered[0] || groups[0];
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -176,7 +195,18 @@ export default function GroupsPage() {
       showToast("Demo group deletion needs a live backend group");
       return;
     }
-    if (!confirm(`Delete "${group.name}"? This cannot be undone.`)) return;
+    // P0.3 — Swal replaces window.confirm (matches pattern in groups/[id]/page.tsx)
+    const result = await Swal.fire({
+      title: `Delete "${group.name}"?`,
+      text: `This will permanently remove all ${expenses.filter((e) => e.groupId === group.id).length} expenses and ${group.memberIds.length} members. This cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete group",
+      cancelButtonText: "Cancel",
+    });
+    if (!result.isConfirmed) return;
     try {
       await groupsApi.remove(Number(group.id));
       showToast("Group deleted");
@@ -193,7 +223,18 @@ export default function GroupsPage() {
       showToast("Demo group leave needs a live backend group");
       return;
     }
-    if (!confirm(`Leave "${group.name}"?`)) return;
+    // P0.3 — Swal replaces window.confirm
+    const result = await Swal.fire({
+      title: `Leave "${group.name}"?`,
+      text: "You will lose access to this group's expenses and balances.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#5b4ef0",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, leave group",
+      cancelButtonText: "Cancel",
+    });
+    if (!result.isConfirmed) return;
     try {
       await groupsApi.leave(Number(group.id));
       showToast("You left the group");
@@ -267,7 +308,7 @@ export default function GroupsPage() {
             <div className="gd-title-block">
               <div>
                 <h2 id={titleId}>{group.name}</h2>
-                <p>{group.memberIds.length} members · Created by Samir Ali</p>
+                <p>{group.memberIds.length} members · Created by {group.ownerId === myId ? "You" : (group.ownerUsername ?? "—")}</p>
               </div>
               <button onClick={() => editGroup(group)}><Icon name="edit" size={14} /></button>
             </div>
@@ -291,7 +332,7 @@ export default function GroupsPage() {
               <Link href={`/groups/${group.id}`} className="btn btn-primary" onClick={closeMobilePreview}>
                 View Expenses
               </Link>
-              <button className="btn btn-secondary" onClick={() => showToast("Settlement flow coming next")}>
+              <button className="btn btn-secondary" onClick={() => router.push(`/groups/${group.id}/settle`)}>
                 Settle Up
               </button>
               <button className="btn btn-secondary" onClick={() => openMembers(group)}>
@@ -316,7 +357,7 @@ export default function GroupsPage() {
                     <div className="nm">{person.you ? person.name + " (You)" : person.name}</div>
                     <div className="role">{index === 0 ? "Admin" : "Member"}</div>
                   </div>
-                  <span className="member-status">Active</span>
+                  {index === 0 && <span className="member-status">Admin</span>}
                 </div>
               );
             })}
@@ -366,23 +407,28 @@ export default function GroupsPage() {
           </button>
         </div>
 
-        <div className="groups-summary">
+        <div className="ui-stat-grid cols-4">
           {loading ? (
-            <>
-              {[0,1,2,3].map((i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div className="sk-block" style={{ width: "60%", height: 12, borderRadius: 5 }} />
-                  <div className="sk-block" style={{ width: "80%", height: 22, borderRadius: 7 }} />
-                  <div className="sk-block" style={{ width: "50%", height: 11, borderRadius: 4 }} />
-                </div>
-              ))}
-            </>
+            <><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /></>
           ) : (
             <>
-              <div><span>Active Groups</span><strong>{groupStats.active}</strong><small>Ready to split</small></div>
-              <div><span>Total Spending</span><strong>{fmt(groupStats.total, userCurrency)}</strong><small>Across all groups</small></div>
-              <div><span>You Are Owed</span><strong className="pos">{fmt(groupStats.owed, userCurrency)}</strong><small>Collectable balance</small></div>
-              <div><span>You Owe</span><strong className="neg">{fmt(groupStats.owe, userCurrency)}</strong><small>Pending payback</small></div>
+              <StatCard icon="groups" tone="primary" label="Active Groups"
+                value={groupStats.active} sub="Ready to split" />
+              <StatCard icon="wallet" tone="neutral" label="Total Spending"
+                value={groupStats.total} currency={userCurrency} sub="Across all groups" />
+              {/* Clickable balance shortcuts that apply a balance quick-filter */}
+              <StatCard icon="upload" tone="success" label="You Are Owed"
+                value={groupStats.owed} currency={userCurrency}
+                sub={balanceFilter === "owed" ? "Click to clear filter" : "Click to filter"}
+                onClick={() => setBalanceFilter((f) => f === "owed" ? "all" : "owed")}
+                active={balanceFilter === "owed"}
+                title="Show only groups where you are owed money" />
+              <StatCard icon="download" tone="danger" label="You Owe"
+                value={groupStats.owe} currency={userCurrency}
+                sub={balanceFilter === "owe" ? "Click to clear filter" : "Click to filter"}
+                onClick={() => setBalanceFilter((f) => f === "owe" ? "all" : "owe")}
+                active={balanceFilter === "owe"}
+                title="Show only groups where you owe money" />
             </>
           )}
         </div>
@@ -394,15 +440,16 @@ export default function GroupsPage() {
           </div>
 
           <select className="dropdown groups-select" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}>
-            {(Object.keys(typeLabels) as TypeFilter[]).map((type) => (
-              <option key={type} value={type}>{typeLabels[type]}</option>
+            <option value="all">Filter: All Types</option>
+            {(Object.keys(typeLabels).filter(t => t !== "all") as GroupType[]).map((type) => (
+              <option key={type} value={type}>Filter: {typeLabels[type]}</option>
             ))}
           </select>
 
           <select className="dropdown groups-select" value={sort} onChange={(event) => setSort(event.target.value as SortMode)}>
-            <option value="recent">Sort by: Recently Updated</option>
-            <option value="name">Sort by: Name</option>
-            <option value="total">Sort by: Highest Spend</option>
+            <option value="recent">Sort: Recently Created</option>
+            <option value="name">Sort: Name A–Z</option>
+            <option value="total">Sort: Highest Spend</option>
             <option value="balance">Sort by: Biggest Balance</option>
           </select>
 
@@ -458,6 +505,10 @@ export default function GroupsPage() {
                         <div className="group-visual" style={{ backgroundImage: visual.image }}>
                           <span className="group-type-pill">{visual.label}</span>
                           {isSel && <span className="group-selected-pill">Selected</span>}
+                          {/* P2.8 — attention dot for groups with unsettled balance */}
+                          {group.balance !== 0 && (
+                            <span className="group-attention-dot" title={group.balance > 0 ? "You are owed money" : "You owe money"} />
+                          )}
                           <button
                             className="group-menu-btn"
                             onClick={(event) => {
@@ -494,10 +545,13 @@ export default function GroupsPage() {
                             <AvatarStack ids={group.memberIds} max={5} size="sm" />
                           </div>
 
+                          {/* P1.6 — replace misleading % estimate with honest balance status */}
                           <div className="group-settlement">
                             <div>
-                              <span>Settlement progress</span>
-                              <b>{pct}%</b>
+                              <span>Balance status</span>
+                              <b style={{ color: group.balance !== 0 ? (group.balance > 0 ? "var(--success)" : "var(--rose)") : "var(--ink-3)" }}>
+                                {group.balance === 0 ? "✓ Settled" : group.balance > 0 ? `+${fmt(group.balance, group.currency)}` : fmt(group.balance, group.currency)}
+                              </b>
                             </div>
                             <i><em style={{ width: `${pct}%`, background: group.color }} /></i>
                           </div>
@@ -516,30 +570,14 @@ export default function GroupsPage() {
                   })}
                 </div>
 
-                <div className="groups-count">
-                  <span>
-                    Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} groups
-                  </span>
-                  {totalPages > 1 && (
-                    <div className="pag-pages">
-                      <button className="pag-btn" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                        <Icon name="chevR" size={12} style={{ transform: "rotate(180deg)" }} />
-                      </button>
-                      {Array.from({ length: totalPages }).map((_, index) => (
-                        <button
-                          key={index + 1}
-                          className={"pag-btn" + (currentPage === index + 1 ? " active" : "")}
-                          onClick={() => setPage(index + 1)}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
-                      <button className="pag-btn" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                        <Icon name="chevR" size={12} />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {totalPages > 1 && (
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onChange={setPage}
+                    summary={`Showing ${(currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, filtered.length)} of ${filtered.length} groups`}
+                  />
+                )}
               </>
             )}
           </main>
@@ -564,7 +602,7 @@ export default function GroupsPage() {
                   <div className="gd-title-block">
                     <div>
                       <h2>{selected.name}</h2>
-                      <p>{selected.memberIds.length} members · Created by Samir Ali</p>
+                      <p>{selected.memberIds.length} members · Created by {selected.ownerId === myId ? "You" : (selected.ownerUsername ?? "—")}</p>
                     </div>
                     <button onClick={() => editGroup(selected)}><Icon name="edit" size={14} /></button>
                   </div>
@@ -588,9 +626,9 @@ export default function GroupsPage() {
                     <Link href={`/groups/${selected.id}`} className="btn btn-primary">
                       View Expenses
                     </Link>
-                    <button className="btn btn-secondary" onClick={() => showToast("Settlement flow coming next")}>
+                    <Link href={`/groups/${selected.id}/settle`} className="btn btn-secondary">
                       Settle Up
-                    </button>
+                    </Link>
                     <button className="btn btn-secondary" onClick={() => openMembers(selected)}>
                       Members
                     </button>
@@ -613,7 +651,7 @@ export default function GroupsPage() {
                           <div className="nm">{person.you ? person.name + " (You)" : person.name}</div>
                           <div className="role">{index === 0 ? "Admin" : "Member"}</div>
                         </div>
-                        <span className="member-status">Active</span>
+                        {index === 0 && <span className="member-status">Admin</span>}
                       </div>
                     );
                   })}

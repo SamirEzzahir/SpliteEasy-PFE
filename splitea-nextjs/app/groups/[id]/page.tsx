@@ -1,5 +1,5 @@
 "use client";
-// app/groups/[id]/page.tsx — Group Expenses (one group view)
+// app/groups/[id]/page.tsx — Group Activity (expenses + settlements)
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -15,7 +15,11 @@ import SettlementDetailModal from "@/components/modals/SettlementDetailModal";
 import ManageGroupMembersModal from "@/components/modals/ManageGroupMembersModal";
 import GroupChat from "@/components/chat/GroupChat";
 import { SkeletonGroupExpenseRow, SkeletonGroupStat } from "@/components/Skeleton";
+import StatCard from "@/components/ui/StatCard";
+import Pagination from "@/components/ui/Pagination";
+import SharePill from "@/components/ui/SharePill";
 import { CATEGORIES, categoryById, personById } from "@/lib/data";
+import { fmt } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { expensesApi } from "@/lib/api/expenses";
 import { settleApi } from "@/lib/api/settle";
@@ -23,88 +27,118 @@ import { useApp } from "@/lib/store";
 import type { ApiBalanceEntry, ApiSettlement } from "@/lib/api/types";
 import type { Expense } from "@/lib/types";
 
-type UnifiedRow = { kind: "expense"; data: Expense; ts: number } | { kind: "settlement"; data: ApiSettlement; ts: number };
-
-const fmtMad = (n: number) =>
-  "MAD " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+type UnifiedRow =
+  | { kind: "expense";    data: Expense;       ts: number }
+  | { kind: "settlement"; data: ApiSettlement; ts: number };
 
 export default function GroupDetailPage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
+  const params  = useParams<{ id: string }>();
+  const router  = useRouter();
   const { user } = useAuth();
   const { groups, expenses, addExpense, refetchSplitting, showToast, loading } = useApp();
 
   const groupId = Number(params.id);
+  // Fix: numeric comparison prevents string/number mismatch (g.id is stored as string in store)
   const group = groups.find((g) => Number(g.id) === groupId);
+  // Convenience: group currency with MAD fallback
+  const currency = group?.currency ?? "MAD";
 
-  const [query, setQuery] = useState("");
-  const [monthFilter, setMonthFilter] = useState("all");
+  // ── Filters ──────────────────────────────────────────────────────────────────
+  const [query,          setQuery]          = useState("");
+  const [monthFilter,    setMonthFilter]    = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [paidByFilter, setPaidByFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [balances, setBalances] = useState<ApiBalanceEntry[]>([]);
-  const [settlementHistory, setSettlementHistory] = useState<ApiSettlement[]>([]);
-  const [showSettlements, setShowSettlements] = useState(true);
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
-  const [viewExpense, setViewExpense] = useState<string | null>(null);
-  const [viewSettlement, setViewSettlement] = useState<ApiSettlement | null>(null);
-  const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [paidByFilter,   setPaidByFilter]   = useState("all");
+  const [page,           setPage]           = useState(1);
   const pageSize = 7;
 
+  // ── Side data (balances + settlement history — fetched independently) ────────
+  const [balances,           setBalances]           = useState<ApiBalanceEntry[]>([]);
+  const [settlementHistory,  setSettlementHistory]  = useState<ApiSettlement[]>([]);
+  const [showSettlements,    setShowSettlements]    = useState(true);
+
+  // ── Modal visibility ─────────────────────────────────────────────────────────
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showMembers,    setShowMembers]    = useState(false);
+  const [viewExpense,    setViewExpense]    = useState<string | null>(null);
+  const [viewSettlement, setViewSettlement] = useState<ApiSettlement | null>(null);
+  const [editExpenseId,  setEditExpenseId]  = useState<string | null>(null);
+  // Fix: track whether edit was opened from inside ExpenseDetailModal so we can restore it on cancel
+  const [editFromView,   setEditFromView]   = useState(false);
+
+  // ── Mobile UI ────────────────────────────────────────────────────────────────
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+
+  // ── Settlement inline action loading state ───────────────────────────────────
+  const [actingSettlementId, setActingSettlementId] = useState<number | null>(null);
+
+  // ── Side data fetch ──────────────────────────────────────────────────────────
   const fetchSideData = useCallback(async () => {
     if (!Number.isFinite(groupId)) return;
     const [bal, hist] = await Promise.allSettled([
       settleApi.groupBalances(groupId),
       settleApi.groupHistory(groupId),
     ]);
-    if (bal.status === "fulfilled") setBalances(bal.value);
+    if (bal.status  === "fulfilled") setBalances(bal.value);
     if (hist.status === "fulfilled") setSettlementHistory(hist.value);
   }, [groupId]);
 
   useEffect(() => { fetchSideData(); }, [fetchSideData]);
 
+  // ── Derived data ──────────────────────────────────────────────────────────────
   const groupExpenses = useMemo(
     () => expenses.filter((e) => String(e.groupId) === String(params.id)),
     [expenses, params.id],
   );
 
-  // Unified list: expenses + settlements merged and sorted newest-first
+  // Build unified sorted feed (expenses + optional settlements)
   const unifiedRows = useMemo((): UnifiedRow[] => {
-    const toTs = (iso?: string) => iso ? new Date(iso.endsWith("Z") ? iso : iso + "Z").getTime() : 0;
+    const toTs = (iso?: string) =>
+      iso ? new Date(iso.endsWith("Z") ? iso : iso + "Z").getTime() : 0;
     const expRows: UnifiedRow[] = groupExpenses.map((e) => ({
-      kind: "expense",
-      data: e,
-      ts: toTs(e._rawDate),
+      kind: "expense", data: e, ts: toTs(e._rawDate),
     }));
     const settleRows: UnifiedRow[] = settlementHistory.map((s) => ({
-      kind: "settlement",
-      data: s,
-      ts: toTs(s.created_at),
+      kind: "settlement", data: s, ts: toTs(s.created_at),
     }));
     const combined = showSettlements ? [...expRows, ...settleRows] : expRows;
     return combined.sort((a, b) => b.ts - a.ts);
   }, [groupExpenses, settlementHistory, showSettlements]);
 
+  // Filter unified rows
+  // Fix: date filter now applies to settlements as well as expenses (symmetric behaviour)
   const filtered = useMemo(() => {
     const now = new Date();
-    const q = query.toLowerCase();
+    const q   = query.toLowerCase();
     return unifiedRows.filter((row) => {
       if (row.kind === "settlement") {
-        // settlements only filtered by search query
-        if (!q.trim()) return true;
         const s = row.data;
+        // Apply same date filter to settlements — symmetric with expenses
+        if (monthFilter === "this") {
+          const d = s.created_at
+            ? new Date(s.created_at.endsWith("Z") ? s.created_at : s.created_at + "Z")
+            : new Date(NaN);
+          const inMonth = Number.isNaN(d.getTime()) ||
+            (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear());
+          if (!inMonth) return false;
+        }
+        if (!q.trim()) return true;
         return `settlement ${s.from_username ?? ""} ${s.to_username ?? ""}`.toLowerCase().includes(q);
       }
+
       const e = row.data;
-      const matchesQuery = !q.trim() || `${e.title} ${e.subtitle}`.toLowerCase().includes(q);
+      // Search by expense name AND by participant/payer names (same model as /groups)
+      const matchesQuery = !q.trim()
+        || `${e.title} ${e.subtitle}`.toLowerCase().includes(q)
+        || [e.paidBy, ...e.splitIds].some((id) => personById(id).name.toLowerCase().includes(q));
       const matchesCategory = categoryFilter === "all" || e.categoryId === categoryFilter;
-      const matchesPayer = paidByFilter === "all" || e.paidBy === paidByFilter;
+      const matchesPayer    = paidByFilter === "all" || e.paidBy === paidByFilter;
       let matchesMonth = true;
       if (monthFilter === "this") {
-        const d = e._rawDate ? new Date(e._rawDate.endsWith("Z") ? e._rawDate : e._rawDate + "Z") : new Date(NaN);
-        matchesMonth = Number.isNaN(d.getTime()) || (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear());
+        const d = e._rawDate
+          ? new Date(e._rawDate.endsWith("Z") ? e._rawDate : e._rawDate + "Z")
+          : new Date(NaN);
+        matchesMonth = Number.isNaN(d.getTime()) ||
+          (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear());
       }
       return matchesQuery && matchesCategory && matchesPayer && matchesMonth;
     });
@@ -112,46 +146,37 @@ export default function GroupDetailPage() {
 
   useEffect(() => { setPage(1); }, [query, monthFilter, categoryFilter, paidByFilter]);
 
+  // Fix: "Settled" now computed from real accepted settlement records, not an approximation
   const totals = useMemo(() => {
     const total = groupExpenses.reduce((s, e) => s + e.amount, 0);
     const currentRow = balances.find((b) => b.user_id === user?.id);
     const currentNet = currentRow?.net ?? currentRow?.balance ?? group?.balance ?? 0;
-    const youOwe = currentNet < 0 ? Math.abs(currentNet) : 0;
+    const youOwe     = currentNet < 0 ? Math.abs(currentNet) : 0;
     const youAreOwed = currentNet > 0 ? currentNet : 0;
-    const unsettled = balances
+    const unsettled  = balances
       .filter((b) => (b.net ?? b.balance ?? 0) > 0)
       .reduce((sum, b) => sum + (b.net ?? b.balance ?? 0), 0);
-    const settled = Math.max(0, total - unsettled);
+    // Real settled: sum of accepted settlement amounts (previously was an approximation)
+    const settled = settlementHistory
+      .filter((h) => h.status === "accepted")
+      .reduce((sum, h) => sum + h.amount, 0);
     return { total, youOwe, youAreOwed, unsettled, settled };
-  }, [balances, group?.balance, groupExpenses, user?.id]);
+  }, [balances, group?.balance, groupExpenses, settlementHistory, user?.id]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paged       = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const currentUserId = String(user?.id || "");
-  const groupPayers = Array.from(new Set(groupExpenses.map((expense) => expense.paidBy)));
+  const groupPayers   = Array.from(new Set(groupExpenses.map((e) => e.paidBy)));
 
-  const settleUp = () => {
-    if (!group) return;
-    router.push(`/groups/${group.id}/settle`);
-  };
+  const settleUp = () => { if (group) router.push(`/groups/${group.id}/settle`); };
 
+  // ── Actions ──────────────────────────────────────────────────────────────────
+
+  // Fix: remove Swal confirm — undo toast IS the confirmation (removes double-friction)
   const deleteExpense = async (expenseId: string, title: string) => {
-    const result = await Swal.fire({
-      title: "Delete expense?",
-      text: `"${title}" will be permanently removed.`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, delete it",
-      cancelButtonText: "Cancel",
-    });
-    if (!result.isConfirmed) return;
-
     let undone = false;
-
     const doDelete = async () => {
       if (undone) return;
       try {
@@ -161,9 +186,7 @@ export default function GroupDetailPage() {
         toast.error("Could not delete expense");
       }
     };
-
     const timer = setTimeout(doDelete, 5000);
-
     toast.warning(
       ({ closeToast }) => (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%" }}>
@@ -178,15 +201,9 @@ export default function GroupDetailPage() {
               toast.info("Delete cancelled");
             }}
             style={{
-              background: "rgba(255,255,255,0.25)",
-              border: "1px solid rgba(255,255,255,0.4)",
-              color: "#fff",
-              borderRadius: 6,
-              padding: "3px 10px",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
+              background: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.4)",
+              color: "#fff", borderRadius: 6, padding: "3px 10px",
+              fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
             }}
           >
             Undo
@@ -197,9 +214,50 @@ export default function GroupDetailPage() {
     );
   };
 
+  // Inline settlement accept — surfaces action without requiring modal open
+  const acceptSettlementInline = async (id: number) => {
+    setActingSettlementId(id);
+    try {
+      await settleApi.acceptSettlement(id);
+      toast.success("Settlement accepted!");
+      await fetchSideData();
+    } catch {
+      toast.error("Could not accept settlement");
+    } finally {
+      setActingSettlementId(null);
+    }
+  };
+
+  // Inline settlement reject
+  const rejectSettlementInline = async (id: number) => {
+    const result = await Swal.fire({
+      title: "Reject Settlement",
+      input: "textarea",
+      inputLabel: "Reason (optional)",
+      inputPlaceholder: "Why are you rejecting this?",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Reject",
+    });
+    if (!result.isConfirmed) return;
+    setActingSettlementId(id);
+    try {
+      await settleApi.rejectSettlement(id, result.value || undefined);
+      toast.success("Settlement rejected");
+      await fetchSideData();
+    } catch {
+      toast.error("Could not reject settlement");
+    } finally {
+      setActingSettlementId(null);
+    }
+  };
+
+  // ── 404 state ────────────────────────────────────────────────────────────────
   if (!loading && !group) {
     return (
-      <>
+      // Fix: add role="alert" for ARIA — screen readers announce this immediately
+      <div role="alert">
         <div className="page-head">
           <div>
             <h1>Group not found</h1>
@@ -209,32 +267,64 @@ export default function GroupDetailPage() {
         <Link href="/groups" className="btn btn-primary" style={{ width: "fit-content" }}>
           ← Back to groups
         </Link>
-      </>
+      </div>
     );
   }
 
+  // ── Render helpers ────────────────────────────────────────────────────────────
+
+  // Settlement status pill
+  const statusPill = (status: string) => {
+    if (status === "accepted") return <span className="st-pill accepted">✅ Accepted</span>;
+    if (status === "rejected") return <span className="st-pill rejected">❌ Rejected</span>;
+    return <span className="st-pill pending">🕐 Pending</span>;
+  };
+
+  // ── Main render ───────────────────────────────────────────────────────────────
   return (
     <>
+      {/* Breadcrumb */}
       <div className="breadcrumb">
         <Link href="/groups">Groups</Link>
         <Icon name="chevR" size={12} className="sep" />
         <span className="cur">{group?.name ?? "..."}</span>
       </div>
 
+      {/* Page header */}
       <div className="page-head">
         <div>
-          <h1>Expenses</h1>
-          <p>Track and manage all group expenses in one place.</p>
+          {/* Fix: title reflects actual content (expenses + settlements) */}
+          <h1>Recent Activity</h1>
+          <p>Expenses and settlements for <strong>{group?.name ?? "..."}</strong></p>
         </div>
         <div className="page-actions">
-          {/* Desktop: all buttons visible */}
-          <button className="btn btn-secondary gx-hide-mobile" onClick={() => showToast("Export coming next")}><Icon name="download" size={14} /> Export Excel</button>
-          <button className="btn btn-secondary gx-hide-mobile" onClick={() => showToast("Import coming next")}><Icon name="upload" size={14} /> Import Excel</button>
-          <button className="btn btn-primary" onClick={() => setShowAddExpense(true)}><Icon name="plus" size={14} /> Add Expense</button>
-          <button className="btn btn-secondary gx-hide-mobile" onClick={() => setShowMembers(true)}><Icon name="groups" size={14} /> Members</button>
-          <button className="btn btn-secondary gx-hide-mobile" onClick={settleUp}><Icon name="settle" size={14} /> Settle</button>
+          {/* Desktop-only secondary actions */}
+          <button className="btn btn-secondary gx-hide-mobile" onClick={() => showToast("Export coming next")}>
+            <Icon name="download" size={14} /> Export
+          </button>
+          <button className="btn btn-secondary gx-hide-mobile" onClick={() => showToast("Import coming next")}>
+            <Icon name="upload" size={14} /> Import
+          </button>
 
-          {/* Mobile: "⋯" more menu */}
+          {/* Always visible primary CTA */}
+          <button className="btn btn-primary" onClick={() => setShowAddExpense(true)}>
+            <Icon name="plus" size={14} /> Add Expense
+          </button>
+
+          {/* Desktop-only secondary actions */}
+          <button className="btn btn-secondary gx-hide-mobile" onClick={() => setShowMembers(true)}>
+            <Icon name="groups" size={14} /> Members
+          </button>
+          <button className="btn btn-secondary gx-hide-mobile" onClick={settleUp}>
+            <Icon name="settle" size={14} /> Settle
+          </button>
+
+          {/* Fix: "Settle Up" always visible on mobile — it's the primary financial action */}
+          <button className="btn btn-secondary gx-show-mobile" onClick={settleUp}>
+            <Icon name="settle" size={14} /> Settle
+          </button>
+
+          {/* Mobile ⋯ menu — secondary/utility actions only */}
           <div className="gx-more-wrap gx-show-mobile">
             <button className="btn btn-secondary" onClick={() => setShowMoreMenu((v) => !v)}>
               <Icon name="dots" size={16} />
@@ -252,9 +342,6 @@ export default function GroupDetailPage() {
                   <button onClick={() => { setShowMembers(true); setShowMoreMenu(false); }}>
                     <Icon name="groups" size={15} /> Members
                   </button>
-                  <button onClick={() => { settleUp(); setShowMoreMenu(false); }}>
-                    <Icon name="settle" size={15} /> Settle Up
-                  </button>
                 </div>
               </>
             )}
@@ -262,65 +349,78 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
-      {/* 5 stat cards */}
-      <div className="stat-grid-5">
+      {/* ── 5 stat cards ── */}
+      <div className="ui-stat-grid cols-5">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => <SkeletonGroupStat key={i} />)
         ) : (
           <>
-            <div className="gx-stat">
-              <span className="lbl">Total Expenses</span>
-              <span className="v" style={{ color: "var(--primary)" }}>{fmtMad(totals.total)}</span>
-              <span className="sub">Across {groupExpenses.length} expenses</span>
-            </div>
-            <div className="gx-stat">
-              <span className="lbl">You Owe</span>
-              <span className="v" style={{ color: "var(--rose)" }}>{fmtMad(totals.youOwe)}</span>
-              <span className="sub">To the group</span>
-            </div>
-            <div className="gx-stat">
-              <span className="lbl">You Are Owed</span>
-              <span className="v" style={{ color: "var(--success)" }}>{fmtMad(totals.youAreOwed)}</span>
-              <span className="sub">From the group</span>
-            </div>
-            <div className="gx-stat">
-              <span className="lbl">Unsettled</span>
-              <span className="v" style={{ color: "#f59e0b" }}>{fmtMad(totals.unsettled)}</span>
-              <span className="sub">Open balance</span>
-            </div>
-            <div className="gx-stat">
-              <span className="lbl">Settled</span>
-              <span className="v" style={{ color: "var(--success)" }}>{fmtMad(totals.settled)}</span>
-              <span className="sub">Estimated settled</span>
-            </div>
+            <StatCard icon="receipt" tone="primary" label="Total Expenses"
+              value={totals.total} currency={currency}
+              sub={`Across ${groupExpenses.length} expenses`} />
+            <StatCard icon="download" tone="danger" label="You Owe"
+              value={totals.youOwe} currency={currency}
+              colorValue={totals.youOwe > 0} sub="To the group" />
+            <StatCard icon="upload" tone="success" label="You Are Owed"
+              value={totals.youAreOwed} currency={currency}
+              colorValue={totals.youAreOwed > 0} sub="From the group" />
+            <StatCard icon="activity" tone="warn" label="Unsettled"
+              value={totals.unsettled} currency={currency}
+              colorValue={totals.unsettled > 0} sub="Open balance" />
+            <StatCard icon="check" tone="success" label="Settled"
+              value={totals.settled} currency={currency}
+              sub="Accepted payments" />
           </>
         )}
       </div>
 
-      {/* Filters + table */}
+      {/* ── Filters + table card ── */}
       <div className="card" style={{ padding: 18 }}>
         <div className="filter-row">
-          <select className="dropdown" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
+          {/* Fix: active filter state — border + background when non-default */}
+          <select
+            className="dropdown"
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            style={monthFilter !== "all" ? {
+              borderColor: "var(--primary)", background: "var(--primary-soft)", color: "var(--primary)",
+            } : undefined}
+          >
             <option value="all">All Dates</option>
             <option value="this">This Month</option>
           </select>
-          <select className="dropdown" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+
+          <select
+            className="dropdown"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            style={categoryFilter !== "all" ? {
+              borderColor: "var(--primary)", background: "var(--primary-soft)", color: "var(--primary)",
+            } : undefined}
+          >
             <option value="all">All Categories</option>
             {CATEGORIES.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select>
-          <select className="dropdown" value={paidByFilter} onChange={(e) => setPaidByFilter(e.target.value)}>
+
+          <select
+            className="dropdown"
+            value={paidByFilter}
+            onChange={(e) => setPaidByFilter(e.target.value)}
+            style={paidByFilter !== "all" ? {
+              borderColor: "var(--primary)", background: "var(--primary-soft)", color: "var(--primary)",
+            } : undefined}
+          >
             <option value="all">All Paid By</option>
             {groupPayers.map((id) => <option key={id} value={id}>{personById(id).name}</option>)}
           </select>
+
+          {/* Settlement toggle */}
           <button
             className="btn btn-secondary"
             onClick={() => setShowSettlements((v) => !v)}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12.5,
-              padding: "6px 12px",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 12.5, padding: "6px 12px",
               borderColor: showSettlements ? "var(--teal)" : undefined,
               color: showSettlements ? "var(--teal)" : "var(--ink-3)",
               whiteSpace: "nowrap",
@@ -332,22 +432,25 @@ export default function GroupDetailPage() {
               <span style={{
                 background: showSettlements ? "var(--teal)" : "var(--line)",
                 color: showSettlements ? "#fff" : "var(--ink-3)",
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "1px 6px",
+                borderRadius: 999, fontSize: 11, fontWeight: 700, padding: "1px 6px",
               }}>
                 {settlementHistory.length}
               </span>
             )}
           </button>
+
           <div className="filter-grow" />
           <div className="search" style={{ width: 280 }}>
             <Icon name="search" size={14} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search expenses..." />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search expenses..."
+            />
           </div>
         </div>
 
+        {/* ── Desktop table ── */}
         <table className="exp-table">
           <thead>
             <tr>
@@ -365,69 +468,134 @@ export default function GroupDetailPage() {
             {loading ? (
               Array.from({ length: 7 }).map((_, i) => <SkeletonGroupExpenseRow key={i} />)
             ) : filtered.length === 0 ? (
+              // Fix: proper empty state with icon + CTA
               <tr>
-                <td colSpan={8} style={{ padding: "48px 0", textAlign: "center", color: "var(--ink-3)" }}>
-                  No expenses in this group yet.
+                <td colSpan={8} style={{ padding: "56px 24px", textAlign: "center" }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 14,
+                    background: "var(--primary-soft)", color: "var(--primary)",
+                    display: "grid", placeItems: "center", margin: "0 auto 14px",
+                  }}>
+                    <Icon name="receipt" size={22} />
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, color: "var(--ink)" }}>
+                    {query || monthFilter !== "all" || categoryFilter !== "all" || paidByFilter !== "all"
+                      ? "No results found"
+                      : "No expenses yet"}
+                  </div>
+                  <div style={{ color: "var(--ink-3)", fontSize: 13, marginBottom: 18 }}>
+                    {query || monthFilter !== "all" || categoryFilter !== "all" || paidByFilter !== "all"
+                      ? "Try adjusting your filters or search query."
+                      : "Add your first expense to start tracking splits."}
+                  </div>
+                  {(query || monthFilter !== "all" || categoryFilter !== "all" || paidByFilter !== "all") ? (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => { setQuery(""); setMonthFilter("all"); setCategoryFilter("all"); setPaidByFilter("all"); }}
+                    >
+                      Clear filters
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => setShowAddExpense(true)}>
+                      <Icon name="plus" size={14} /> Add Expense
+                    </button>
+                  )}
                 </td>
               </tr>
             ) : (
               paged.map((row) => {
                 // ── Settlement row ──────────────────────────────────────────
+                // Fix: single-colspan row — avoids column semantic mismatch.
+                // No more "Your Share" column showing a status pill.
                 if (row.kind === "settlement") {
-                  const s = row.data;
-                  const statusPillClass = s.status === "accepted" ? "st-pill accepted" : s.status === "rejected" ? "st-pill rejected" : "st-pill pending";
-                  const statusLabel = s.status === "accepted" ? "✅ Accepted" : s.status === "rejected" ? "❌ Rejected" : "🕐 Pending";
+                  const s       = row.data;
                   const isPayer = s.from_user_id === user?.id;
-                  const d = s.created_at ? new Date(s.created_at.endsWith("Z") ? s.created_at : s.created_at + "Z") : null;
+                  const canAct  = s.status === "pending" && s.to_user_id === user?.id;
+                  const d       = s.created_at
+                    ? new Date(s.created_at.endsWith("Z") ? s.created_at : s.created_at + "Z")
+                    : null;
                   const dateStr = d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
                   const timeStr = d ? d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
+                  const isActing = actingSettlementId === s.id;
+
                   return (
-                    <tr key={`s-${s.id}`} style={{ borderLeft: "3px solid var(--teal)", background: "rgba(20,184,166,0.03)" }}>
-                      <td>
-                        <div className="exp-cell">
-                          <div className="ic" style={{ background: "rgba(20,184,166,0.12)", color: "var(--teal)" }}>
-                            <Icon name="settle" size={18} />
+                    <tr key={`s-${s.id}`} style={{ borderLeft: "4px solid var(--teal)", background: "rgba(20,184,166,0.05)" }}>
+                      <td colSpan={8} style={{ padding: "10px 12px" }}>
+                        <div className="settle-inline-row">
+                          {/* Icon */}
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 9,
+                            background: "rgba(20,184,166,0.14)", color: "var(--teal)",
+                            display: "grid", placeItems: "center", flexShrink: 0,
+                          }}>
+                            <Icon name="settle" size={16} />
                           </div>
-                          <div className="body">
-                            <div className="nm" style={{ color: "var(--teal)", fontWeight: 700 }}>Settlement</div>
-                            <div className="ds" style={{ fontSize: 11.5 }}>
-                              {isPayer ? `You paid ${s.to_username ?? ""}` : `${s.from_username ?? ""} paid you`}
+
+                          {/* From → To */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <Avatar id={String(s.from_user_id)} size="sm" />
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+                                {s.from_username ?? `User ${s.from_user_id}`}
+                              </span>
                             </div>
+                            <Icon name="chevR" size={11} style={{ color: "var(--ink-4)", flexShrink: 0 }} />
+                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <Avatar id={String(s.to_user_id)} size="sm" />
+                              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-2)" }}>
+                                {s.to_username ?? `User ${s.to_user_id}`}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: 11.5, color: "var(--ink-4)", marginLeft: 4 }}>
+                              {isPayer ? "· You paid" : "· Paid you"}
+                            </span>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="cat-pill" style={{ background: "rgba(20,184,166,0.12)", color: "var(--teal)", marginTop: 0, fontSize: 11 }}>
-                          Payment
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Avatar id={String(s.from_user_id)} size="sm" />
-                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
-                            {s.from_username ?? `User ${s.from_user_id}`}
+
+                          {/* Amount */}
+                          <span style={{ fontWeight: 700, color: "var(--teal)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                            {fmt(s.amount, currency)}
                           </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Avatar id={String(s.to_user_id)} size="sm" />
-                          <span style={{ fontSize: 13, fontWeight: 400, color: "var(--ink-3)" }}>
-                            → {s.to_username ?? `User ${s.to_user_id}`}
+
+                          {/* Status pill */}
+                          {statusPill(s.status)}
+
+                          {/* Date */}
+                          <span style={{ fontSize: 12, color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+                            {dateStr}
+                            {timeStr && <span style={{ color: "var(--ink-4)" }}> · {timeStr}</span>}
                           </span>
-                        </div>
-                      </td>
-                      <td className="num" style={{ fontWeight: 700, color: "var(--teal)" }}>{fmtMad(s.amount)}</td>
-                      <td><span className={statusPillClass}>{statusLabel}</span></td>
-                      <td>
-                        <div className="exp-date">{dateStr}</div>
-                        <div className="exp-time">{timeStr}</div>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <div className="tbl-actions" style={{ justifyContent: "flex-end" }}>
-                          <button className="tbl-act" aria-label="View" onClick={() => setViewSettlement(s)}>
-                            <Icon name="search" size={14} />
-                          </button>
+
+                          {/* Actions */}
+                          <div className="tbl-actions">
+                            {/* View details */}
+                            <button className="tbl-act" aria-label="View settlement" onClick={() => setViewSettlement(s)}>
+                              <Icon name="search" size={14} />
+                            </button>
+                            {/* Fix: inline Accept/Decline for pending settlements — no modal required for binary decision */}
+                            {canAct && (
+                              <>
+                                <button
+                                  className="tbl-act"
+                                  aria-label="Accept settlement"
+                                  disabled={isActing}
+                                  title="Accept settlement"
+                                  style={{ color: "var(--success)", borderColor: "var(--success-soft)" }}
+                                  onClick={() => acceptSettlementInline(s.id)}
+                                >
+                                  <Icon name="check" size={14} />
+                                </button>
+                                <button
+                                  className="tbl-act danger"
+                                  aria-label="Reject settlement"
+                                  disabled={isActing}
+                                  title="Reject settlement"
+                                  onClick={() => rejectSettlementInline(s.id)}
+                                >
+                                  <Icon name="x" size={14} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -436,16 +604,16 @@ export default function GroupDetailPage() {
 
                 // ── Expense row ─────────────────────────────────────────────
                 const e = row.data;
-                const cat = categoryById(e.categoryId);
-                const payer = personById(e.paidBy);
-                const yourShare = e.amount / Math.max(1, e.splitIds.length || group?.memberIds.length || 1);
-                const youArePayer = e.paidBy === currentUserId;
+                const cat          = categoryById(e.categoryId);
+                const payer        = personById(e.paidBy);
+                const yourShare    = e.amount / Math.max(1, e.splitIds.length || group?.memberIds.length || 1);
+                const youArePayer  = e.paidBy === currentUserId;
                 const youParticipate = e.splitIds.length === 0 || e.splitIds.includes(currentUserId);
-                const notInvolved = !youArePayer && !youParticipate;
-                const onlyYou = youArePayer && (e.splitIds.length === 0 || (e.splitIds.length === 1 && e.splitIds[0] === currentUserId));
-                const shareLabel = notInvolved ? "Not split" : onlyYou ? "Even" : youArePayer ? "You lent" : "You owe";
-                const shareColor = (notInvolved || onlyYou) ? "var(--ink-3)" : youArePayer ? "var(--success)" : "var(--rose)";
+                const notInvolved  = !youArePayer && !youParticipate;
+                const onlyYou      = youArePayer && (e.splitIds.length === 0 || (e.splitIds.length === 1 && e.splitIds[0] === currentUserId));
+                const shareLabel   = notInvolved ? "Not split" : onlyYou ? "Even" : youArePayer ? "You lent" : "You owe";
                 const participants = (e.splitIds.length > 0 ? e.splitIds : (group?.memberIds ?? [])).slice(0, 4);
+
                 return (
                   <tr key={`e-${e.id}`}>
                     <td>
@@ -473,12 +641,20 @@ export default function GroupDetailPage() {
                       </div>
                     </td>
                     <td><AvatarStack ids={participants} max={3} /></td>
-                    <td className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{fmtMad(e.amount)}</td>
+                    {/* Fix: use fmt with group currency instead of hardcoded MAD */}
+                    <td className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>
+                      {fmt(e.amount, currency)}
+                    </td>
                     <td>
-                      <div style={{ fontSize: 12, color: shareColor, fontWeight: 600 }}>{shareLabel}</div>
-                      <div className="num" style={{ fontWeight: 600, color: notInvolved ? "var(--ink-3)" : shareColor }}>
-                        {notInvolved ? "—" : onlyYou ? fmtMad(e.amount) : youArePayer ? fmtMad(e.amount - yourShare) : fmtMad(yourShare)}
-                      </div>
+                      {notInvolved ? (
+                        <SharePill kind="neutral">—</SharePill>
+                      ) : onlyYou ? (
+                        <SharePill kind="neutral">Not Split {fmt(e.amount, currency)}</SharePill>
+                      ) : (
+                        <SharePill kind={youArePayer ? "lent" : "owe"}>
+                          {shareLabel} {youArePayer ? fmt(e.amount - yourShare, currency) : fmt(yourShare, currency)}
+                        </SharePill>
+                      )}
                     </td>
                     <td>
                       <div className="exp-date">{e.date || "No date"}</div>
@@ -486,9 +662,15 @@ export default function GroupDetailPage() {
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div className="tbl-actions" style={{ justifyContent: "flex-end" }}>
-                        <button className="tbl-act" aria-label="View" onClick={() => setViewExpense(e.id)}><Icon name="search" size={14} /></button>
-                        <button className="tbl-act" aria-label="Edit" onClick={() => setEditExpenseId(e.id)}><Icon name="edit" size={14} /></button>
-                        <button className="tbl-act danger" aria-label="Delete" onClick={() => deleteExpense(e.id, e.title)}><Icon name="trash" size={14} /></button>
+                        <button className="tbl-act" aria-label="View" onClick={() => setViewExpense(e.id)}>
+                          <Icon name="search" size={14} />
+                        </button>
+                        <button className="tbl-act" aria-label="Edit" onClick={() => setEditExpenseId(e.id)}>
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button className="tbl-act danger" aria-label="Delete" onClick={() => deleteExpense(e.id, e.title)}>
+                          <Icon name="trash" size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -498,7 +680,7 @@ export default function GroupDetailPage() {
           </tbody>
         </table>
 
-        {/* ── Mobile expense cards (hidden on desktop via CSS) ── */}
+        {/* ── Mobile expense cards ── */}
         <div className="gx-exp-cards">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
@@ -515,27 +697,32 @@ export default function GroupDetailPage() {
             ))
           ) : filtered.length === 0 ? (
             <div style={{ padding: "40px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 14 }}>
-              No expenses in this group yet.
+              No activity found.
             </div>
           ) : (
             paged.map((row) => {
               // ── Settlement mobile card ──────────────────────────────────
               if (row.kind === "settlement") {
-                const s = row.data;
+                const s       = row.data;
                 const isPayer = s.from_user_id === user?.id;
+                const canAct  = s.status === "pending" && s.to_user_id === user?.id;
                 const statusLabel = s.status === "accepted" ? "✅ Accepted" : s.status === "rejected" ? "❌ Rejected" : "🕐 Pending";
                 const d = s.created_at ? new Date(s.created_at.endsWith("Z") ? s.created_at : s.created_at + "Z") : null;
+                const isActing = actingSettlementId === s.id;
+
                 return (
-                  <div key={`s-${s.id}`} className="gx-exp-card" style={{ borderLeft: "3px solid var(--teal)" }}>
+                  <div key={`s-${s.id}`} className="gx-exp-card" style={{ borderLeft: "4px solid var(--teal)" }}>
                     <div className="gx-exp-card-top">
-                      <div className="gx-exp-card-ic" style={{ background: "rgba(20,184,166,0.12)", color: "var(--teal)" }}>
+                      <div className="gx-exp-card-ic" style={{ background: "rgba(20,184,166,0.14)", color: "var(--teal)" }}>
                         <Icon name="settle" size={20} />
                       </div>
                       <div className="gx-exp-card-title">
                         <div className="nm" style={{ color: "var(--teal)", fontWeight: 700 }}>Settlement</div>
                         <div className="ds">{d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</div>
                       </div>
-                      <div className="gx-exp-card-amount" style={{ color: "var(--teal)" }}>{fmtMad(s.amount)}</div>
+                      <div className="gx-exp-card-amount" style={{ color: "var(--teal)" }}>
+                        {fmt(s.amount, currency)}
+                      </div>
                     </div>
                     <div className="gx-exp-card-meta">
                       <div className="gx-exp-card-field">
@@ -558,7 +745,29 @@ export default function GroupDetailPage() {
                       </div>
                     </div>
                     <div className="gx-exp-card-actions">
-                      <button className="tbl-act" aria-label="View" onClick={() => setViewSettlement(s)}><Icon name="search" size={14} /></button>
+                      <button className="tbl-act" aria-label="View" onClick={() => setViewSettlement(s)}>
+                        <Icon name="search" size={14} />
+                      </button>
+                      {/* Fix: inline Accept/Decline on mobile cards too */}
+                      {canAct && (
+                        <>
+                          <button
+                            className="tbl-act"
+                            style={{ color: "var(--success)", borderColor: "var(--success-soft)" }}
+                            disabled={isActing}
+                            onClick={() => acceptSettlementInline(s.id)}
+                          >
+                            <Icon name="check" size={14} />
+                          </button>
+                          <button
+                            className="tbl-act danger"
+                            disabled={isActing}
+                            onClick={() => rejectSettlementInline(s.id)}
+                          >
+                            <Icon name="x" size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -566,17 +775,21 @@ export default function GroupDetailPage() {
 
               // ── Expense mobile card ─────────────────────────────────────
               const e = row.data;
-              const cat = categoryById(e.categoryId);
-              const payer = personById(e.paidBy);
+              const cat        = categoryById(e.categoryId);
+              const payer      = personById(e.paidBy);
               const splitCount = e.splitIds.length || group?.memberIds.length || 1;
-              const yourShare = e.amount / Math.max(1, splitCount);
-              const youArePayer = e.paidBy === currentUserId;
+              const yourShare  = e.amount / Math.max(1, splitCount);
+              const youArePayer  = e.paidBy === currentUserId;
               const youParticipate = e.splitIds.length === 0 || e.splitIds.includes(currentUserId);
-              const notInvolved = !youArePayer && !youParticipate;
-              const onlyYou = youArePayer && (e.splitIds.length === 0 || (e.splitIds.length === 1 && e.splitIds[0] === currentUserId));
-              const shareLabel = notInvolved ? "Not split" : onlyYou ? "Even" : youArePayer ? "You lent" : "You owe";
-              const shareColor = (notInvolved || onlyYou) ? "var(--ink-3)" : youArePayer ? "var(--success)" : "var(--rose)";
-              const shareAmt = notInvolved ? "—" : onlyYou ? fmtMad(e.amount) : youArePayer ? fmtMad(e.amount - yourShare) : fmtMad(yourShare);
+              const notInvolved  = !youArePayer && !youParticipate;
+              const onlyYou      = youArePayer && (e.splitIds.length === 0 || (e.splitIds.length === 1 && e.splitIds[0] === currentUserId));
+              const shareLabel   = notInvolved ? "Not split" : onlyYou ? "Even" : youArePayer ? "You lent" : "You owe";
+              const shareAmt = notInvolved ? "—" : onlyYou
+                ? fmt(e.amount, currency)
+                : youArePayer
+                  ? fmt(e.amount - yourShare, currency)
+                  : fmt(yourShare, currency);
+
               return (
                 <div key={`e-${e.id}`} className="gx-exp-card">
                   <div className="gx-exp-card-top">
@@ -587,7 +800,7 @@ export default function GroupDetailPage() {
                       <div className="nm">{e.title}</div>
                       <div className="ds">{e.date || "No date"} · {e.time}</div>
                     </div>
-                    <div className="gx-exp-card-amount">{fmtMad(e.amount)}</div>
+                    <div className="gx-exp-card-amount">{fmt(e.amount, currency)}</div>
                   </div>
                   <div className="gx-exp-card-meta">
                     <div className="gx-exp-card-field">
@@ -607,7 +820,15 @@ export default function GroupDetailPage() {
                     </div>
                     <div className="gx-exp-card-field">
                       <span className="lbl">Your share</span>
-                      <span className="val" style={{ color: shareColor }}>{shareLabel} · {shareAmt}</span>
+                      <span className="val">
+                        {notInvolved ? (
+                          <SharePill kind="neutral">Not split</SharePill>
+                        ) : onlyYou ? (
+                          <SharePill kind="neutral">Not Split {fmt(e.amount, currency)}</SharePill>
+                        ) : (
+                          <SharePill kind={youArePayer ? "lent" : "owe"}>{shareLabel} {shareAmt}</SharePill>
+                        )}
+                      </span>
                     </div>
                     <div className="gx-exp-card-field">
                       <span className="lbl">Participants</span>
@@ -617,9 +838,15 @@ export default function GroupDetailPage() {
                     </div>
                   </div>
                   <div className="gx-exp-card-actions">
-                    <button className="tbl-act" aria-label="View" onClick={() => setViewExpense(e.id)}><Icon name="search" size={14} /></button>
-                    <button className="tbl-act" aria-label="Edit" onClick={() => setEditExpenseId(e.id)}><Icon name="edit" size={14} /></button>
-                    <button className="tbl-act danger" aria-label="Delete" onClick={() => deleteExpense(e.id, e.title)}><Icon name="trash" size={14} /></button>
+                    <button className="tbl-act" aria-label="View" onClick={() => setViewExpense(e.id)}>
+                      <Icon name="search" size={14} />
+                    </button>
+                    <button className="tbl-act" aria-label="Edit" onClick={() => setEditExpenseId(e.id)}>
+                      <Icon name="edit" size={14} />
+                    </button>
+                    <button className="tbl-act danger" aria-label="Delete" onClick={() => deleteExpense(e.id, e.title)}>
+                      <Icon name="trash" size={14} />
+                    </button>
                   </div>
                 </div>
               );
@@ -627,20 +854,15 @@ export default function GroupDetailPage() {
           )}
         </div>
 
-        <div className="pag">
-          <span>Showing {filtered.length ? (currentPage - 1) * pageSize + 1 : 0} to {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} expenses</span>
-          <div className="pag-pages">
-            <button className="pag-btn" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}><Icon name="chevR" size={12} style={{ transform: "rotate(180deg)" }} /></button>
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <button key={index + 1} className={"pag-btn" + (currentPage === index + 1 ? " active" : "")} onClick={() => setPage(index + 1)}>
-                {index + 1}
-              </button>
-            ))}
-            <button className="pag-btn" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}><Icon name="chevR" size={12} /></button>
-          </div>
-        </div>
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          onChange={setPage}
+          summary={`Showing ${filtered.length ? (currentPage - 1) * pageSize + 1 : 0} to ${Math.min(currentPage * pageSize, filtered.length)} of ${filtered.length} items`}
+        />
       </div>
 
+      {/* ── Modals ── */}
       {showAddExpense && group && (
         <AddExpenseFullModal
           defaultGroupId={group.id}
@@ -668,7 +890,12 @@ export default function GroupDetailPage() {
             expense={exp}
             group={group}
             onClose={() => setViewExpense(null)}
-            onEdit={() => { setViewExpense(null); setEditExpenseId(exp.id); }}
+            // Fix: track that we came from view so edit cancel can restore it
+            onEdit={() => {
+              setEditFromView(true);
+              setViewExpense(null);
+              setEditExpenseId(exp.id);
+            }}
           />
         ) : null;
       })()}
@@ -678,8 +905,20 @@ export default function GroupDetailPage() {
         return exp ? (
           <EditExpenseFullModal
             expense={exp}
-            onClose={() => setEditExpenseId(null)}
-            onSaved={refetchSplitting}
+            // Fix: if user cancels edit (not saves), restore ExpenseDetailModal so they don't lose their place
+            onClose={() => {
+              const prevId = editExpenseId;
+              setEditExpenseId(null);
+              if (editFromView && prevId) {
+                setViewExpense(prevId);
+              }
+              setEditFromView(false);
+            }}
+            onSaved={async () => {
+              setEditExpenseId(null);
+              setEditFromView(false);
+              await refetchSplitting();
+            }}
             showToast={showToast}
           />
         ) : null;
@@ -689,7 +928,7 @@ export default function GroupDetailPage() {
         <SettlementDetailModal
           settlement={viewSettlement}
           myId={user.id}
-          currency={group?.currency ?? "MAD"}
+          currency={currency}
           onClose={() => setViewSettlement(null)}
           onAccept={async (id) => {
             await settleApi.acceptSettlement(id);
@@ -716,10 +955,8 @@ export default function GroupDetailPage() {
         />
       )}
 
-      {/* Floating group chat — only when group is loaded */}
-      {group && (
-        <GroupChat groupId={groupId} groupName={group.name} />
-      )}
+      {/* Floating group chat */}
+      {group && <GroupChat groupId={groupId} groupName={group.name} />}
     </>
   );
 }

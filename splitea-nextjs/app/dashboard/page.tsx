@@ -1,131 +1,117 @@
 "use client";
+// app/dashboard/page.tsx — debt & settlement focused home (Splitwise-style)
 
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useApp } from "@/lib/store";
-import { CATEGORIES, categoryById, personById } from "@/lib/data";
+import { categoryById, personById } from "@/lib/data";
 import { fmt } from "@/lib/format";
+import StatCard from "@/components/ui/StatCard";
 
 function safeCategory(id: string) {
-  return CATEGORIES.find((category) => category.id === id) || CATEGORIES[CATEGORIES.length - 1];
-}
-
-function Sparkline({ tone }: { tone: "violet" | "green" | "red" | "blue" }) {
-  return (
-    <svg className={"dash-spark " + tone} viewBox="0 0 180 52" aria-hidden="true">
-      <path className="area" d="M0 42 C15 38 18 20 32 28 C45 36 50 18 65 30 C82 43 93 24 108 31 C126 40 132 5 148 13 C160 18 163 34 180 16 V52 H0 Z" />
-      <path className="line" d="M0 42 C15 38 18 20 32 28 C45 36 50 18 65 30 C82 43 93 24 108 31 C126 40 132 5 148 13 C160 18 163 34 180 16" />
-    </svg>
-  );
+  return categoryById(id) || categoryById("other");
 }
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { expenses, groups, friends, income, showToast } = useApp();
+  const { expenses, groups, friends } = useApp();
 
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const netBalance = income - totalExpenses;
-  const totalSaved = Math.max(0, income * 0.2);
-  const youLent = friends.filter((friend) => friend.balance > 0).reduce((sum, friend) => sum + friend.balance, 0);
-  const youOwe = Math.abs(friends.filter((friend) => friend.balance < 0).reduce((sum, friend) => sum + friend.balance, 0));
-  const pendingSettlements = friends.filter((friend) => friend.balance !== 0 && friend.status === "friend").length;
+  // ── Relationship math (who owes who) — no wallet/savings concepts ────────────
+  const youAreOwed = friends
+    .filter((f) => f.balance > 0)
+    .reduce((sum, f) => sum + f.balance, 0);
+  const youOwe = Math.abs(
+    friends.filter((f) => f.balance < 0).reduce((sum, f) => sum + f.balance, 0),
+  );
+  const net = youAreOwed - youOwe;
+  const activeGroups = groups.length;
+  const pendingSettlements = friends.filter(
+    (f) => f.balance !== 0 && f.status === "friend",
+  ).length;
 
-  const categoryTotals = CATEGORIES.map((category) => ({
-    ...category,
-    amount: expenses
-      .filter((expense) => expense.categoryId === category.id)
-      .reduce((sum, expense) => sum + expense.amount, 0),
-  }))
-    .filter((category) => category.amount > 0)
-    .sort((a, b) => b.amount - a.amount);
+  // People you owe / who owe you — the actionable per-person breakdown
+  const owedToYou = friends
+    .filter((f) => f.balance > 0 && f.status === "friend")
+    .sort((a, b) => b.balance - a.balance);
+  const youOweList = friends
+    .filter((f) => f.balance < 0 && f.status === "friend")
+    .sort((a, b) => a.balance - b.balance);
 
-  const visibleCategories = categoryTotals.length ? categoryTotals : [
-    { ...categoryById("accom"), amount: 600 },
-    { ...categoryById("food"), amount: 250.5 },
-    { ...categoryById("transport"), amount: 120 },
-  ];
-  const chartTotal = visibleCategories.reduce((sum, category) => sum + category.amount, 0) || 1;
-  let cursor = 0;
-  const conicStops = visibleCategories.map((category) => {
-    const start = cursor;
-    cursor += (category.amount / chartTotal) * 100;
-    return `${category.color} ${start}% ${cursor}%`;
-  }).join(", ");
+  // Recent activity — newest expenses across all groups
+  const recentExpenses = [...expenses]
+    .sort((a, b) => {
+      const ta = a._rawDate ? new Date(a._rawDate).getTime() : 0;
+      const tb = b._rawDate ? new Date(b._rawDate).getTime() : 0;
+      return tb - ta;
+    })
+    .slice(0, 5);
 
-  const recentExpenses = expenses.slice(0, 5);
-  const displayName = user?.full_name || user?.username || "Samir";
-  const userCurrency = user?.preferred_currency || "USD";
+  const displayName = user?.full_name || user?.username || "there";
+  const userCurrency = user?.preferred_currency || "MAD";
   const money = (value: number) => fmt(value, userCurrency);
 
   const quickActions = [
     { label: "Add Expense", icon: "plus", href: "/expenses" },
     { label: "Create Group", icon: "groups", href: "/groups" },
-    { label: "Record Settlement", icon: "settle", href: "/settlements" },
-    { label: "Add Income", icon: "wallet", href: "/reports" },
-    { label: "Import Expenses", icon: "download", href: "/expenses" },
-    { label: "View Reports", icon: "reports", href: "/reports" },
+    { label: "Settle Up", icon: "settle", href: "/settlements" },
+    { label: "View Balances", icon: "money", href: "/balances" },
   ];
 
   return (
     <div className="dashboard-page">
+      {/* Mobile top bar */}
       <div className="dash-mobile-head">
         <button className="dash-mobile-icon" aria-label="Open menu">
           <Icon name="list" size={20} />
         </button>
         <div className="dash-mobile-logo">Split<span>Easy</span></div>
-        <button className="dash-mobile-icon with-dot" aria-label="Notifications">
+        <button className="dash-mobile-icon" aria-label="Notifications">
           <Icon name="bell" size={19} />
         </button>
       </div>
 
+      {/* Header */}
       <div className="dash-head">
         <div>
           <h1>Dashboard</h1>
-          <p>Welcome back, {displayName.split(" ")[0]}! Here&apos;s what&apos;s happening with your finances today.</p>
+          <p>Hi {displayName.split(" ")[0]} — here&apos;s who owes what and what to settle next.</p>
         </div>
-        <button className="dash-filter">
-          <Icon name="calendar" size={15} /> This Month <Icon name="chev" size={14} />
-        </button>
       </div>
 
+      {/* Mobile hero — overall relationship position (not wealth) */}
       <section className="dash-mobile-hero">
         <div className="hero-copy">
-          <span>Net Balance</span>
-          <strong>{money(netBalance)}</strong>
-          <small>Income - Expenses</small>
+          <span>{net >= 0 ? "You are owed overall" : "You owe overall"}</span>
+          <strong>{money(Math.abs(net))}</strong>
+          <small>{net >= 0 ? "More coming in than going out" : "Settle up to clear this"}</small>
         </div>
-        <Icon name="info" size={18} />
-        <Sparkline tone="violet" />
+        <Icon name="settle" size={18} />
       </section>
 
-      <section className="dash-stats-grid">
-        {[
-          { label: "Net Balance", value: money(netBalance), meta: "Income - Expenses", icon: "info", tone: "violet" as const },
-          { label: "Total Income", value: money(income), meta: "12.5% vs last month", icon: "wallet", tone: "green" as const },
-          { label: "Total Expenses", value: money(totalExpenses), meta: "8.3% vs last month", icon: "settle", tone: "red" as const },
-          { label: "Total Saved", value: money(totalSaved), meta: "15.2% vs last month", icon: "money", tone: "blue" as const },
-        ].map((stat) => (
-          <article key={stat.label} className={"dash-stat-card " + stat.tone}>
-            <div className="dash-stat-top">
-              <div>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.meta}</small>
-              </div>
-              <div className="dash-stat-icon"><Icon name={stat.icon} size={20} /></div>
-            </div>
-            <Sparkline tone={stat.tone} />
-          </article>
-        ))}
+      {/* Stat cards — relationship metrics only */}
+      <section className="ui-stat-grid cols-4">
+        <StatCard icon="upload" tone="success" label="You Are Owed"
+          value={youAreOwed} currency={userCurrency}
+          colorValue={youAreOwed > 0}
+          sub={`${owedToYou.length} ${owedToYou.length === 1 ? "person owes" : "people owe"} you`} />
+        <StatCard icon="download" tone="danger" label="You Owe"
+          value={youOwe} currency={userCurrency}
+          colorValue={youOwe > 0}
+          sub={`${youOweList.length} ${youOweList.length === 1 ? "person" : "people"} to pay`} />
+        <StatCard icon="activity" tone="primary" label="Pending Settlements"
+          value={pendingSettlements} sub="Awaiting action" />
+        <StatCard icon="groups" tone="info" label="Active Groups"
+          value={activeGroups} sub="Sharing expenses" />
       </section>
 
+      {/* Mobile summary chips */}
       <section className="dash-mobile-summary">
         {[
-          ["Groups", groups.length, "Active groups", "groups"],
-          ["Friends", friends.filter((friend) => friend.status === "friend").length, "Total friends", "friends"],
-          ["Expenses", expenses.length, "This month", "expense"],
-          ["Settlements", pendingSettlements, "Pending", "settle"],
+          ["Groups", activeGroups, "Active", "groups"],
+          ["Friends", friends.filter((f) => f.status === "friend").length, "Total", "friends"],
+          ["Owed", owedToYou.length, "To you", "upload"],
+          ["Pending", pendingSettlements, "Settle", "settle"],
         ].map(([label, value, sub, icon]) => (
           <div key={String(label)} className="dash-quick-mini">
             <Icon name={String(icon)} size={18} />
@@ -136,93 +122,85 @@ export default function DashboardPage() {
         ))}
       </section>
 
+      {/* Main grid — Who owes who + Recent activity */}
       <section className="dash-main-grid">
+        {/* Who owes who — the actionable core */}
         <article className="dash-panel dash-overview-panel">
           <div className="dash-panel-head">
-            <h2>Expenses Overview</h2>
-            <button>This Month <Icon name="chev" size={13} /></button>
+            <h2>Who Owes Who</h2>
+            <Link href="/balances">View all</Link>
           </div>
-          <div className="dash-donut-wrap">
-            <div className="dash-donut" style={{ background: `conic-gradient(${conicStops})` }}>
-              <div><strong>{money(totalExpenses || chartTotal)}</strong><span>Total</span></div>
+
+          {owedToYou.length === 0 && youOweList.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", color: "var(--ink-3)" }}>
+              <Icon name="check" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--success)" }} />
+              You&apos;re all settled up! 🎉
             </div>
-            <div className="dash-category-list">
-              {visibleCategories.slice(0, 5).map((category) => {
-                const pct = Math.round((category.amount / chartTotal) * 100);
+          ) : (
+            <div className="dash-settle-list">
+              {owedToYou.slice(0, 4).map((f) => {
+                const p = personById(f.personId);
                 return (
-                  <div key={category.id} className="dash-category-row">
-                    <i style={{ background: category.color }} />
-                    <span>{category.name.replace(" & Drinks", "")}</span>
-                    <b>{pct}%</b>
-                    <em>{money(category.amount)}</em>
-                  </div>
+                  <Link key={`owed-${f.personId}`} href="/balances" className="dash-owe-row">
+                    <span><Icon name="upload" size={15} /> {p.name} owes you</span>
+                    <b className="pos">{money(f.balance)}</b>
+                  </Link>
+                );
+              })}
+              {youOweList.slice(0, 4).map((f) => {
+                const p = personById(f.personId);
+                return (
+                  <Link key={`owe-${f.personId}`} href="/settlements" className="dash-owe-row">
+                    <span><Icon name="download" size={15} /> You owe {p.name}</span>
+                    <b className="neg">{money(Math.abs(f.balance))}</b>
+                  </Link>
                 );
               })}
             </div>
-          </div>
+          )}
         </article>
 
+        {/* Recent activity */}
         <article className="dash-panel dash-recent-panel">
           <div className="dash-panel-head">
-            <h2>Recent Expenses</h2>
+            <h2>Recent Activity</h2>
             <Link href="/expenses">View all</Link>
           </div>
-          <div className="dash-recent-list">
-            {recentExpenses.map((expense) => {
-              const category = safeCategory(expense.categoryId);
-              return (
-                <Link href="/expenses" key={expense.id} className="dash-recent-row">
-                  <div className="dash-exp-icon" style={{ color: category.color, background: category.soft }}>
-                    <Icon name={category.icon} size={19} />
-                  </div>
-                  <div>
-                    <strong>{expense.title}</strong>
-                    <span>{expense.subtitle || groups.find((group) => group.id === expense.groupId)?.name || "Expense"}</span>
-                  </div>
-                  <div className="amount">
-                    <b>{money(expense.amount)}</b>
-                    <span>{expense.date}</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          {recentExpenses.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", color: "var(--ink-3)" }}>
+              No expenses yet.
+            </div>
+          ) : (
+            <div className="dash-recent-list">
+              {recentExpenses.map((expense) => {
+                const category = safeCategory(expense.categoryId);
+                const grp = groups.find((g) => g.id === expense.groupId);
+                return (
+                  <Link href="/expenses" key={expense.id} className="dash-recent-row">
+                    <div className="dash-exp-icon" style={{ color: category.color, background: category.soft }}>
+                      <Icon name={category.icon} size={19} />
+                    </div>
+                    <div>
+                      <strong>{expense.title}</strong>
+                      <span>{grp?.name || expense.subtitle || "Expense"}</span>
+                    </div>
+                    <div className="amount">
+                      <b>{money(expense.amount)}</b>
+                      <span>{expense.date}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </article>
       </section>
 
-      <section className="dash-bottom-grid">
-        <article className="dash-panel">
-          <div className="dash-panel-head">
-            <h2>Top Spending Categories</h2>
-            <button>This Month <Icon name="chev" size={13} /></button>
-          </div>
-          <div className="dash-bars">
-            {visibleCategories.slice(0, 5).map((category) => {
-              const pct = Math.round((category.amount / chartTotal) * 100);
-              return (
-                <div key={category.id} className="dash-bar-row">
-                  <div><span>{category.name.replace(" & Drinks", "")}</span><b>{pct}%</b><em>{money(category.amount)}</em></div>
-                  <div className="dash-bar-track"><i style={{ width: `${Math.max(pct, 8)}%`, background: category.color }} /></div>
-                </div>
-              );
-            })}
-          </div>
-        </article>
-
-        <article className="dash-panel">
-          <div className="dash-panel-head"><h2>Settlements Overview</h2></div>
-          <div className="dash-settle-list">
-            <div><span><Icon name="upload" size={15} /> You lent</span><b className="pos">{money(youLent)}</b></div>
-            <div><span><Icon name="download" size={15} /> You owe</span><b className="neg">{money(youOwe)}</b></div>
-            <div><span><Icon name="wallet" size={15} /> Net balance</span><b>{money(youLent - youOwe)}</b></div>
-            <div><span><Icon name="activity" size={15} /> Pending settlements</span><b>{pendingSettlements}</b></div>
-          </div>
-          <Link href="/settlements" className="dash-link">View all settlements</Link>
-        </article>
-
+      {/* Quick actions */}
+      <section className="dash-bottom-grid dash-bottom-grid--single">
         <article className="dash-panel">
           <div className="dash-panel-head"><h2>Quick Actions</h2></div>
-          <div className="dash-actions-grid">
+          <div className="dash-actions-grid dash-actions-grid--4">
             {quickActions.map((action) => (
               <Link key={action.label} href={action.href} className="dash-action">
                 <Icon name={action.icon} size={22} />
@@ -232,13 +210,6 @@ export default function DashboardPage() {
           </div>
         </article>
       </section>
-
-      <section className="dash-reminder">
-        <Icon name="bell" size={18} />
-        <div><strong>Upcoming Reminders</strong><span>You have 3 upcoming reminders</span></div>
-        <button onClick={() => showToast("Reminders coming next")}>View all</button>
-      </section>
-
     </div>
   );
 }

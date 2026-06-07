@@ -190,6 +190,12 @@ async def get_group_members(session: AsyncSession, group_id: int) -> list[Member
     )
     memberships = result.scalars().all()
 
+    def _full_name(u):
+        if not u:
+            return None
+        parts = [p for p in [u.first_name, u.last_name] if p]
+        return " ".join(parts) if parts else None
+
     return [
         MembershipRead.model_validate({
             "id": m.id,
@@ -197,6 +203,8 @@ async def get_group_members(session: AsyncSession, group_id: int) -> list[Member
             "group_id": m.group_id,
             "is_admin": m.is_admin,
             "username": m.user.username if m.user else None,
+            "email": m.user.email if m.user else None,
+            "full_name": _full_name(m.user),
         })
         for m in memberships
     ]
