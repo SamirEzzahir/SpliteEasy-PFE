@@ -1,7 +1,7 @@
-# Splitea — Project Guide for AI Assistants
+# SplitEasy — Project Guide for AI Assistants
 
 ## What this product is
-Splitea is an **expense-sharing app** (Splitwise / Tricount style). The core is:
+SplitEasy is an **expense-sharing app** (Splitwise / Tricount style). The core is:
 **Groups · Expenses · Balances · Settlements · Members · Group Chat.**
 
 It is **NOT** a personal-finance / wallet / budgeting / savings app. Never add
@@ -37,6 +37,5 @@ Before creating or editing ANY page/component, follow the design system:
 
 ## Workflow notes
 - After UI changes, run `npx tsc --noEmit` in `splitea-nextjs/` to typecheck.
-- There is one known pre-existing TS error in `EditExpenseFullModal.tsx` (split_type
-  "custom") unrelated to current work — ignore it.
+  The tree should be type-clean — `next build` (and the Docker image) fails on any TS error.
 - Use the New-Page Checklist at the bottom of `DESIGN_SYSTEM.md` for every new page.

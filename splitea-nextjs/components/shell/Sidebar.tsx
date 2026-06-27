@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 
 interface NavItem { id: string; label: string; icon: string; href: string; }
 
-// Splitea is an expense-sharing app: nav is groups / expenses / settlements /
+// SplitEasy is an expense-sharing app: nav is groups / expenses / settlements /
 // balances / members(friends) / activity. No wallet, savings, or reports.
 const NAV: NavItem[] = [
   { id: "dashboard",   label: "Dashboard",      icon: "dashboard", href: "/dashboard" },

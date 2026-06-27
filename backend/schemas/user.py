@@ -80,6 +80,7 @@ class UserRead(BaseModel):
     role: Optional[RoleRead] = None
     global_settlement_mode: Optional[GlobalSettlementMode] = GlobalSettlementMode.separate
     preferred_currency: Optional[str] = "USD"
+    onboarding_completed: Optional[bool] = False
 
     class Config:
         from_attributes = True

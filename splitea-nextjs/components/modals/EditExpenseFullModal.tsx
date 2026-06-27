@@ -83,7 +83,9 @@ export default function EditExpenseFullModal({ expense: initial, onClose, onSave
         created_at: new Date().toISOString(),
         payer_id: Number(paidBy),
         group_id: Number(group.id),
-        split_type: splitType === "percentage" ? "share" : splitType,
+        // API split_type only knows equal/percentage/share; "custom" and
+        // "percentage" both send explicit per-user share_amounts -> "share".
+        split_type: splitType === "equal" ? "equal" : "share",
         splits: splitIds.map((id) => ({
           user_id: Number(id),
           share_amount: getShare(id),

@@ -8,6 +8,8 @@ import { useApp } from "@/lib/store";
 import { categoryById, personById } from "@/lib/data";
 import { fmt } from "@/lib/format";
 import StatCard from "@/components/ui/StatCard";
+import OnboardingGuide from "@/components/onboarding/OnboardingGuide";
+import OnboardingHelpButton from "@/components/onboarding/OnboardingHelpButton";
 
 function safeCategory(id: string) {
   return categoryById(id) || categoryById("other");
@@ -77,7 +79,11 @@ export default function DashboardPage() {
           <h1>Dashboard</h1>
           <p>Hi {displayName.split(" ")[0]} — here&apos;s who owes what and what to settle next.</p>
         </div>
+        <span data-tour="help"><OnboardingHelpButton /></span>
       </div>
+
+      {/* First-time onboarding (welcome modal + getting-started checklist) */}
+      <OnboardingGuide />
 
       {/* Mobile hero — overall relationship position (not wealth) */}
       <section className="dash-mobile-hero">
@@ -90,7 +96,7 @@ export default function DashboardPage() {
       </section>
 
       {/* Stat cards — relationship metrics only */}
-      <section className="ui-stat-grid cols-4">
+      <section className="ui-stat-grid cols-4" data-tour="stats">
         <StatCard icon="upload" tone="success" label="You Are Owed"
           value={youAreOwed} currency={userCurrency}
           colorValue={youAreOwed > 0}
@@ -125,7 +131,7 @@ export default function DashboardPage() {
       {/* Main grid — Who owes who + Recent activity */}
       <section className="dash-main-grid">
         {/* Who owes who — the actionable core */}
-        <article className="dash-panel dash-overview-panel">
+        <article className="dash-panel dash-overview-panel" data-tour="owes">
           <div className="dash-panel-head">
             <h2>Who Owes Who</h2>
             <Link href="/balances">View all</Link>
@@ -198,7 +204,7 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <section className="dash-bottom-grid dash-bottom-grid--single">
-        <article className="dash-panel">
+        <article className="dash-panel" data-tour="actions">
           <div className="dash-panel-head"><h2>Quick Actions</h2></div>
           <div className="dash-actions-grid dash-actions-grid--4">
             {quickActions.map((action) => (

@@ -1769,3 +1769,60 @@ table.tx{width:100%;border-collapse:collapse}
   /* New-message pill sits a bit higher, clear of the input bar */
   .gc-new-pill{bottom:84px}
 }
+
+/* ── Onboarding guide ────────────────────────────────────────────────────────── */
+/* Welcome modal */
+.ob-modal{overflow:hidden}
+.ob-hero{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;padding:26px 24px 22px;text-align:center}
+.ob-hero-icon{width:54px;height:54px;border-radius:16px;background:rgba(255,255,255,.2);display:grid;place-items:center;margin:0 auto 12px}
+.ob-hero h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.ob-hero p{margin:6px 0 0;font-size:13.5px;color:rgba(255,255,255,.85)}
+.ob-intro{font-size:13.5px;color:var(--ink-3);margin:0 0 16px}
+.ob-steps{display:flex;flex-direction:column;gap:12px}
+.ob-step{display:flex;align-items:flex-start;gap:12px}
+.ob-step-num{width:26px;height:26px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-weight:800;font-size:13px;display:grid;place-items:center;flex-shrink:0}
+.ob-step-title{font-size:14px;font-weight:700;color:var(--ink)}
+.ob-step-desc{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+
+/* Getting-started checklist card */
+.ob-checklist{padding:18px;margin-bottom:20px;position:relative}
+.ob-checklist-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:14px}
+.ob-checklist-head h3{margin:0;font-size:15px;font-weight:800;color:var(--ink)}
+.ob-checklist-head p{margin:3px 0 0;font-size:12.5px;color:var(--ink-3)}
+.ob-progress{margin-left:auto;text-align:right;min-width:120px}
+.ob-progress span{font-size:11.5px;font-weight:700;color:var(--ink-3)}
+.ob-progress-bar{height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;margin-top:5px}
+.ob-progress-bar i{display:block;height:100%;border-radius:inherit;background:var(--primary);transition:width .3s}
+.ob-dismiss{width:30px;height:30px;border-radius:999px;border:0;background:transparent;color:var(--ink-4);cursor:pointer;display:grid;place-items:center;flex-shrink:0}
+.ob-dismiss:hover{background:var(--line-2);color:var(--ink)}
+.ob-checklist-items{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:720px){.ob-checklist-items{grid-template-columns:1fr}.ob-progress{display:none}}
+.ob-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s}
+.ob-item:hover{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.ob-item.done{background:var(--success-soft);border-color:transparent;cursor:default}
+.ob-item-check{width:32px;height:32px;border-radius:10px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;flex-shrink:0}
+.ob-item.done .ob-item-check{background:var(--success);color:#fff}
+.ob-item-body{flex:1;min-width:0}
+.ob-item-title{display:block;font-size:13.5px;font-weight:700;color:var(--ink)}
+.ob-item.done .ob-item-title{text-decoration:line-through;color:var(--ink-3)}
+.ob-item-desc{display:block;font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.ob-item-go{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:800;color:var(--primary);flex-shrink:0}
+[dir="rtl"] .ob-item-go .icon,[dir="rtl"] .ob-step .icon{transform:scaleX(-1)}
+
+/* ── Spotlight tour ──────────────────────────────────────────────────────────── */
+.ob-tour{position:fixed;inset:0;z-index:3000;pointer-events:none}
+.ob-tour-dim{position:fixed;inset:0;background:rgba(11,15,26,.6);pointer-events:auto}
+/* The "hole": a transparent box whose huge box-shadow dims everything around it */
+.ob-tour-hole{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(11,15,26,.6);transition:all .2s ease;pointer-events:none;outline:2px solid var(--primary);outline-offset:0}
+.ob-tour-tip{position:fixed;z-index:3001;width:300px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);padding:16px 16px 14px;pointer-events:auto}
+.ob-tour-tip-title{font-size:14.5px;font-weight:800;color:var(--ink)}
+.ob-tour-tip-body{font-size:13px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+.ob-tour-tip-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+.ob-tour-dots{display:flex;gap:5px}
+.ob-tour-dots span{width:6px;height:6px;border-radius:999px;background:var(--line)}
+.ob-tour-dots span.active{background:var(--primary);width:18px}
+.ob-tour-btns{display:flex;gap:8px}
+.ob-tour-btns .btn{padding:6px 12px;font-size:12.5px}
+.ob-tour-skip{position:absolute;top:10px;right:10px;width:26px;height:26px;border:0;background:transparent;color:var(--ink-4);cursor:pointer;display:grid;place-items:center;border-radius:999px}
+.ob-tour-skip:hover{background:var(--line-2);color:var(--ink)}
+[dir="rtl"] .ob-tour-skip{right:auto;left:10px}

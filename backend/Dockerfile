@@ -1,15 +1,24 @@
 FROM python:3.11-slim
 
-# Set working directory
+# - PYTHONUNBUFFERED: stream logs straight to the container (no buffering)
+# - PYTHONDONTWRITEBYTECODE: don't litter the image with .pyc files
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /app
 
-# requirements.txt is now inside the backend folder
+# Install dependencies first so this layer is cached unless requirements change.
+# requirements.txt lives at the root of the backend build context.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source into backend/ subdirectory to preserve module import structure
+# Copy backend source into a backend/ subdir to preserve the import structure
+# (the app is imported as the `backend` package: `backend.main:app`).
 COPY . ./backend/
 
 EXPOSE 8000
 
+# DATABASE_URL is injected at runtime (see docker-compose.yml). On startup the
+# app creates tables and runs the Postgres migrations in backend/core/migrations.py.
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

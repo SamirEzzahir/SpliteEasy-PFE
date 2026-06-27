@@ -21,7 +21,7 @@ Full-stack expense-splitting app. Next.js 14 (App Router) + TypeScript frontend 
 ## Run Locally
 
 ```bash
-# 1. Start the FastAPI backend (defaults to http://127.0.0.1:8000)
+# 1. Start the FastAPI backend (defaults to http://127.0.0.1:8800)
 # See backend/README.md
 
 # 2. Frontend
@@ -37,8 +37,8 @@ npm run dev
 
 ```bash
 NEXT_PUBLIC_API_URL=                              # blank = /api proxy in dev; set full URL in prod
-BACKEND_PROXY_TARGET=http://127.0.0.1:8000        # dev proxy target
-NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8000            # optional; defaults to same host as NEXT_PUBLIC_API_URL
+BACKEND_PROXY_TARGET=http://127.0.0.1:8800        # dev proxy target
+NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8800            # optional; defaults to same host as NEXT_PUBLIC_API_URL
 ```
 
 ---
@@ -50,7 +50,7 @@ splitea-nextjs/
 ├── app/
 │   ├── layout.tsx                  # ConditionalShell — auth vs public chrome
 │   ├── globals.css                 # full design-system (CSS custom props, dark mode, responsive)
-│   ├── page.tsx                    # redirects → /jars
+│   ├── page.tsx                    # redirects → /groups
 │   ├── login/page.tsx
 │   ├── signup/page.tsx
 │   ├── dashboard/page.tsx          # summary stats, recent expenses, quick actions
@@ -82,6 +82,8 @@ splitea-nextjs/
 │   │   ├── AddFriendModal.tsx
 │   │   └── CelebrateOverlay.tsx
 │   ├── jars/                       # CardsView, StackedView, IllustratedView, TreemapView
+│   ├── chat/
+│   │   └── GroupChat.tsx           # per-group WebSocket chat panel
 │   ├── expenses/
 │   │   └── CategoryDonut.tsx       # SVG donut with gap segments
 │   ├── Skeleton.tsx                # reusable skeleton loading blocks
@@ -214,6 +216,7 @@ Pages use **skeleton loading** (`components/Skeleton.tsx`) instead of fake place
 - Friends — send/accept/reject requests, view balances
 - Settlements — record, confirm, history
 - Économé (Jar budgeting) — 6-jar strategy, income distribution, jar spending
+- Group chat — per-group real-time messaging over WebSocket (`components/chat/GroupChat.tsx`)
 - Notifications — real-time bell with WebSocket + REST fallback
 - Settings — profile edit, password change, theme, currency preference, settlement mode
 - Dark mode — full dark theme via CSS custom properties
@@ -226,7 +229,6 @@ Pages use **skeleton loading** (`components/Skeleton.tsx`) instead of fake place
 
 - **Global display currency** — convert all amounts to a chosen currency before display (exchange rates API)
 - **Expense currency conversion** — show each expense in the user's preferred currency
-- **Group chat** — WebSocket-based per-group messaging (backend endpoint exists: `/groups/{id}/messages`)
 - **Wallets** — personal wallet management and transaction history
 - **Debts & Loans** — personal debt tracking separate from group expenses
 - **Reports** — advanced spending charts, monthly trends, export to PDF/CSV

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Local env & secrets — provided via docker-compose instead
+.env
+.env.*
+
+# Virtualenvs
+.venv/
+venv/
+
+# Local databases / dumps
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# Misc
+.git/
+.gitignore
+*.log
+README.md

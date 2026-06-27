@@ -38,7 +38,7 @@ class Transaction(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     from_wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
     to_wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"), nullable=True)
-    transaction_type: Mapped[TransactionType] = mapped_column(Enum(TransactionType), default=TransactionType.transfer)
+    transaction_type: Mapped[TransactionType] = mapped_column(Enum(TransactionType, native_enum=False), default=TransactionType.transfer)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     note: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

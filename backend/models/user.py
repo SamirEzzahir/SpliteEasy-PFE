@@ -46,13 +46,15 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     profile_photo: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    gender: Mapped[GenderEnum | None] = mapped_column(Enum(GenderEnum), nullable=True)
+    gender: Mapped[GenderEnum | None] = mapped_column(Enum(GenderEnum, native_enum=False), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     role_id: Mapped[int | None] = mapped_column(ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
     global_settlement_mode: Mapped[GlobalSettlementMode] = mapped_column(
-        Enum(GlobalSettlementMode), default=GlobalSettlementMode.separate
+        Enum(GlobalSettlementMode, native_enum=False), default=GlobalSettlementMode.separate
     )
     preferred_currency: Mapped[str] = mapped_column(String(3), default="USD")
+    # First-time onboarding guide: false until the user completes/skips it.
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -84,7 +86,7 @@ class Reclamation(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     subject: Mapped[str] = mapped_column(String(200), nullable=False)
     message: Mapped[str] = mapped_column(String(2000), nullable=False)
-    status: Mapped[ReclamationStatus] = mapped_column(Enum(ReclamationStatus), default=ReclamationStatus.pending)
+    status: Mapped[ReclamationStatus] = mapped_column(Enum(ReclamationStatus, native_enum=False), default=ReclamationStatus.pending)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

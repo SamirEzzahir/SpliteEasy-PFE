@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+build
+
+# Local env / secrets — provided at runtime via docker-compose
+.env*.local
+
+# Logs & build artifacts
+*.log
+*.err.log
+*.out.log
+tsconfig.tsbuildinfo
+
+# VCS / misc
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore

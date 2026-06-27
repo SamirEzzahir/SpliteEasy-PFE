@@ -1,67 +1,70 @@
-import { useEffect } from 'react'
-import { Stack, useRouter, useSegments } from 'expo-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { StatusBar } from 'expo-status-bar'
-import { ActivityIndicator, View } from 'react-native'
-import { useAuthStore } from '../src/store/authStore'
-import { useWsStore } from '../src/store/wsStore'
+// app/_layout.tsx — root layout: providers + auth guard + global chrome.
+//
+// Replaces the web app/layout.tsx (ConditionalShell). Provider order mirrors
+// the web: Theme → Auth → App (global store). The AuthGuard redirects between
+// the auth screens and the (tabs) area based on session state.
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1 },
-  },
-})
+import { useEffect } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { ActivityIndicator, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthProvider, useAuth } from "@/lib/auth/AuthContext";
+import { AppProvider } from "@/lib/store";
+import { WSProvider } from "@/lib/ws-context";
+import { ThemeProvider, useTheme } from "@/lib/theme";
+import Toast from "@/components/ui/Toast";
 
-function AuthGuard() {
-  const { isAuthenticated, isLoading, token, user } = useAuthStore()
-  const { connect } = useWsStore()
-  const router = useRouter()
-  const segments = useSegments()
-
-  useEffect(() => {
-    if (isLoading) return
-    const inAuth = segments[0] === '(auth)'
-    if (!isAuthenticated && !inAuth) {
-      router.replace('/(auth)/login')
-    } else if (isAuthenticated && inAuth) {
-      router.replace('/(tabs)')
-    }
-  }, [isAuthenticated, isLoading, segments])
+function RootNav() {
+  const { user, loading } = useAuth();
+  const { t, isDark } = useTheme();
+  const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
-    if (isAuthenticated && token && user) {
-      connect(user.id, token)
+    if (loading) return;
+    const inAuth = segments[0] === "login" || segments[0] === "signup";
+    if (!user && !inAuth) {
+      router.replace("/login");
+    } else if (user && inAuth) {
+      router.replace("/(tabs)/dashboard");
     }
-  }, [isAuthenticated, token, user])
+  }, [user, loading, segments, router]);
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9ff' }}>
-        <ActivityIndicator size="large" color="#4a5cff" />
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: t.bg }}>
+        <ActivityIndicator size="large" color={t.primary} />
       </View>
-    )
+    );
   }
 
-  return null
+  return (
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.bg } }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="groups/[id]" options={{ presentation: "card" }} />
+      </Stack>
+      <Toast />
+    </View>
+  );
 }
 
 export default function RootLayout() {
-  const { loadToken } = useAuthStore()
-
-  useEffect(() => {
-    loadToken()
-  }, [])
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <StatusBar style="dark" />
-      <AuthGuard />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="group/[id]" options={{ headerShown: true, title: 'Group' }} />
-        <Stack.Screen name="settle/[groupId]" options={{ headerShown: true, title: 'Settle Up' }} />
-      </Stack>
-    </QueryClientProvider>
-  )
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <WSProvider>
+            <AppProvider>
+              <RootNav />
+            </AppProvider>
+          </WSProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
 }

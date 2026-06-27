@@ -351,8 +351,8 @@ export default function ExpensesPage() {
   // ── Shared expense row renderer ──────────────────────────────────────────────
   function renderExpenseRow(e: Expense) {
     const cat = categoryById(e.categoryId);
-    const g = groups.find((x) => x.id === e.groupId);
     const payer = personById(e.paidBy);
+    const g = groups.find((x) => x.id === e.groupId);
     const share = myShareInfo(e, myId);
     return (
       <tr key={e.id}>

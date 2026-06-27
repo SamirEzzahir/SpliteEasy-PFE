@@ -55,6 +55,19 @@ async def update_preferred_currency(
     return schemas.UserRead.model_validate(current, from_attributes=True)
 
 
+@router.put("/user/me/onboarding", response_model=schemas.UserRead)
+async def update_onboarding(
+    payload: dict,
+    session: AsyncSession = Depends(get_session),
+    current: User = Depends(get_current_user)
+):
+    # { "completed": true|false } — marks the first-time guide as done (or resets it).
+    current.onboarding_completed = bool(payload.get("completed", True))
+    await session.commit()
+    await session.refresh(current)
+    return schemas.UserRead.model_validate(current, from_attributes=True)
+
+
 @router.put("/{user_id}", response_model=schemas.UserRead)
 async def edit_user(user_id: int, payload: schemas.UserUpdate, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     updated = await crud.update_user(session, user_id, payload.dict(exclude_unset=True))

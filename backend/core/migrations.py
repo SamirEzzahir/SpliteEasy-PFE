@@ -2,180 +2,156 @@ from sqlalchemy import text
 from backend.core.db import engine
 
 
+async def _exec(sql: str, label: str = ""):
+    """Run a single DDL/DML statement in its own transaction.
+
+    Isolating each statement means a failure (e.g. a column that already
+    exists in an unexpected shape) cannot poison a shared transaction and
+    abort every following statement.
+    """
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text(sql))
+        if label:
+            print(f"✅ {label}")
+    except Exception as e:
+        print(f"⚠️  Skipped ({label or sql[:40]}): {e}")
+
+
+async def _convert_enum_to_varchar(table: str, column: str, length: int, default: str | None = None):
+    """Convert a native Postgres ENUM column to VARCHAR.
+
+    After a MySQL -> Postgres port the enum columns came across as native
+    Postgres enum types (e.g. ``friends_status``) whose names don't match the
+    types SQLAlchemy expects, so ``col = $1::friendstatus`` has no operator.
+    Storing them as plain VARCHAR (with ``native_enum=False`` on the models)
+    removes that whole class of failure. ``USING col::text`` preserves the
+    existing label values exactly.
+    """
+    # Drop any enum-typed default first, otherwise the type change is blocked.
+    await _exec(f"ALTER TABLE {table} ALTER COLUMN {column} DROP DEFAULT")
+    await _exec(
+        f"ALTER TABLE {table} ALTER COLUMN {column} TYPE VARCHAR({length}) USING {column}::text",
+        f"{table}.{column} -> varchar({length})",
+    )
+    if default is not None:
+        await _exec(f"ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT '{default}'")
+
+
+async def migrate_enum_columns_to_varchar():
+    print("🔄 Converting native enum columns to VARCHAR (Postgres compatibility)...")
+    await _convert_enum_to_varchar("friends", "status", 20, "pending")
+    await _convert_enum_to_varchar("settlements", "status", 20, "pending")
+    await _convert_enum_to_varchar("global_settlements", "status", 20, "pending")
+    await _convert_enum_to_varchar("users", "gender", 10)
+    await _convert_enum_to_varchar("users", "global_settlement_mode", 20, "separate")
+    await _convert_enum_to_varchar("reclamations", "status", 20, "pending")
+    await _convert_enum_to_varchar("transactions", "transaction_type", 20, "transfer")
+    await _convert_enum_to_varchar("debts", "status", 20, "active")
+    await _convert_enum_to_varchar("loans", "status", 20, "active")
+    print("✅ Enum-to-VARCHAR conversion completed!")
+
+
 async def migrate_settlements_table():
-    async with engine.begin() as conn:
-        print("🔄 Checking settlements table migration...")
-        migrations = [
-            ("status", "ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending'"),
-            ("message", "VARCHAR(500) NULL"),
-            ("proof_photo", "VARCHAR(255) NULL"),
-            ("rejected_reason", "VARCHAR(500) NULL"),
-            ("updated_at", "DATETIME NULL"),
-        ]
-        for column_name, column_def in migrations:
-            try:
-                check_query = text(f"""
-                    SELECT COUNT(*) as count
-                    FROM information_schema.COLUMNS
-                    WHERE TABLE_SCHEMA = DATABASE()
-                    AND TABLE_NAME = 'settlements'
-                    AND COLUMN_NAME = '{column_name}'
-                """)
-                result = await conn.execute(check_query)
-                row = result.fetchone()
-                column_exists = row and row[0] > 0
-                if not column_exists:
-                    print(f"➕ Adding column: {column_name}...")
-                    if column_name == "status":
-                        await conn.execute(text(f"ALTER TABLE settlements ADD COLUMN {column_name} {column_def}"))
-                        await conn.execute(text("UPDATE settlements SET status = 'accepted' WHERE status IS NULL OR status = ''"))
-                    elif column_name == "updated_at":
-                        await conn.execute(text(f"ALTER TABLE settlements ADD COLUMN {column_name} DATETIME NULL"))
-                        await conn.execute(text("UPDATE settlements SET updated_at = created_at WHERE updated_at IS NULL"))
-                    else:
-                        await conn.execute(text(f"ALTER TABLE settlements ADD COLUMN {column_name} {column_def}"))
-                    print(f"✅ Added column: {column_name}")
-            except Exception as e:
-                print(f"⚠️  Could not add column {column_name}: {e}")
-        print("✅ Settlements table migration check completed!")
+    print("🔄 Checking settlements table migration...")
+    await _exec(
+        "ALTER TABLE settlements ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'",
+        "settlements.status",
+    )
+    # Backfill pre-existing rows that predate the status column.
+    await _exec("UPDATE settlements SET status = 'accepted' WHERE status IS NULL OR status = ''")
+    await _exec("ALTER TABLE settlements ADD COLUMN IF NOT EXISTS message VARCHAR(500)", "settlements.message")
+    await _exec("ALTER TABLE settlements ADD COLUMN IF NOT EXISTS proof_photo VARCHAR(255)", "settlements.proof_photo")
+    await _exec("ALTER TABLE settlements ADD COLUMN IF NOT EXISTS rejected_reason VARCHAR(500)", "settlements.rejected_reason")
+    await _exec("ALTER TABLE settlements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP", "settlements.updated_at")
+    await _exec("UPDATE settlements SET updated_at = created_at WHERE updated_at IS NULL")
+    print("✅ Settlements table migration check completed!")
 
 
 async def migrate_global_settlement_mode():
-    async with engine.begin() as conn:
-        print("🔄 Checking global_settlement_mode migration...")
-        try:
-            result = await conn.execute(text("""
-                SELECT COUNT(*) as count FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'global_settlement_mode'
-            """))
-            if not (result.fetchone()[0] > 0):
-                print("➕ Adding column: global_settlement_mode...")
-                await conn.execute(text("ALTER TABLE users ADD COLUMN global_settlement_mode VARCHAR(20) DEFAULT 'separate'"))
-                print("✅ Added column: global_settlement_mode")
-            else:
-                print("✅ Column global_settlement_mode already exists.")
-        except Exception as e:
-            print(f"⚠️  Could not add column global_settlement_mode: {e}")
-            if "Duplicate column name" not in str(e):
-                raise
-        print("✅ Global settlement mode migration check completed!")
+    print("🔄 Checking global_settlement_mode migration...")
+    await _exec(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS global_settlement_mode VARCHAR(20) DEFAULT 'separate'",
+        "users.global_settlement_mode",
+    )
+    print("✅ Global settlement mode migration check completed!")
 
 
 async def migrate_transactions_to_wallet_id():
-    async with engine.begin() as conn:
-        print("🔄 Checking transactions table for to_wallet_id migration...")
-        try:
-            result = await conn.execute(text("""
-                SELECT IS_NULLABLE FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'transactions' AND COLUMN_NAME = 'to_wallet_id'
-            """))
-            row = result.fetchone()
-            if row and row[0] == 'NO':
-                await conn.execute(text("ALTER TABLE transactions MODIFY COLUMN to_wallet_id INT NULL"))
-                print("✅ Made to_wallet_id nullable.")
-        except Exception as e:
-            print(f"⚠️  Could not modify to_wallet_id column: {e}")
-        print("✅ Transactions table to_wallet_id migration check completed!")
+    print("🔄 Checking transactions table for to_wallet_id migration...")
+    await _exec(
+        "ALTER TABLE transactions ALTER COLUMN to_wallet_id DROP NOT NULL",
+        "transactions.to_wallet_id nullable",
+    )
+    print("✅ Transactions table to_wallet_id migration check completed!")
 
 
 async def migrate_transactions_transaction_type():
-    async with engine.begin() as conn:
-        print("🔄 Checking transactions table for transaction_type migration...")
-        try:
-            result = await conn.execute(text("""
-                SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'transactions' AND COLUMN_NAME = 'transaction_type'
-            """))
-            if not (result.fetchone()[0] > 0):
-                await conn.execute(text("ALTER TABLE transactions ADD COLUMN transaction_type ENUM('transfer', 'debt', 'credit') DEFAULT 'transfer'"))
-                await conn.execute(text("UPDATE transactions SET transaction_type = 'debt' WHERE to_wallet_id IS NULL"))
-            await conn.execute(text("UPDATE transactions SET transaction_type = 'transfer' WHERE transaction_type IS NULL OR transaction_type = '' OR transaction_type NOT IN ('transfer', 'debt', 'credit')"))
-        except Exception as e:
-            print(f"⚠️  Could not add column transaction_type: {e}")
-        print("✅ Transactions table transaction_type migration check completed!")
+    print("🔄 Checking transactions table for transaction_type migration...")
+    await _exec(
+        "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_type VARCHAR(20) DEFAULT 'transfer'",
+        "transactions.transaction_type",
+    )
+    await _exec("UPDATE transactions SET transaction_type = 'debt' WHERE to_wallet_id IS NULL AND transaction_type IS NULL")
+    await _exec(
+        "UPDATE transactions SET transaction_type = 'transfer' "
+        "WHERE transaction_type IS NULL OR transaction_type = '' "
+        "OR transaction_type NOT IN ('transfer', 'debt', 'credit')"
+    )
+    print("✅ Transactions table transaction_type migration check completed!")
 
 
 async def migrate_debts_loans_tables():
-    async with engine.begin() as conn:
-        print("🔄 Creating/fixing debts and loans tables...")
-        for table, name_col, repayment_table in [
-            ("debts", "lender_name", "debt_repayments"),
-            ("loans", "borrower_name", "loan_repayments"),
-        ]:
-            try:
-                result = await conn.execute(text(f"SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}'"))
-                exists = result.fetchone()[0] > 0
-                if not exists:
-                    print(f"➕ Creating {table} table...")
-                    # Tables are created via SQLAlchemy metadata; this is a safety check
-                else:
-                    result = await conn.execute(text(f"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{name_col}'"))
-                    if not (result.fetchone()[0] > 0):
-                        print(f"WARNING: {table} table missing {name_col}. Drop and recreate.")
-            except Exception as e:
-                print(f"⚠️  Error with {table} table: {e}")
-        print("✅ Debts & Loans tables migration completed!")
+    # Tables are created via SQLAlchemy metadata; nothing to alter here on
+    # Postgres. Kept as a no-op so run_migrations() stays stable.
+    print("✅ Debts & Loans tables migration completed!")
 
 
 async def migrate_expenses_jar_columns():
-    async with engine.begin() as conn:
-        print("🔄 Checking expenses table for jar-related columns...")
-        try:
-            for col, defn in [("jar_type", "VARCHAR(10) NULL"), ("is_from_jar", "BOOLEAN DEFAULT FALSE")]:
-                result = await conn.execute(text(f"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'expenses' AND COLUMN_NAME = '{col}'"))
-                if not (result.fetchone()[0] > 0):
-                    await conn.execute(text(f"ALTER TABLE expenses ADD COLUMN {col} {defn}"))
-                    print(f"➕ Added column: {col}")
-            print("✅ Expenses jar tracking migration check completed!")
-        except Exception as e:
-            print(f"⚠️  Could not modify expenses table for jars: {e}")
+    print("🔄 Checking expenses table for jar-related columns...")
+    await _exec("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS jar_type VARCHAR(10)", "expenses.jar_type")
+    await _exec("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_from_jar BOOLEAN DEFAULT FALSE", "expenses.is_from_jar")
+    print("✅ Expenses jar tracking migration check completed!")
 
 
 async def migrate_group_messages_table():
-    async with engine.begin() as conn:
-        print("🔄 Checking group_messages table migration...")
-        try:
-            result = await conn.execute(text("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_messages'"))
-            if not (result.fetchone()[0] > 0):
-                print("➕ Creating table: group_messages...")
-                await conn.execute(text("""
-                    CREATE TABLE group_messages (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        group_id INT NOT NULL,
-                        user_id INT NOT NULL,
-                        content VARCHAR(2000) NOT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                        INDEX idx_group_id (group_id)
-                    )
-                """))
-                print("✅ Created table group_messages")
-        except Exception as e:
-            print(f"⚠️  Could not create group_messages table: {e}")
-            raise
-        print("✅ Group messages table migration check completed!")
+    print("🔄 Checking group_messages table migration...")
+    await _exec(
+        """
+        CREATE TABLE IF NOT EXISTS group_messages (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER NOT NULL REFERENCES "groups"(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            content VARCHAR(2000) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        "group_messages table",
+    )
+    await _exec("CREATE INDEX IF NOT EXISTS idx_group_messages_group_id ON group_messages (group_id)")
+    print("✅ Group messages table migration check completed!")
 
 
 async def migrate_preferred_currency():
-    async with engine.begin() as conn:
-        print("🔄 Checking preferred_currency migration...")
-        try:
-            result = await conn.execute(text("""
-                SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'preferred_currency'
-            """))
-            if not (result.fetchone()[0] > 0):
-                print("➕ Adding column: preferred_currency...")
-                await conn.execute(text("ALTER TABLE users ADD COLUMN preferred_currency VARCHAR(3) DEFAULT 'USD'"))
-                print("✅ Added column: preferred_currency")
-            else:
-                print("✅ Column preferred_currency already exists.")
-        except Exception as e:
-            print(f"⚠️  Could not add column preferred_currency: {e}")
+    print("🔄 Checking preferred_currency migration...")
+    await _exec(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_currency VARCHAR(3) DEFAULT 'MAD'",
+        "users.preferred_currency",
+    )
+    print("✅ Preferred currency migration check completed!")
+
+
+async def migrate_onboarding_completed():
+    print("🔄 Checking onboarding_completed migration...")
+    await _exec(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE",
+        "users.onboarding_completed",
+    )
+    print("✅ Onboarding completed migration check completed!")
 
 
 async def run_migrations():
+    await migrate_enum_columns_to_varchar()
     await migrate_settlements_table()
     await migrate_global_settlement_mode()
     await migrate_transactions_to_wallet_id()
@@ -184,3 +160,4 @@ async def run_migrations():
     await migrate_expenses_jar_columns()
     await migrate_group_messages_table()
     await migrate_preferred_currency()
+    await migrate_onboarding_completed()

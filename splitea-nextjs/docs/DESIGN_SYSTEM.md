@@ -1,4 +1,4 @@
-# Splitea — Design System & Page-Building Contract
+# SplitEasy — Design System & Page-Building Contract
 
 > **Read this before building or editing any page or component.**
 > Goal: every screen feels like **one product**, scoring **7–8/10 UX/UI**.

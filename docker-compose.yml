@@ -1,0 +1,56 @@
+# SplitEasy full stack: Postgres + FastAPI backend + Next.js frontend.
+#
+#   docker compose up --build
+#
+# Then open http://localhost:3000  (API proxied via the web container to backend).
+# Override credentials/secrets in a root .env file (see .env.example).
+
+services:
+  db:
+    build: ./postgres
+    image: spliteasy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-spliteasy_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      # Backend waits for this to pass before starting (see depends_on below).
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-spliteasy_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    image: spliteasy-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@db:5432/${POSTGRES_DB:-spliteasy_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Published as 8800 on the host to match the dev default and the browser
+    # WebSocket URL (ws://127.0.0.1:8800). Internally the container is on 8000.
+    ports:
+      - "${BACKEND_PORT:-8800}:8000"
+
+  web:
+    build: ./splitea-nextjs
+    image: spliteasy-web
+    restart: unless-stopped
+    environment:
+      # Next.js rewrites /api/* to the backend container (server-side).
+      BACKEND_PROXY_TARGET: http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  pgdata:
