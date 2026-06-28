@@ -1,109 +1,387 @@
 # SplitEasy
 
-SplitEasy is a full-stack expense-sharing and personal-finance app built from three main pieces:
+> **Know who owes what — and what to do next.**
 
-- a FastAPI backend in [`backend/`](backend)
-- a multi-page vanilla HTML/CSS/JS frontend in [`frontend/`](frontend)
-- a Capacitor Android wrapper in [`android/`](android)
+SplitEasy is a full-stack **expense-sharing app** (Splitwise / Tricount style) for
+splitting bills inside groups, tracking balances, settling up, and chatting with
+group members in real time. It pairs a **Next.js + TypeScript** web client with a
+**FastAPI + PostgreSQL** backend.
 
-The app is broader than a simple split-bills clone. It includes:
+Every screen is built to answer one question in five seconds:
+**"Who owes what, and what do I do next?"**
 
-- shared groups, memberships, expenses, splits, and settlements
-- global friend-to-friend settlements across groups
-- friends, notifications, and lightweight group chat
-- income, wallet, transaction, debt, and loan tracking
-- an "Econome" money-jar budgeting module
-- an admin panel with roles and permission checks
+---
 
-## Repo Map
+## Features
 
-- [`backend/`](backend): FastAPI app, SQLAlchemy models, routers, auth, migrations, and core CRUD logic
-- [`frontend/`](frontend): static HTML pages plus shared/global JavaScript
-- [`android/`](android): Capacitor Android shell that points at `frontend/` as `webDir`
-- [`requirements.txt`](requirements.txt): Python dependencies
-- [`package.json`](package.json): Capacitor dependencies only
-- [`start_backend.bat`](start_backend.bat): local Windows helper to run the API
-- [`docs/`](docs): project documentation added from a full code-reading pass
+- **JWT authentication** — register, log in, persistent sessions, protected routes.
+- **Groups** — create groups, invite members, set a per-group currency, group chat.
+- **Expenses** — add, edit, delete, filter, and paginate shared expenses; Excel
+  import/export on the backend; category breakdown donut chart.
+- **Expense splitting** — split a bill equally or with custom per-member shares.
+- **Balances & settlements** — net balances per member, suggested payments using a
+  cash-flow-minimization algorithm, and a record → accept/reject approval flow.
+- **Global settlements** — settle cross-group balances directly with a friend.
+- **Friends** — search users, send/accept/reject friend requests.
+- **Group chat** — per-group real-time messaging over WebSocket.
+- **Notifications** — real-time bell via WebSocket with a REST polling fallback.
+- **Économé jars** — a 6-jar budgeting module (the one personal-finance feature
+  surfaced in the web app).
+- **Settings** — profile editing, password change, preferred currency, theme.
+- **Dark mode** — full light/dark theming via CSS custom properties.
+- **Responsive design** — desktop sidebar collapses to a mobile bottom nav with an
+  action-sheet FAB; skeleton loading states throughout.
 
-## Documentation
+> **Backend-only modules:** the API also exposes wallets, incomes, transactions,
+> debts/loans, an admin panel (roles & support tickets), and stats endpoints. These
+> are functional on the server but are not yet surfaced as finished web pages — see
+> [Roadmap](#roadmap).
 
-- [Architecture Overview](docs/architecture.md)
-- [Backend Guide](docs/backend-guide.md)
-- [Frontend Guide](docs/frontend-guide.md)
-- [Setup and Operations](docs/setup.md)
+---
 
-## Quick Start
+## Tech Stack
 
-### 1. Backend
+### Frontend (`splitea-nextjs/`)
 
-Create or activate a virtual environment, then install Python dependencies:
+| Tech | Purpose |
+|---|---|
+| Next.js 14 (App Router) | React framework & routing |
+| TypeScript 5 (strict) | Language |
+| Tailwind CSS 3 + CSS custom properties | Styling & design tokens |
+| Axios | HTTP client with JWT interceptor |
+| lucide-react | Icons |
+| SweetAlert2 | Confirm dialogs |
+| react-toastify | Toasts |
+| geist | Font |
+| React Context | State management (`AuthContext`, `store`) |
+| WebSocket | Real-time chat & notifications |
 
-```powershell
+### Backend (`backend/`)
+
+| Tech | Purpose |
+|---|---|
+| FastAPI | Web framework |
+| Uvicorn | ASGI server |
+| SQLAlchemy 2.0 (async) | ORM |
+| asyncpg | PostgreSQL async driver |
+| Pydantic v2 | Request/response validation |
+| python-jose | JWT creation & verification |
+| passlib | Password hashing |
+| openpyxl / pandas / xlrd | Excel import/export |
+| websockets | Real-time chat & notifications |
+
+### Database
+
+| Tech | Purpose |
+|---|---|
+| PostgreSQL 16 | Primary data store (`pg_trgm`, `citext` extensions) |
+
+---
+
+## Project Structure
+
+```
+SplitEasy/
+├── backend/                 # FastAPI application (package: `backend`)
+│   ├── main.py              # App entry — CORS, router registration, startup/shutdown
+│   ├── core/                # config, db engine/session, auth, security, migrations
+│   ├── models/              # SQLAlchemy models (one module per domain)
+│   ├── schemas/             # Pydantic request/response schemas
+│   ├── repositories/        # Data-access queries & balance logic
+│   ├── services/            # Domain services (e.g. debt minimization)
+│   ├── routers/             # API route handlers (auth, groups, expenses, settle, …)
+│   ├── auth.py, db.py, …    # Thin compatibility shims re-exporting from core/
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── splitea-nextjs/          # Next.js 14 web client
+│   ├── app/                 # App Router pages (login, groups, expenses, jars, …)
+│   ├── components/          # Shell, modals, UI primitives, charts, chat
+│   ├── lib/                 # API client, mappers, types, stores, formatting
+│   ├── hooks/               # React hooks (notifications)
+│   ├── docs/                # Design system + page-level documentation
+│   └── Dockerfile
+│
+├── postgres/                # Dockerized PostgreSQL 16 + init scripts
+│   ├── Dockerfile
+│   └── init/01-init.sql     # Enables pg_trgm & citext on first volume creation
+│
+├── docker-compose.yml       # Full stack: db + backend + web
+├── .env.example             # Copy to .env for Docker Compose
+└── README.md
+```
+
+> The backend was migrated from a flat-file layout to packages (`core/`, `models/`,
+> `schemas/`, `repositories/`, `services/`). The remaining single-file modules at the
+> backend root (`auth.py`, `config.py`, `db.py`, `crud.py`, etc.) are **compatibility
+> shims** that re-export from those packages.
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────┐
+│   Browser (Next.js web) │   React UI, Axios, WebSocket client
+└───────────┬─────────────┘
+            │  REST (JSON) + WebSocket
+            │  Authorization: Bearer <JWT>
+            ▼
+┌─────────────────────────┐
+│   Next.js server        │   /api/* rewrite → BACKEND_PROXY_TARGET
+│   (rewrite proxy)        │
+└───────────┬─────────────┘
+            │  HTTP
+            ▼
+┌─────────────────────────┐
+│   FastAPI backend        │   Routers → repositories/services → SQLAlchemy
+│   JWT auth · WebSockets   │
+└───────────┬─────────────┘
+            │  asyncpg (postgresql+asyncpg)
+            ▼
+┌─────────────────────────┐
+│   PostgreSQL 16          │   Groups · Expenses · Splits · Settlements · …
+└─────────────────────────┘
+```
+
+- The web client talks to `/api` which Next.js rewrites to the backend (dev) or to a
+  full URL via `NEXT_PUBLIC_API_URL` (prod).
+- Tables are created on backend startup via `Base.metadata.create_all`, then custom
+  Postgres migrations in `backend/core/migrations.py` run to reconcile schema drift.
+- Real-time features (group chat, notifications) use WebSocket connections straight to
+  the backend.
+
+---
+
+## Screenshots
+
+> _Screenshots are not committed to the repository yet. Add images under
+> `splitea-nextjs/public/screenshots/` and update the links below._
+
+| Dashboard | Group detail | Expenses |
+|---|---|---|
+| _(placeholder)_ | _(placeholder)_ | _(placeholder)_ |
+
+| Settlements | Économé jars | Group chat |
+|---|---|---|
+| _(placeholder)_ | _(placeholder)_ | _(placeholder)_ |
+
+---
+
+## Installation
+
+### Prerequisites
+
+- **Node.js** 18+ and npm
+- **Python** 3.11+
+- **PostgreSQL** 16 (or use the Docker Compose setup below)
+
+### 1. Clone
+
+```bash
+git clone <repository-url> SplitEasy
+cd SplitEasy
+```
+
+### 2. Configure PostgreSQL
+
+Create a database (defaults used throughout the project):
+
+```sql
+CREATE DATABASE spliteasy_db;
+```
+
+Enable the extensions used by the schema (also handled automatically by the Docker
+image via `postgres/init/01-init.sql`):
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS citext;
+```
+
+### 3. Backend setup
+
+```bash
+# From the project root
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # Linux / macOS
+
+pip install -r backend/requirements.txt
 ```
 
-Run the API:
+Create `backend/.env`:
 
-```powershell
-python -m uvicorn backend.main:app --reload
+```env
+DATABASE_URL=postgresql+asyncpg://postgres:postgres123@localhost:5432/spliteasy_db
+JWT_SECRET=change-me-in-production
 ```
 
-Or use:
+Run the API **from the project root** (imports use the `backend` package):
 
-```powershell
-start_backend.bat
+```bash
+python -m uvicorn backend.main:app --reload --port 8800
 ```
 
-### 2. Frontend
+- API: `http://localhost:8800`
+- Interactive docs (Swagger): `http://localhost:8800/docs`
 
-The frontend is static and does not have a build step.
+### 4. Frontend setup
 
-Before opening it, check the API base URL in [`frontend/js/config.js`](frontend/js/config.js). It is currently hardcoded to a LAN IP, so most machines will need to update it.
-
-Serve the `frontend/` folder with any static server, then open:
-
-- `frontend/index.html` for the landing page
-- `frontend/login.html` or `frontend/signup.html` to enter the app
-
-### 3. Android
-
-Capacitor is already configured in [`capacitor.config.json`](capacitor.config.json) with:
-
-- `appId`: `com.spliteasy.app`
-- `appName`: `SplitEasy`
-- `webDir`: `frontend`
-
-After the frontend files are in place, typical Capacitor flows are:
-
-```powershell
-npx cap sync android
-npx cap open android
+```bash
+cd splitea-nextjs
+npm install
+cp .env.example .env.local      # optional — localhost defaults work out of the box
+npm run dev
 ```
 
-## Current Architecture Snapshot
+Open `http://localhost:3000` (redirects to `/login`).
 
-- Authentication is JWT-based. Tokens are created in [`backend/auth.py`](backend/auth.py) and consumed by router dependencies.
-- Database access is async SQLAlchemy, initialized in [`backend/db.py`](backend/db.py).
-- Tables are created on startup and custom migrations are attempted from [`backend/migrations.py`](backend/migrations.py).
-- Real-time notifications use WebSockets at `/Notifications/ws/{user_id}`.
-- The frontend relies on global browser scripts, shared `localStorage`, and page-specific JavaScript files rather than a bundler/framework.
+### Environment Variables
 
-## Important Notes
+| Variable | Where | Default | Purpose |
+|---|---|---|---|
+| `DATABASE_URL` | backend | `sqlite+aiosqlite:///./splitapp.db` | DB connection string (use the Postgres URL above) |
+| `JWT_SECRET` | backend | `samir` | JWT signing secret — **change in production** |
+| `NEXT_PUBLIC_API_URL` | frontend | _(blank)_ | Blank = use the `/api` dev proxy; set a full URL in production |
+| `BACKEND_PROXY_TARGET` | frontend | `http://127.0.0.1:8800` | Dev proxy target for `/api/*` |
+| `NEXT_PUBLIC_WS_URL` | frontend | `ws://127.0.0.1:8800` | WebSocket base for chat/notifications |
 
-- The backend computes environment-specific CORS allowlists, but [`backend/main.py`](backend/main.py) currently registers `allow_origins=["*"]`.
-- The default database URL in [`backend/config.py`](backend/config.py) is SQLite, but several migration helpers are clearly written against MySQL `information_schema`.
-- Currency handling is mixed across the codebase. Some backend defaults are `USD`, while many frontend screens display `MAD`, and bulk expense import hardcodes `MAD`.
-- There is no automated test suite or root-level dev orchestration script in the repository right now.
+---
 
-## Historical Notes
+## Docker
 
-The repository already contained a few analysis markdown files such as:
+The repository ships a full-stack `docker-compose.yml` (PostgreSQL + backend + web).
 
-- [`BEST_RECOMMENDATION.md`](BEST_RECOMMENDATION.md)
-- [`GLOBAL_SETTLEMENT_ANALYSIS.md`](GLOBAL_SETTLEMENT_ANALYSIS.md)
-- [`INCOME_SYSTEM_ANALYSIS.md`](INCOME_SYSTEM_ANALYSIS.md)
-- [`SETTLEMENT_APPROVAL_SYSTEM.md`](SETTLEMENT_APPROVAL_SYSTEM.md)
+```bash
+# 1. Copy the env template and adjust secrets/credentials as needed
+cp .env.example .env
 
-Those read more like feature/design notes. The new `docs/` folder is intended to be the maintainable source of truth for how the current code is structured.
+# 2. Build and start everything
+docker compose up --build
+```
+
+| Service | Container port | Host port | Notes |
+|---|---|---|---|
+| `db` (PostgreSQL 16) | 5432 | `POSTGRES_PORT` (5432) | Data persists in the `pgdata` volume |
+| `backend` (FastAPI) | 8000 | `BACKEND_PORT` (8800) | Waits for the DB healthcheck before starting |
+| `web` (Next.js) | 3000 | `WEB_PORT` (3000) | Rewrites `/api/*` to the backend container |
+
+Then open `http://localhost:3000`. The backend creates tables and runs migrations on
+first startup. To reset the database completely:
+
+```bash
+docker compose down -v && docker compose up --build
+```
+
+---
+
+## API Overview
+
+The backend mounts these router modules (full request/response details live in the
+interactive docs at `/docs`, and a per-endpoint reference is in
+[`backend/README.md`](backend/README.md)):
+
+| Module | Prefix | Responsibility |
+|---|---|---|
+| Auth | `/` | Register, login, current user |
+| Users | `/users` | Profile, password, preferred currency, settlement mode |
+| Groups | `/groups` | Group CRUD + WebSocket group chat |
+| Memberships | `/memberships` | Add/remove/update members |
+| Expenses | `/expenses` | Expense CRUD, splits, Excel import/export, pagination |
+| Friends | `/friends` | Friend search & requests |
+| Settle | `/settle` | Group & global balances, settlement record/accept/reject |
+| Notifications | `/Notifications` | REST + WebSocket notifications |
+| Activity | `/activity` | User activity log |
+| Stats | `/stats` | Spending statistics |
+| Dashboard | `/dashboard` | Summary totals |
+| Économé | `/econome` | 6-jar budgeting, income logs, jar transactions |
+| Incomes / Income Types | `/incomes`, `/income-types` | Income tracking (backend) |
+| Wallets / Transactions | `/wallets`, `/transactions` | Wallet management (backend) |
+| Debts & Loans | `/debts-loans` | Personal debt/loan tracking (backend) |
+| Admin | `/admin` | User/role management & support tickets (RBAC) |
+
+---
+
+## Authentication
+
+SplitEasy uses **JWT bearer authentication**:
+
+1. **Login** — `POST /login` with form-encoded credentials
+   (`OAuth2PasswordRequestForm`) returns a signed JWT.
+2. **Storage** — the web client stores the token in `localStorage`
+   (`spliteasy.token`).
+3. **Requests** — an Axios interceptor attaches `Authorization: Bearer <token>` to
+   every request.
+4. **Protected routes** — backend handlers depend on `get_current_user`; the frontend
+   wraps authenticated pages in `RequireAuth`.
+5. **Expiry / 401** — a 401 clears the token and redirects to `/login`.
+6. **RBAC** — admin endpoints are guarded by a `require_permission` dependency that
+   checks the permission keys stored on the user's role.
+
+---
+
+## Main Features
+
+| Feature | Status | Notes |
+|---|---|---|
+| Authentication | ✅ Implemented | JWT login/register/session, protected routes |
+| Friends | ✅ Implemented | Search, request, accept/reject |
+| Groups | ✅ Implemented | CRUD, members, per-group currency |
+| Expenses | ✅ Implemented | CRUD, filters, pagination, category donut, Excel I/O |
+| Expense splitting | ✅ Implemented | Equal or custom shares |
+| Settlements | ✅ Implemented | Group balances, suggested payments, approval flow |
+| Global settlements | ✅ Implemented | Cross-group balances with friends |
+| Group chat | ✅ Implemented | Per-group WebSocket messaging |
+| Notifications | ✅ Implemented | Real-time bell + REST fallback |
+| Économé (jars) | ✅ Implemented | 6-jar budgeting module |
+| Settings & dark mode | ✅ Implemented | Profile, password, currency, theme |
+| Responsive design | ✅ Implemented | Mobile bottom nav, FAB, skeletons |
+| Wallets / Debts / Reports | 🚧 Backend-ready | API exists; web pages are placeholders |
+| Admin panel | 🚧 Backend-only | `/admin` API exists; no web UI yet |
+
+---
+
+## Development
+
+- **Type-check the frontend** after UI changes:
+  ```bash
+  cd splitea-nextjs && npx tsc --noEmit
+  ```
+  The tree must be type-clean — `next build` (and the Docker image) fails on any TS
+  error.
+- **Lint the frontend:**
+  ```bash
+  cd splitea-nextjs && npm run lint
+  ```
+- **Design system** — read [`splitea-nextjs/docs/DESIGN_SYSTEM.md`](splitea-nextjs/docs/DESIGN_SYSTEM.md)
+  before building or editing any page. Reuse shared primitives, use CSS variables for
+  color, and follow the New-Page Checklist.
+- **AI assistant guide** — [`CLAUDE.md`](CLAUDE.md) describes product scope and
+  non-negotiable conventions.
+- **Backend conventions** — all DB access is async; run uvicorn from the project root
+  so the `backend` package imports resolve.
+
+---
+
+## Production Deployment
+
+The recommended path is **Docker Compose** (see [Docker](#docker)). For a production
+deployment:
+
+1. Set strong secrets in the root `.env`: `JWT_SECRET`, `POSTGRES_PASSWORD`.
+2. Point the web container at the public API by building with `NEXT_PUBLIC_API_URL`
+   (or keep the internal `BACKEND_PROXY_TARGET` rewrite behind a single domain).
+3. Restrict CORS — `backend/main.py` currently allows all origins (`["*"]`); lock this
+   down to your frontend origin before going live.
+4. Put a TLS-terminating reverse proxy (e.g. Nginx, Caddy, Traefik) in front of the
+   `web` and `backend` services.
+5. Back up the `pgdata` volume.
+
+---
+
+## License
+
+No license file is currently present in the repository. Until a `LICENSE` file is
+added, all rights are reserved by the project author. Add a license (e.g. MIT) to
+make reuse terms explicit.

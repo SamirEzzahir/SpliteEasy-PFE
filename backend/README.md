@@ -1,6 +1,7 @@
 # SplitEasy — Backend
 
-FastAPI backend for SplitEasy, an expense-sharing and personal finance application.
+FastAPI backend for SplitEasy, an expense-sharing app. It also exposes additional
+personal-finance modules (wallets, incomes, debts/loans, Économé jars) on the API.
 
 ---
 
@@ -10,29 +11,57 @@ FastAPI backend for SplitEasy, an expense-sharing and personal finance applicati
 |---|---|
 | Framework | FastAPI |
 | ORM | SQLAlchemy 2.0 (async) |
-| Database | MySQL (production) / SQLite (development) |
+| Database | PostgreSQL 16 (via `asyncpg`) |
 | Auth | JWT via `python-jose` + `passlib` |
 | Validation | Pydantic v2 |
 | Server | Uvicorn |
-| Migrations | Custom async migration runner |
+| Excel I/O | openpyxl / pandas / xlrd |
+| Real-time | `websockets` (group chat, notifications) |
+| Migrations | Custom async migration runner (Postgres DDL) |
+
+> A SQLite fallback driver (`aiosqlite`) is installed and is the default in
+> `core/config.py`, but the project runs on **PostgreSQL** — Docker, migrations, and
+> the `01-init.sql` extensions all target Postgres.
 
 ---
 
 ## Project Structure
 
+The backend has been refactored from a flat layout into packages. The single-file
+modules at the backend root (`auth.py`, `config.py`, `db.py`, `crud.py`,
+`dependencies.py`, `migrations.py`, `debt.py`, `utils.py`) are now **thin
+compatibility shims** that simply re-export from the packages below.
+
 ```
 backend/
 ├── main.py               # App entry point — CORS, router registration, startup/shutdown
-├── models.py             # All SQLAlchemy models (18 tables)
-├── schemas.py            # All Pydantic request/response schemas
-├── crud.py               # Database layer — all queries and business logic
-├── auth.py               # JWT creation and validation, OAuth2 scheme
-├── config.py             # Settings — DATABASE_URL, JWT config, Jar percentages
-├── db.py                 # Async engine, Base, session factory
-├── dependencies.py       # RBAC permission checker (FastAPI dependency)
-├── migrations.py         # Custom migration functions run on startup
-├── utils.py              # Password hashing/verification
-├── debt.py               # Cash-flow minimization algorithm for settlements
+│
+├── core/                 # Cross-cutting infrastructure
+│   ├── config.py         # Settings — DATABASE_URL, JWT config, JAR_CONFIG
+│   ├── db.py             # Async engine, Base, session factory
+│   ├── auth.py           # JWT creation/validation, OAuth2 scheme, get_current_user
+│   ├── security.py       # Password hashing/verification
+│   ├── dependencies.py   # RBAC permission checker (require_permission)
+│   └── migrations.py     # Postgres migration functions run on startup
+│
+├── models/               # SQLAlchemy models (one module per domain)
+│   ├── base.py           # Declarative Base
+│   ├── user.py           # User, Role, Reclamation + enums
+│   ├── group.py          # Group, Membership, GroupMessage
+│   ├── expense.py        # Expense, Split
+│   ├── friend.py         # Friend + status enum
+│   ├── settlement.py     # Settlement, GlobalSettlement
+│   ├── finance.py        # Wallet, Transaction, Income, IncomeType, IncomeSource, IncomeLog
+│   ├── debt.py           # Debt, Loan, DebtRepayment, LoanRepayment
+│   ├── econome.py        # JarStrategy, JarTransaction
+│   ├── activity.py       # ActivityLog
+│   └── notification.py   # Notification
+│
+├── schemas/              # Pydantic request/response schemas (mirrors models/)
+├── repositories/         # Data-access queries + balance computation
+│   ├── user.py, group.py, expense.py, finance.py, settlement.py, activity.py
+├── services/             # Domain services
+│   └── debt.py           # Cash-flow minimization algorithm for settlements
 │
 ├── routers/
 │   ├── auth.py           # POST /register, /login — GET /me
@@ -348,7 +377,7 @@ The `check_permission(permission)` dependency validates the current user's role 
 
 ### Requirements
 - Python 3.11+
-- MySQL (production) or SQLite (development — default)
+- PostgreSQL 16 (with the `pg_trgm` and `citext` extensions)
 
 ### Install
 
@@ -366,32 +395,29 @@ pip install -r backend/requirements.txt
 Create or edit `backend/.env`:
 
 ```env
-DATABASE_URL=mysql+aiomysql://user:password@localhost:3306/spliteasy_db
+DATABASE_URL=postgresql+asyncpg://postgres:postgres123@localhost:5432/spliteasy_db
 JWT_SECRET=your-secret-key
-```
-
-For local development with SQLite, change `DATABASE_URL` to:
-
-```env
-DATABASE_URL=sqlite+aiosqlite:///./spliteasy.db
 ```
 
 ### Run
 
 ```bash
 # From the project root (SplitEasy/)
-python -m uvicorn backend.main:app --reload
+python -m uvicorn backend.main:app --reload --port 8800
 ```
 
-API is available at `http://localhost:8000`  
-Interactive docs at `http://localhost:8000/docs`
+API is available at `http://localhost:8800`  
+Interactive docs at `http://localhost:8800/docs`
 
 ### Docker
+
+The backend is normally run via the root `docker-compose.yml` (Postgres + backend +
+web). To build just this image:
 
 ```bash
 # From inside backend/
 docker build -t spliteasy-backend .
-docker run -p 8000:8000 --env-file .env spliteasy-backend
+docker run -p 8800:8000 --env-file .env spliteasy-backend
 ```
 
 ---
@@ -399,7 +425,8 @@ docker run -p 8000:8000 --env-file .env spliteasy-backend
 ## Notes
 
 - All database operations are **async** — never use sync SQLAlchemy calls inside routers.
-- Tables are created automatically on startup via `Base.metadata.create_all`. Custom column migrations run after that via `migrations.py`.
+- Tables are created automatically on startup via `Base.metadata.create_all`. Custom column migrations run after that via `core/migrations.py`.
 - `allow_origins=["*"]` is currently hardcoded in `main.py` — restrict this before deploying to production.
 - The import structure requires running uvicorn from the **project root**, not from inside `backend/`, because routers use `from backend.xxx import ...`.
-- MySQL-specific SQL is used in some migration helpers — SQLite may raise warnings but will not break on startup.
+- Enum columns use `native_enum=False` (stored as VARCHAR). The migrations convert any
+  leftover native Postgres enum types from the original MySQL → Postgres port.

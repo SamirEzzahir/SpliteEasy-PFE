@@ -1,6 +1,6 @@
 # SplitEasy — Next.js Frontend
 
-Full-stack expense-splitting app. Next.js 14 (App Router) + TypeScript frontend backed by a FastAPI + SQLAlchemy (async) API.
+Full-stack expense-splitting app. Next.js 14 (App Router) + TypeScript frontend backed by a FastAPI + SQLAlchemy (async) + PostgreSQL API.
 
 ---
 
@@ -13,8 +13,9 @@ Full-stack expense-splitting app. Next.js 14 (App Router) + TypeScript frontend 
 | Styling | Plain CSS custom properties (`globals.css`) + Tailwind v3 for new components |
 | State | React Context (`lib/store.tsx`, `lib/auth/AuthContext.tsx`) |
 | HTTP | Axios with JWT interceptor (`lib/api/client.ts`) |
-| Real-time | WebSocket (notifications), fallback to 5-min polling |
-| Backend | FastAPI + SQLAlchemy async + MySQL |
+| Real-time | WebSocket (notifications + group chat), fallback to polling |
+| Dialogs | SweetAlert2 (confirms) + react-toastify (toasts) |
+| Backend | FastAPI + SQLAlchemy async + PostgreSQL |
 
 ---
 
@@ -50,7 +51,7 @@ splitea-nextjs/
 ├── app/
 │   ├── layout.tsx                  # ConditionalShell — auth vs public chrome
 │   ├── globals.css                 # full design-system (CSS custom props, dark mode, responsive)
-│   ├── page.tsx                    # redirects → /groups
+│   ├── page.tsx                    # entry redirect
 │   ├── login/page.tsx
 │   ├── signup/page.tsx
 │   ├── dashboard/page.tsx          # summary stats, recent expenses, quick actions
@@ -58,12 +59,17 @@ splitea-nextjs/
 │   ├── expenses/page.tsx           # full expense table, filters, pagination, category donut
 │   ├── groups/page.tsx             # group cards/list, preview panel, member avatars
 │   ├── groups/[id]/page.tsx        # single group detail view
+│   ├── groups/[id]/settle/page.tsx # group settle-up: balances + record settlement
 │   ├── friends/page.tsx            # friend list, pending requests, balances
-│   ├── settlements/page.tsx        # settlement history and recording
-│   ├── balances/page.tsx           # net balance overview
-│   ├── activity/page.tsx           # activity feed
-│   ├── reports/page.tsx            # spending reports and charts
-│   └── settings/page.tsx           # profile, preferences, security, currency, theme
+│   ├── settings/page.tsx           # profile, preferences, security, currency, theme
+│   │
+│   │   # Placeholder routes — render <ComingSoon>, not yet built:
+│   ├── settlements/page.tsx        # (placeholder) standalone settlements hub
+│   ├── balances/page.tsx           # (placeholder) net balance overview
+│   ├── activity/page.tsx           # (placeholder) activity feed
+│   ├── reports/page.tsx            # (placeholder) spending reports
+│   ├── wallets/page.tsx            # (placeholder) wallet management
+│   └── debts/page.tsx              # (placeholder) debts & loans
 ├── components/
 │   ├── shell/
 │   │   ├── AppShell.tsx            # layout wrapper — sidebar + topbar + mobile nav + global modals
@@ -214,7 +220,7 @@ Pages use **skeleton loading** (`components/Skeleton.tsx`) instead of fake place
 - Groups — create, edit, delete, manage members, per-group currency
 - Expenses — add, list, filter by group/category/paid-by, pagination, category donut chart
 - Friends — send/accept/reject requests, view balances
-- Settlements — record, confirm, history
+- Settlements — group settle-up page (`groups/[id]/settle`): balances, suggested payments, record/accept/reject
 - Économé (Jar budgeting) — 6-jar strategy, income distribution, jar spending
 - Group chat — per-group real-time messaging over WebSocket (`components/chat/GroupChat.tsx`)
 - Notifications — real-time bell with WebSocket + REST fallback
@@ -227,17 +233,20 @@ Pages use **skeleton loading** (`components/Skeleton.tsx`) instead of fake place
 
 ## Planned / Future Features
 
+The following routes exist as `<ComingSoon>` placeholders (and/or have a working
+backend API) but are not yet built out in the web UI:
+
+- **Settlements hub** (`/settlements`) — standalone cross-group settlement page (group-level settle-up already works)
+- **Balances page** (`/balances`) — visual net balance breakdown across all friends and groups
+- **Activity feed** (`/activity`) — full chronological audit log (backend `/activity` exists)
+- **Reports** (`/reports`) — advanced spending charts, monthly trends, export
+- **Wallets** (`/wallets`) — personal wallet management & transactions (backend `/wallets` exists)
+- **Debts & Loans** (`/debts`) — personal debt tracking (backend `/debts-loans` exists)
+
+Not yet started:
+
 - **Global display currency** — convert all amounts to a chosen currency before display (exchange rates API)
 - **Expense currency conversion** — show each expense in the user's preferred currency
-- **Wallets** — personal wallet management and transaction history
-- **Debts & Loans** — personal debt tracking separate from group expenses
-- **Reports** — advanced spending charts, monthly trends, export to PDF/CSV
-- **Activity feed** — full chronological audit log of all group and friend actions
-- **Balances page** — visual net balance breakdown across all friends and groups
 - **Profile photo upload** — currently disabled; backend field exists
-- **Push notifications** — mobile push via PWA or Capacitor
-- **Import expenses** — CSV/bank statement import
-- **Recurring expenses** — scheduled automatic expense creation
-- **Multi-currency group** — individual expenses in different currencies within one group
 - **Admin panel** — user management, role assignment (backend `/admin` router exists)
-- **PWA / Mobile app** — Capacitor wrapper already scaffolded in `/mobile`
+- **Push notifications** — mobile push via PWA or Capacitor
