@@ -36,6 +36,11 @@ Every screen is built to answer one question in five seconds:
   charts, user management (suspend/ban, roles, reset password, force logout), group /
   expense / settlement management, a support center, an RBAC roles editor, and an
   immutable audit log. See [`splitea-nextjs/docs/admin-panel.md`](splitea-nextjs/docs/admin-panel.md).
+- **Platform administration** — `/admin/settings` (app identity, **feature flags**,
+  auth/password policy, **maintenance mode** via middleware), `/admin/moderation`
+  (user reports → review/warn/suspend), `/admin/announcements` (banner/popup/notification),
+  `/admin/analytics` (growth charts), and `/admin/system` (service health, uptime, host
+  metrics). See [`splitea-nextjs/docs/platform-admin.md`](splitea-nextjs/docs/platform-admin.md).
 - **Dark mode** — full light/dark theming via CSS custom properties.
 - **Responsive design** — desktop sidebar collapses to a mobile bottom nav with an
   action-sheet FAB; skeleton loading states throughout.

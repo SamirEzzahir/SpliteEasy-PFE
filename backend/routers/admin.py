@@ -5,10 +5,12 @@ Every write action is guarded by a specific permission (see core/dependencies
 the shared Paginated envelope. Super Admin holds the "*" wildcard permission.
 """
 import json
+import time
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,8 +23,13 @@ from backend.models import (
 from backend import schemas
 from backend.repositories import admin as admin_repo
 from backend.repositories import support as support_repo
+from backend.repositories import moderation as moderation_repo
+from backend.repositories import announcement as announcement_repo
 from backend.services import admin as admin_service
-from backend.routers.notifications import send_notification
+from backend.routers.notifications import send_notification, active_connections
+from backend.core import settings_store
+
+_PROCESS_START = time.time()
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -33,6 +40,16 @@ def _pages(total: int, page_size: int) -> int:
 
 def _clamp(page: int, page_size: int) -> tuple[int, int]:
     return max(1, page), max(1, min(page_size, 100))
+
+
+def _naive_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Coerce a (possibly tz-aware) datetime to naive UTC for TIMESTAMP columns."""
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        from datetime import timezone
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 
 # ===========================================================================
@@ -53,6 +70,14 @@ PERMISSION_CATALOG = [
     {"key": "view_roles",          "label": "View roles",            "group": "Roles"},
     {"key": "manage_roles",        "label": "Manage roles",          "group": "Roles"},
     {"key": "view_audit_logs",     "label": "View audit logs",       "group": "Audit"},
+    {"key": "view_settings",       "label": "View settings",         "group": "Platform"},
+    {"key": "manage_settings",     "label": "Manage settings",       "group": "Platform"},
+    {"key": "view_moderation",     "label": "View moderation",       "group": "Platform"},
+    {"key": "manage_moderation",   "label": "Manage moderation",     "group": "Platform"},
+    {"key": "view_announcements",  "label": "View announcements",    "group": "Platform"},
+    {"key": "manage_announcements","label": "Manage announcements",  "group": "Platform"},
+    {"key": "view_analytics",      "label": "View analytics",        "group": "Platform"},
+    {"key": "view_system",         "label": "View system health",    "group": "Platform"},
 ]
 
 
@@ -623,3 +648,287 @@ async def list_audit_logs(
     return schemas.Paginated[schemas.AuditLogRead](
         items=items, total=total, page=page, page_size=page_size, pages=_pages(total, page_size),
     )
+
+
+# ===========================================================================
+# Platform settings
+# ===========================================================================
+@router.get("/settings")
+async def get_settings(
+    current_user: User = Depends(require_permission("view_settings")),
+):
+    """Full settings map (cached). Keys are defined by settings_store.DEFAULTS."""
+    return settings_store.all_settings()
+
+
+@router.put("/settings")
+async def update_settings(
+    payload: dict, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_settings")),
+):
+    updated = await settings_store.update_settings(session, payload)
+    await admin_service.record_audit(
+        session, current_user, "settings.update", "settings", None,
+        details=", ".join(k for k in payload.keys() if k in settings_store.DEFAULTS)[:480],
+        request=request,
+    )
+    return updated
+
+
+# ===========================================================================
+# Moderation
+# ===========================================================================
+@router.get("/reports", response_model=schemas.Paginated[schemas.ReportRead])
+async def list_reports(
+    page: int = 1, page_size: int = 20,
+    status: Optional[str] = None, reason: Optional[str] = None,
+    target_type: Optional[str] = None, q: Optional[str] = None,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("view_moderation")),
+):
+    page, page_size = _clamp(page, page_size)
+    items, total = await moderation_repo.list_reports(
+        session, status=status, reason=reason, target_type=target_type, q=q,
+        page=page, page_size=page_size,
+    )
+    return schemas.Paginated[schemas.ReportRead](
+        items=items, total=total, page=page, page_size=page_size, pages=_pages(total, page_size),
+    )
+
+
+async def _get_report_or_404(session, report_id: int):
+    report = await moderation_repo.get_report(session, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
+
+@router.get("/reports/{report_id}", response_model=schemas.ReportRead)
+async def get_report(
+    report_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("view_moderation")),
+):
+    r = await _get_report_or_404(session, report_id)
+    target_username = None
+    if r.target_type == "user":
+        tu = await session.get(User, r.target_id)
+        target_username = tu.username if tu else None
+    return moderation_repo.report_to_dict(
+        r, r.reporter.username if r.reporter else None,
+        r.handler.username if r.handler else None, target_username,
+    )
+
+
+@router.post("/reports/{report_id}/status")
+async def update_report_status(
+    report_id: int, payload: schemas.ReportStatusUpdate, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_moderation")),
+):
+    report = await _get_report_or_404(session, report_id)
+    await moderation_repo.set_status(session, report, payload.status, current_user)
+    await admin_service.record_audit(session, current_user, "moderation.status", "report", report_id, details=payload.status, request=request)
+    return {"message": f"Report marked {payload.status}"}
+
+
+@router.post("/reports/{report_id}/notes")
+async def update_report_notes(
+    report_id: int, payload: schemas.ReportNotesUpdate, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_moderation")),
+):
+    report = await _get_report_or_404(session, report_id)
+    await moderation_repo.set_notes(session, report, payload.notes)
+    await admin_service.record_audit(session, current_user, "moderation.notes", "report", report_id, request=request)
+    return {"message": "Notes saved"}
+
+
+@router.post("/reports/{report_id}/warn")
+async def warn_reported_user(
+    report_id: int, payload: schemas.ReportWarn, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_moderation")),
+):
+    report = await _get_report_or_404(session, report_id)
+    if report.target_type != "user":
+        raise HTTPException(status_code=400, detail="Only user reports can warn a user")
+    message = payload.message or "You have received a warning from the moderation team for a community-guidelines violation."
+    await send_notification(session, report.target_id, message, type="warning", link="/support")
+    await admin_service.record_audit(session, current_user, "moderation.warn", "user", report.target_id, request=request)
+    return {"message": "Warning sent"}
+
+
+# ===========================================================================
+# Announcements
+# ===========================================================================
+async def _deliver_announcement(session, ann) -> None:
+    """Fan a `notification`-delivery announcement out to its audience (once)."""
+    if ann.delivery != "notification" or ann.notified:
+        return
+    recipients = await announcement_repo.recipients_for(session, ann)
+    for uid in recipients:
+        await send_notification(session, uid, f"📣 {ann.title}", type="announcement", link="/")
+    ann.notified = True
+    await session.commit()
+
+
+@router.get("/announcements", response_model=schemas.Paginated[schemas.AnnouncementRead])
+async def list_announcements(
+    page: int = 1, page_size: int = 20,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("view_announcements")),
+):
+    page, page_size = _clamp(page, page_size)
+    items, total = await announcement_repo.list_announcements(session, page, page_size)
+    return schemas.Paginated[schemas.AnnouncementRead](
+        items=items, total=total, page=page, page_size=page_size, pages=_pages(total, page_size),
+    )
+
+
+@router.post("/announcements", response_model=schemas.AnnouncementRead)
+async def create_announcement(
+    payload: schemas.AnnouncementCreate, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_announcements")),
+):
+    from backend.models import Announcement
+    publish_at = _naive_utc(payload.publish_at)
+    expires_at = _naive_utc(payload.expires_at)
+    publish_now = payload.publish_now and (publish_at is None or publish_at <= datetime.utcnow())
+    ann = Announcement(
+        title=payload.title, body=payload.body, type=payload.type,
+        visibility=payload.visibility, delivery=payload.delivery,
+        publish_at=publish_at or (datetime.utcnow() if publish_now else None),
+        expires_at=expires_at, is_published=publish_now, created_by=current_user.id,
+    )
+    session.add(ann)
+    await session.commit()
+    await session.refresh(ann)
+    if publish_now:
+        await _deliver_announcement(session, ann)
+    await admin_service.record_audit(session, current_user, "announcement.create", "announcement", ann.id, details=ann.title, request=request)
+    return announcement_repo.to_dict(ann, current_user.username)
+
+
+@router.put("/announcements/{announcement_id}", response_model=schemas.AnnouncementRead)
+async def update_announcement(
+    announcement_id: int, payload: schemas.AnnouncementUpdate, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_announcements")),
+):
+    ann = await announcement_repo.get(session, announcement_id)
+    if not ann:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field in ("publish_at", "expires_at"):
+            value = _naive_utc(value)
+        setattr(ann, field, value)
+    await session.commit()
+    await session.refresh(ann)
+    await admin_service.record_audit(session, current_user, "announcement.update", "announcement", announcement_id, request=request)
+    return announcement_repo.to_dict(ann)
+
+
+@router.post("/announcements/{announcement_id}/publish", response_model=schemas.AnnouncementRead)
+async def publish_announcement(
+    announcement_id: int, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_announcements")),
+):
+    ann = await announcement_repo.get(session, announcement_id)
+    if not ann:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    ann.is_published = True
+    if ann.publish_at is None:
+        ann.publish_at = datetime.utcnow()
+    await session.commit()
+    await session.refresh(ann)
+    await _deliver_announcement(session, ann)
+    await admin_service.record_audit(session, current_user, "announcement.publish", "announcement", announcement_id, request=request)
+    return announcement_repo.to_dict(ann)
+
+
+@router.delete("/announcements/{announcement_id}")
+async def delete_announcement(
+    announcement_id: int, request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("manage_announcements")),
+):
+    ann = await announcement_repo.get(session, announcement_id)
+    if not ann:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    title = ann.title
+    await session.delete(ann)
+    await session.commit()
+    await admin_service.record_audit(session, current_user, "announcement.delete", "announcement", announcement_id, details=title, request=request)
+    return {"message": "Announcement deleted"}
+
+
+# ===========================================================================
+# Analytics
+# ===========================================================================
+def _parse_date(s: Optional[str], fallback: date) -> date:
+    if not s:
+        return fallback
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        return fallback
+
+
+@router.get("/analytics")
+async def analytics(
+    from_: Optional[str] = Query(None, alias="from"),
+    to: Optional[str] = None,
+    granularity: str = "day",
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("view_analytics")),
+):
+    today = date.today()
+    to_date = _parse_date(to, today)
+    from_date = _parse_date(from_, to_date - timedelta(days=29))
+    if from_date > to_date:
+        from_date, to_date = to_date, from_date
+    return await admin_repo.analytics(session, from_date, to_date, granularity)
+
+
+# ===========================================================================
+# Platform health
+# ===========================================================================
+@router.get("/system")
+async def system_health(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_permission("view_system")),
+):
+    # Database
+    db_ok = True
+    try:
+        await session.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+
+    # Host metrics (optional — psutil may not be installed)
+    cpu = mem = disk = None
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=0.1)
+        mem = psutil.virtual_memory().percent
+        disk = psutil.disk_usage("/").percent
+    except Exception:
+        pass
+
+    import os
+    return {
+        "backend": "ok",
+        "database": "ok" if db_ok else "down",
+        "websocket": {"status": "ok", "active_connections": len(active_connections)},
+        "app_version": "1.0",
+        "build_version": os.getenv("BUILD_VERSION", "dev"),
+        "uptime_seconds": int(time.time() - _PROCESS_START),
+        "cpu_percent": cpu,
+        "memory_percent": mem,
+        "disk_percent": disk,
+        "metrics_available": cpu is not None,
+    }

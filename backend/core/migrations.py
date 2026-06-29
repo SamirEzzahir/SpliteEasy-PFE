@@ -178,6 +178,12 @@ ADMIN_PERMISSIONS = [
     "view_support", "manage_support",
     "view_roles", "manage_roles",
     "view_audit_logs",
+    # Phase 2 — platform administration
+    "view_settings", "manage_settings",
+    "view_moderation", "manage_moderation",
+    "view_announcements", "manage_announcements",
+    "view_analytics",
+    "view_system",
 ]
 
 # Seeded roles. Permissions are stored as a JSON string array on roles.permissions.
@@ -190,12 +196,16 @@ SEED_ROLES = {
         "view_expenses", "manage_expenses",
         "view_settlements", "manage_settlements",
         "view_support", "manage_support",
+        "view_moderation", "manage_moderation",
+        "view_announcements",
+        "view_analytics",
         "view_audit_logs",
     ],
     "Support Agent": ["view_dashboard", "view_users", "view_support", "manage_support"],
     "Viewer": [
         "view_dashboard", "view_users", "view_groups",
         "view_expenses", "view_settlements", "view_support", "view_audit_logs",
+        "view_settings", "view_moderation", "view_announcements", "view_analytics", "view_system",
     ],
 }
 
@@ -248,6 +258,24 @@ async def seed_admin_roles():
     print("✅ Admin roles seeded!")
 
 
+async def sync_seeded_role_permissions():
+    """Re-apply the canonical permission set to the 5 seeded roles every startup.
+
+    seed_admin_roles only INSERTs (ON CONFLICT DO NOTHING), so an existing role
+    never gains permissions added in a later release. This idempotent UPDATE keeps
+    Admin/Moderator/Support Agent/Viewer in sync with SEED_ROLES as new modules add
+    permissions. Custom (non-seeded) roles are left untouched.
+    """
+    print("🔄 Syncing seeded role permissions...")
+    for name, perms in SEED_ROLES.items():
+        await _exec_params(
+            "UPDATE roles SET permissions = :perms WHERE name = :name",
+            {"name": name, "perms": json.dumps(perms)},
+            f"sync role '{name}'",
+        )
+    print("✅ Seeded role permissions synced!")
+
+
 async def bootstrap_super_admin():
     """Grant Super Admin to the user named in ADMIN_USERNAME (if set & present)."""
     admin_username = os.getenv("ADMIN_USERNAME")
@@ -286,6 +314,70 @@ async def migrate_support_tickets():
     print("✅ Support ticket migration check completed!")
 
 
+async def migrate_app_settings_table():
+    print("🔄 Checking app_settings table migration...")
+    await _exec(
+        """
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key VARCHAR(64) PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        "app_settings table",
+    )
+    print("✅ App settings table migration check completed!")
+
+
+async def migrate_moderation_reports_table():
+    print("🔄 Checking moderation_reports table migration...")
+    await _exec(
+        """
+        CREATE TABLE IF NOT EXISTS moderation_reports (
+            id SERIAL PRIMARY KEY,
+            reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            target_type VARCHAR(20) NOT NULL,
+            target_id INTEGER NOT NULL,
+            reason VARCHAR(20) NOT NULL,
+            description VARCHAR(2000),
+            status VARCHAR(20) DEFAULT 'open',
+            notes TEXT,
+            handled_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        "moderation_reports table",
+    )
+    await _exec("CREATE INDEX IF NOT EXISTS idx_modreports_status ON moderation_reports (status)")
+    print("✅ Moderation reports table migration check completed!")
+
+
+async def migrate_announcements_table():
+    print("🔄 Checking announcements table migration...")
+    await _exec(
+        """
+        CREATE TABLE IF NOT EXISTS announcements (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(200) NOT NULL,
+            body TEXT NOT NULL,
+            type VARCHAR(20) DEFAULT 'feature',
+            visibility VARCHAR(20) DEFAULT 'everyone',
+            delivery VARCHAR(20) DEFAULT 'banner',
+            publish_at TIMESTAMP,
+            expires_at TIMESTAMP,
+            is_published BOOLEAN DEFAULT FALSE,
+            notified BOOLEAN DEFAULT FALSE,
+            created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        "announcements table",
+    )
+    print("✅ Announcements table migration check completed!")
+
+
 async def migrate_legacy_users_is_admin():
     """Neutralize a legacy NOT-NULL `users.is_admin` column.
 
@@ -318,6 +410,12 @@ async def run_migrations():
     await migrate_admin_user_columns()
     await migrate_admin_audit_logs_table()
     await seed_admin_roles()
+    await sync_seeded_role_permissions()
     await bootstrap_super_admin()
     # Support tickets: categories, priority, assignment, status remap, reply thread.
     await migrate_support_tickets()
+    # Phase 2 — platform settings.
+    await migrate_app_settings_table()
+    # Phase 2 — moderation + announcements.
+    await migrate_moderation_reports_table()
+    await migrate_announcements_table()

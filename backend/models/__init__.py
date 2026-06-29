@@ -10,6 +10,9 @@ from .econome import JarStrategy, JarTransaction
 from .activity import ActivityLog
 from .notification import Notification
 from .admin import AdminAuditLog
+from .setting import AppSetting
+from .moderation import ModerationReport
+from .announcement import Announcement
 
 __all__ = [
     "Base",
@@ -24,4 +27,7 @@ __all__ = [
     "ActivityLog",
     "Notification",
     "AdminAuditLog",
+    "AppSetting",
+    "ModerationReport",
+    "Announcement",
 ]

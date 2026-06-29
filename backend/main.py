@@ -11,6 +11,19 @@ from backend import models  # This ensures all models are registered
 
 # Routers
 from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity, debts_loans, admin, support
+from backend.routers import settings as settings_router
+from backend.routers import reports as reports_router
+from backend.routers import announcements as announcements_router
+
+# Platform settings (cache + maintenance flag) and JWT helpers for the guard.
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from jose import jwt
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from backend.core import settings_store
+from backend.core.config import settings as app_config
+from backend.db import async_session
 
 app = FastAPI(title="SplitApp API", version="1.0")
 
@@ -66,12 +79,65 @@ else:
     allowed_origins = dev_origins
 
 app.add_middleware(
-    CORSMiddleware, 
+    CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], 
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Maintenance mode -------------------------------------------------------
+# Paths reachable even during maintenance: the admin area, auth, public settings
+# and the API docs. Everyone else gets a 503 unless they're an admin.
+_MAINTENANCE_ALLOW = ("/admin", "/auth", "/settings", "/docs", "/openapi.json", "/redoc")
+
+
+async def _request_is_admin(request: Request) -> bool:
+    """True if the request carries a valid token for a user with any admin role."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return False
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, app_config.JWT_SECRET, algorithms=[app_config.JWT_ALG])
+        username = payload.get("username")
+    except Exception:
+        return False
+    if not username:
+        return False
+    try:
+        async with async_session() as session:
+            user = (await session.execute(
+                select(models.User)
+                .where(models.User.username == username)
+                .options(selectinload(models.User.role))
+            )).scalar_one_or_none()
+    except Exception:
+        return False
+    if not user or not user.role or not user.role.permissions:
+        return False
+    try:
+        import json as _json
+        perms = _json.loads(user.role.permissions)
+    except Exception:
+        perms = []
+    return bool(perms)
+
+
+@app.middleware("http")
+async def maintenance_guard(request: Request, call_next):
+    if settings_store.get_bool("maintenance_mode") and request.method != "OPTIONS":
+        path = request.url.path
+        allowed = path == "/" or any(path.startswith(p) for p in _MAINTENANCE_ALLOW)
+        if not allowed and not (
+            settings_store.get_bool("maintenance_allow_admins") and await _request_is_admin(request)
+        ):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": settings_store.get("maintenance_message"), "maintenance": True},
+            )
+    return await call_next(request)
+
 
 # Health check
 @app.get("/")
@@ -92,6 +158,11 @@ async def on_startup():
     except Exception as e:
         print(f"Migration warning: {e}")
         print("   You may need to run migrations manually.")
+
+    # Load platform settings into the in-process cache (after migrations so the
+    # app_settings table exists).
+    await settings_store.load_settings()
+    print("Platform settings loaded.")
 
 
 @app.on_event("shutdown")
@@ -124,5 +195,8 @@ app.include_router(debts_loans.router, tags=["Debts & Loans"])
 app.include_router(econome.router, tags=["Econome"])
 app.include_router(admin.router, tags=["Admin"])
 app.include_router(support.router, tags=["Support"])
+app.include_router(settings_router.router, tags=["Settings"])
+app.include_router(reports_router.router, tags=["Moderation"])
+app.include_router(announcements_router.router, tags=["Announcements"])
 
  

@@ -5,11 +5,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, crud, auth
 from backend.db import get_session
 from backend.models import User
+from backend.core import settings_store
 
 router = APIRouter(prefix="/auth")
 
 @router.post("/register", response_model=schemas.UserRead)
 async def register(user: schemas.UserCreate, session: AsyncSession = Depends(get_session)):
+    # Respect the platform "registration enabled" + password-policy settings.
+    if not settings_store.get_bool("registration_enabled"):
+        raise HTTPException(status_code=403, detail="New registrations are currently disabled")
+    min_len = settings_store.get_int("password_min_length")
+    if len(user.password) < min_len:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {min_len} characters")
     if await crud.get_user_by_username(session, user.username):
         raise HTTPException(status_code=400, detail="Username already registered")
     if await crud.get_user_by_email(session, user.email):
@@ -52,7 +59,11 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), session: AsyncSessi
     user.last_login_at = datetime.utcnow()
     await session.commit()
 
-    token = auth.create_access_token(user.username, ver=user.token_version or 0)
+    minutes = settings_store.get_int("session_timeout_minutes") or None
+    token = auth.create_access_token(
+        user.username, ver=user.token_version or 0,
+        **({"minutes": minutes} if minutes else {}),
+    )
     return schemas.Token(access_token=token)
 
 

@@ -141,6 +141,9 @@ backend/
 | `ActivityLog` | Audit trail of user actions with target type and ID |
 | `Notification` | In-app notification — typed, linked, read/unread |
 | `AdminAuditLog` | Immutable record of an admin-panel action (admin, action, target, IP, time) |
+| `AppSetting` | A single platform setting (key/value); backs feature flags, maintenance & policy |
+| `ModerationReport` | A user report (target, reason, status, notes, handler) |
+| `Announcement` | A platform announcement (type, visibility, delivery, schedule) |
 
 ---
 
@@ -316,6 +319,19 @@ backend/
 |---|---|---|
 | GET | `/activity/` | Last 50 activity log entries |
 
+### Settings / Reports / Announcements (user-facing)
+| Method | Path | Description |
+|---|---|---|
+| GET | `/settings/public` | Safe subset of platform settings (identity, feature flags, maintenance status) |
+| POST | `/reports` | Submit a moderation report (notifies moderators) |
+| GET | `/announcements/active` | Active banner/popup announcements for the current user |
+
+> Platform settings live in the `app_settings` table and an in-process cache
+> (`core/settings_store.py`). **Maintenance mode** is enforced by a middleware in
+> `main.py`: when on, non-admin requests get `503` (admins still pass). Feature flags,
+> registration toggle, and password policy are read from the same store. See
+> [`splitea-nextjs/docs/platform-admin.md`](../splitea-nextjs/docs/platform-admin.md).
+
 ### Support (user) — `/support`
 The user-facing support portal. Tickets are stored in the `reclamations` table; the
 admin side manages them via `/admin/tickets`.
@@ -371,6 +387,20 @@ Full reference: [`splitea-nextjs/docs/admin-panel.md`](../splitea-nextjs/docs/ad
 | PUT | `/admin/roles/{id}` | `manage_roles` | Update role (name / permissions) |
 | DELETE | `/admin/roles/{id}` | `manage_roles` | Delete role |
 | GET | `/admin/audit-logs` | `view_audit_logs` | List audit entries (page, admin_id, action) |
+| GET | `/admin/settings` | `view_settings` | Full platform settings map |
+| PUT | `/admin/settings` | `manage_settings` | Update settings (cached; audited) |
+| GET | `/admin/reports` | `view_moderation` | List moderation reports (status/reason/target/q) |
+| GET | `/admin/reports/{id}` | `view_moderation` | Report detail |
+| POST | `/admin/reports/{id}/status` | `manage_moderation` | Set status (open/reviewing/dismissed/actioned) |
+| POST | `/admin/reports/{id}/notes` | `manage_moderation` | Save internal notes |
+| POST | `/admin/reports/{id}/warn` | `manage_moderation` | Warn the reported user (notification) |
+| GET | `/admin/announcements` | `view_announcements` | List announcements |
+| POST | `/admin/announcements` | `manage_announcements` | Create (optionally publish + fan out) |
+| PUT | `/admin/announcements/{id}` | `manage_announcements` | Update |
+| POST | `/admin/announcements/{id}/publish` | `manage_announcements` | Publish + deliver |
+| DELETE | `/admin/announcements/{id}` | `manage_announcements` | Delete |
+| GET | `/admin/analytics` | `view_analytics` | Time series + totals (from/to/granularity) |
+| GET | `/admin/system` | `view_system` | Health: services, version, uptime, host metrics |
 
 > Roles (Super Admin / Admin / Moderator / Support Agent / Viewer) are seeded on
 > startup. Set `ADMIN_USERNAME` to auto-grant Super Admin to an existing user.

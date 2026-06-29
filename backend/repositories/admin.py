@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from backend.models import (
     User, Group, Membership, Expense, Settlement, SettlementStatus, Reclamation,
-    ReclamationStatus, AdminAuditLog,
+    ReclamationStatus, AdminAuditLog, ModerationReport,
 )
 
 # Columns that the user list may be sorted by (whitelist guards against injection).
@@ -276,6 +276,73 @@ async def dashboard_stats(session: AsyncSession) -> dict:
         "signups_last_14d": await _daily_series(session, User, User.created_at),
         "expenses_last_14d": await _daily_series(session, Expense, Expense.created_at),
     }
+
+
+# ---------------------------------------------------------------------------
+# Analytics (date range + granularity)
+# ---------------------------------------------------------------------------
+def _bucket_start(d: date, gran: str) -> date:
+    if gran == "week":
+        return d - timedelta(days=d.weekday())
+    if gran == "month":
+        return d.replace(day=1)
+    return d
+
+
+def _next_bucket(d: date, gran: str) -> date:
+    if gran == "week":
+        return d + timedelta(days=7)
+    if gran == "month":
+        return (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return d + timedelta(days=1)
+
+
+def _bucket_label(d: date, gran: str) -> str:
+    return d.strftime("%Y-%m") if gran == "month" else d.strftime("%m-%d")
+
+
+async def analytics(session: AsyncSession, frm: date, to: date, granularity: str = "day") -> dict:
+    gran = granularity if granularity in ("day", "week", "month") else "day"
+    end_exclusive = datetime.combine(to, datetime.max.time())
+
+    # Ordered, zero-filled bucket skeleton (capped to keep payloads sane).
+    buckets: list[date] = []
+    b = _bucket_start(frm, gran)
+    last = _bucket_start(to, gran)
+    while b <= last and len(buckets) < 400:
+        buckets.append(b)
+        b = _next_bucket(b, gran)
+
+    async def series(date_col) -> list[dict]:
+        bucket_expr = func.cast(func.date_trunc(gran, date_col), Date)
+        rows = (await session.execute(
+            select(bucket_expr.label("b"), func.count().label("c"))
+            .where(date_col >= frm, date_col <= end_exclusive)
+            .group_by(bucket_expr)
+        )).all()
+        counts = {r.b: int(r.c) for r in rows}
+        return [{"label": _bucket_label(d, gran), "value": counts.get(d, 0)} for d in buckets]
+
+    async def total(model, date_col) -> int:
+        return (await session.execute(
+            select(func.count()).select_from(model).where(date_col >= frm, date_col <= end_exclusive)
+        )).scalar_one()
+
+    metrics = {
+        "users": (User, User.created_at),
+        "expenses": (Expense, Expense.created_at),
+        "groups": (Group, Group.created_at),
+        "settlements": (Settlement, Settlement.created_at),
+        "tickets": (Reclamation, Reclamation.created_at),
+        "reports": (ModerationReport, ModerationReport.created_at),
+    }
+    out_series: dict[str, list] = {}
+    out_totals: dict[str, int] = {}
+    for name, (model, col) in metrics.items():
+        out_series[name] = await series(col)
+        out_totals[name] = await total(model, col)
+
+    return {"granularity": gran, "series": out_series, "totals": out_totals}
 
 
 # ---------------------------------------------------------------------------
