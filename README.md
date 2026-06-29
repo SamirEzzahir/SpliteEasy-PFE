@@ -300,7 +300,7 @@ docker compose up --build
 | Service | Container port | Host port | Notes |
 |---|---|---|---|
 | `db` (PostgreSQL 16) | 5432 | `POSTGRES_PORT` (5432) | Data persists in the `pgdata` volume |
-| `backend` (FastAPI) | 8000 | `BACKEND_PORT` (8800) | Waits for the DB healthcheck before starting |
+| `backend` (FastAPI) | 8000 | `BACKEND_PORT` (8000) | Waits for the DB healthcheck before starting |
 | `web` (Next.js) | 3000 | `WEB_PORT` (3000) | Rewrites `/api/*` to the backend container |
 
 Then open `http://localhost:3000`. The backend creates tables and runs migrations on

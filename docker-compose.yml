@@ -35,10 +35,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Published as 8800 on the host to match the dev default and the browser
-    # WebSocket URL (ws://127.0.0.1:8800). Internally the container is on 8000.
+    # Published on the host as BACKEND_PORT (default 8000); the container always
+    # listens on 8000 internally. Note: the local dev workflow runs uvicorn on
+    # 8800 instead — see the root README "Installation" vs "Docker" sections.
     ports:
-      - "${BACKEND_PORT:-8800}:8000"
+      - "${BACKEND_PORT:-8000}:8000"
 
   web:
     build: ./splitea-nextjs
