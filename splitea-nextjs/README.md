@@ -21,11 +21,23 @@ Full-stack expense-splitting app. Next.js 14 (App Router) + TypeScript frontend 
 
 ## Run Locally
 
-```bash
-# 1. Start the FastAPI backend (defaults to http://127.0.0.1:8800)
-# See backend/README.md
+### Get the code
 
-# 2. Frontend
+```bash
+git clone https://github.com/SamirEzzahir/SpliteEasy-PFE.git
+cd SpliteEasy-PFE/splitea-nextjs
+# already cloned? grab the latest:  git checkout main && git pull origin main
+```
+
+> Requires **Node.js 18+** and npm.
+
+### Start it
+
+```bash
+# 1. Start the FastAPI backend first (defaults to http://127.0.0.1:8800)
+# See ../backend/README.md
+
+# 2. Frontend (from splitea-nextjs/)
 cp .env.example .env.local   # optional — defaults work for localhost
 npm install
 npm run dev

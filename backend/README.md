@@ -460,10 +460,22 @@ The `check_permission(permission)` dependency validates the current user's role 
 - Python 3.11+
 - PostgreSQL 16 (with the `pg_trgm` and `citext` extensions)
 
+### Clone from GitHub
+
+```bash
+git clone https://github.com/SamirEzzahir/SpliteEasy-PFE.git
+cd SpliteEasy-PFE
+# already cloned? grab the latest:  git checkout main && git pull origin main
+```
+
+> The backend is a Python **package** (`backend`). All commands below run from the
+> **repository root**, not from inside `backend/` — that's why uvicorn is launched as
+> `backend.main:app`.
+
 ### Install
 
 ```bash
-# From the project root (SplitEasy/)
+# From the repository root
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 source .venv/bin/activate     # Linux / Mac

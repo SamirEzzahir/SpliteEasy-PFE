@@ -188,11 +188,34 @@ SplitEasy/
 - **Python** 3.11+
 - **PostgreSQL** 16 (or use the Docker Compose setup below)
 
-### 1. Clone
+### 1. Get the code from GitHub
+
+Clone the repository and enter it:
 
 ```bash
-git clone <repository-url> SplitEasy
-cd SplitEasy
+git clone https://github.com/SamirEzzahir/SpliteEasy-PFE.git
+cd SpliteEasy-PFE
+```
+
+> Using SSH instead of HTTPS? `git clone git@github.com:SamirEzzahir/SpliteEasy-PFE.git`
+
+**To stay up to date** with the latest changes on `main`:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+**To contribute**, fork the repo on GitHub, clone your fork, add the original as
+`upstream`, and work on a feature branch:
+
+```bash
+git clone https://github.com/<your-username>/SpliteEasy-PFE.git
+cd SpliteEasy-PFE
+git remote add upstream https://github.com/SamirEzzahir/SpliteEasy-PFE.git
+git checkout -b feat/my-change
+# …make changes, commit…
+git push origin feat/my-change   # then open a Pull Request on GitHub
 ```
 
 ### 2. Configure PostgreSQL
