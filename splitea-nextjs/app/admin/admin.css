@@ -1,0 +1,185 @@
+/* Admin panel — scoped styles layered on top of the shared design system.
+   Reuses tokens (var(--…)) and shell classes (.app/.sidebar/.nav) from globals.css. */
+
+/* Small "Admin" badge next to the brand name in the sidebar. */
+.admin-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: rgba(122, 111, 255, 0.22);
+  color: #c4bdff;
+}
+
+/* Mobile top nav — hidden on desktop, shown when the sidebar collapses (≤1024px). */
+.admin-mtop { display: none; }
+
+@media (max-width: 1024px) {
+  .admin-mtop {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .admin-mtop-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .admin-mtop-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .admin-mtop-nav::-webkit-scrollbar { display: none; }
+  .admin-mtop-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--ink-2);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    text-decoration: none;
+  }
+  .admin-mtop-link.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+}
+
+/* Horizontal scroll wrapper so wide admin tables stay usable on small screens. */
+.admin-table-wrap { width: 100%; overflow-x: auto; }
+.admin-table-wrap .exp-table { min-width: 720px; }
+
+/* Desktop table vs. mobile card swap (DataTable with a mobileCard renderer). */
+.admin-desktop { display: block; }
+.admin-mobile { display: none; }
+@media (max-width: 760px) {
+  .admin-desktop { display: none; }
+  .admin-mobile { display: flex; flex-direction: column; gap: 10px; }
+}
+
+/* Toolbar above data tables: search + filters + actions. */
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.admin-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  min-width: 220px;
+  flex: 1;
+  max-width: 360px;
+}
+.admin-search input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13.5px;
+  width: 100%;
+  color: var(--ink);
+}
+.admin-search svg { color: var(--ink-4); flex-shrink: 0; }
+
+/* Status / role badges. */
+.admin-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-badge-pill.is-active   { background: var(--success-soft); color: var(--success); }
+.admin-badge-pill.is-suspended{ background: var(--warn-soft);    color: var(--warn); }
+.admin-badge-pill.is-banned   { background: var(--rose-soft);    color: var(--rose); }
+.admin-badge-pill.is-neutral  { background: var(--line-2);       color: var(--ink-3); }
+.admin-badge-pill.is-pending  { background: var(--warn-soft);    color: var(--warn); }
+.admin-badge-pill.is-accepted { background: var(--success-soft); color: var(--success); }
+.admin-badge-pill.is-rejected { background: var(--rose-soft);    color: var(--rose); }
+
+/* Row action buttons. */
+.admin-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.admin-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: 0.15s;
+}
+.admin-icon-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+.admin-icon-btn.danger:hover { color: var(--rose); border-color: var(--rose); background: var(--rose-soft); }
+
+/* Dashboard mini-chart card. */
+.admin-chart-card { padding: 18px; }
+.admin-chart-card h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 2px; }
+.admin-chart-card .sub { font-size: 12px; color: var(--ink-4); margin: 0 0 14px; }
+
+/* Permission matrix (roles editor). */
+.admin-perm-group { margin-bottom: 16px; }
+.admin-perm-group h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-4);
+  margin: 0 0 8px;
+}
+.admin-perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.admin-perm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.admin-perm-item.checked { border-color: var(--primary); background: var(--primary-soft); }
+
+/* Detail page: two-column layout collapses on small screens. */
+.admin-detail-grid { }
+@media (max-width: 880px) { .admin-detail-grid { grid-template-columns: 1fr !important; } }
+.admin-action-btn { justify-content: flex-start; width: 100%; }
+
+/* Detail page label/value grid. */
+.admin-kv { display: grid; grid-template-columns: 140px 1fr; gap: 10px 16px; font-size: 13.5px; }
+.admin-kv dt { color: var(--ink-4); }
+.admin-kv dd { margin: 0; color: var(--ink); font-weight: 500; }
+@media (max-width: 560px) { .admin-kv { grid-template-columns: 1fr; gap: 2px 0; } .admin-kv dd { margin-bottom: 8px; } }

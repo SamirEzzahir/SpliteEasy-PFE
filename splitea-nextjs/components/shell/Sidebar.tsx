@@ -5,6 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "@/components/Icon";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { isAdminUser } from "@/lib/api/admin";
+import { usePublicSettings } from "@/lib/public-settings";
+
+// Nav items gated by a feature flag are hidden when that flag is off.
+const NAV_FEATURE: Record<string, "support"> = { support: "support" };
 
 interface NavItem { id: string; label: string; icon: string; href: string; }
 
@@ -18,6 +23,7 @@ const NAV: NavItem[] = [
   { id: "balances",    label: "Balances",       icon: "money",     href: "/balances" },
   { id: "friends",     label: "Friends",        icon: "friends",   href: "/friends" },
   { id: "activity",    label: "Activity",       icon: "activity",  href: "/activity" },
+  { id: "support",     label: "Support",        icon: "chat",      href: "/support" },
   { id: "settings",    label: "Settings",       icon: "settings",  href: "/settings" },
 ];
 
@@ -29,6 +35,12 @@ interface SidebarProps {
 export default function Sidebar({ dark, onToggleDark }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { feature } = usePublicSettings();
+  const showAdmin = isAdminUser(user?.role);
+  const navItems = NAV.filter((it) => {
+    const flag = NAV_FEATURE[it.id];
+    return flag ? feature(flag) : true;
+  });
   const displayName = user?.full_name || user?.username || "Account";
   const initials = (user?.full_name || user?.username || "?")
     .split(" ")
@@ -45,7 +57,7 @@ export default function Sidebar({ dark, onToggleDark }: SidebarProps) {
         </div>
       </div>
       <nav className="nav">
-        {NAV.map((it) => {
+        {navItems.map((it) => {
           const active = pathname === it.href || pathname.startsWith(it.href + "/");
           return (
             <Link
@@ -58,6 +70,16 @@ export default function Sidebar({ dark, onToggleDark }: SidebarProps) {
             </Link>
           );
         })}
+
+        {showAdmin && (
+          <Link
+            href="/admin"
+            className={"nav-item" + (pathname.startsWith("/admin") ? " active" : "")}
+          >
+            <Icon name="shield" size={17} />
+            <span>Admin Panel</span>
+          </Link>
+        )}
       </nav>
 
       <div className="sb-bottom">

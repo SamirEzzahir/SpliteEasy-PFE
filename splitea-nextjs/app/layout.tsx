@@ -7,6 +7,7 @@ import { ToastContainer } from "react-toastify";
 import { AppProvider } from "@/lib/store";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { WSProvider } from "@/lib/ws-context";
+import { PublicSettingsProvider } from "@/lib/public-settings";
 import ConditionalShell from "@/components/shell/ConditionalShell";
 
 export const metadata: Metadata = {
@@ -20,9 +21,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <WSProvider>
-            <AppProvider>
-              <ConditionalShell>{children}</ConditionalShell>
-            </AppProvider>
+            <PublicSettingsProvider>
+              <AppProvider>
+                <ConditionalShell>{children}</ConditionalShell>
+              </AppProvider>
+            </PublicSettingsProvider>
           </WSProvider>
         </AuthProvider>
         <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme="colored" />

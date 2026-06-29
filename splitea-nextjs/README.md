@@ -224,6 +224,8 @@ Pages use **skeleton loading** (`components/Skeleton.tsx`) instead of fake place
 - Économé (Jar budgeting) — 6-jar strategy, income distribution, jar spending
 - Group chat — per-group real-time messaging over WebSocket (`components/chat/GroupChat.tsx`)
 - Notifications — real-time bell with WebSocket + REST fallback
+- Support — user ticket portal (`/support`) + admin queue, threaded replies, assignment, priority/status
+- Admin panel — `/admin` back-office (dashboard, users, groups, expenses, settlements, support, roles, audit logs) gated by RBAC
 - Settings — profile edit, password change, theme, currency preference, settlement mode
 - Dark mode — full dark theme via CSS custom properties
 - Mobile — responsive layout with bottom nav bar and FAB action sheet

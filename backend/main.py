@@ -10,7 +10,7 @@ from backend.routers import memberships, notifications
 from backend import models  # This ensures all models are registered
 
 # Routers
-from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity, debts_loans, admin
+from backend.routers import auth, users, groups, expenses, friends, stats, settle, activity, debts_loans, admin, support
 
 app = FastAPI(title="SplitApp API", version="1.0")
 
@@ -123,5 +123,6 @@ app.include_router(wallets.router, tags=["Wallets"])
 app.include_router(debts_loans.router, tags=["Debts & Loans"])
 app.include_router(econome.router, tags=["Econome"])
 app.include_router(admin.router, tags=["Admin"])
+app.include_router(support.router, tags=["Support"])
 
  

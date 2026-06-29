@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Boolean, Enum
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Boolean, Enum, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -19,10 +19,11 @@ class GlobalSettlementMode(enum.Enum):
 
 
 class ReclamationStatus(enum.Enum):
-    pending = "pending"
+    open = "open"
     in_progress = "in_progress"
+    waiting_user = "waiting_user"
     resolved = "resolved"
-    rejected = "rejected"
+    closed = "closed"
 
 
 class Role(Base):
@@ -48,6 +49,14 @@ class User(Base):
     profile_photo: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gender: Mapped[GenderEnum | None] = mapped_column(Enum(GenderEnum, native_enum=False), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Admin lifecycle state. is_active is kept in sync (active -> True, else False)
+    # for backward compatibility with code that still checks is_active.
+    status: Mapped[str] = mapped_column(String(20), default="active", server_default="active")
+    status_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Bumped to invalidate all of a user's outstanding JWTs ("force logout").
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     role_id: Mapped[int | None] = mapped_column(ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
     global_settlement_mode: Mapped[GlobalSettlementMode] = mapped_column(
         Enum(GlobalSettlementMode, native_enum=False), default=GlobalSettlementMode.separate
@@ -75,19 +84,44 @@ class User(Base):
     income_sources: Mapped[list["IncomeSource"]] = relationship("IncomeSource", back_populates="user", cascade="all, delete-orphan")
     debts: Mapped[list["Debt"]] = relationship("Debt", back_populates="user", cascade="all, delete-orphan")
     loans: Mapped[list["Loan"]] = relationship("Loan", back_populates="user", cascade="all, delete-orphan")
-    reclamations: Mapped[list["Reclamation"]] = relationship("Reclamation", back_populates="user", cascade="all, delete-orphan")
+    reclamations: Mapped[list["Reclamation"]] = relationship("Reclamation", foreign_keys="Reclamation.user_id", back_populates="user", cascade="all, delete-orphan")
     income_logs: Mapped[list["IncomeLog"]] = relationship("IncomeLog", back_populates="user", cascade="all, delete-orphan")
 
 
 class Reclamation(Base):
+    """A support ticket. (Table kept as ``reclamations`` for backward compatibility;
+    surfaced as a "ticket" throughout the API/UI.)"""
     __tablename__ = "reclamations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     subject: Mapped[str] = mapped_column(String(200), nullable=False)
     message: Mapped[str] = mapped_column(String(2000), nullable=False)
-    status: Mapped[ReclamationStatus] = mapped_column(Enum(ReclamationStatus, native_enum=False), default=ReclamationStatus.pending)
+    category: Mapped[str] = mapped_column(String(20), default="other", server_default="other")
+    priority: Mapped[str] = mapped_column(String(10), default="medium", server_default="medium")
+    status: Mapped[ReclamationStatus] = mapped_column(Enum(ReclamationStatus, native_enum=False), default=ReclamationStatus.open)
+    assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user: Mapped["User"] = relationship("User", back_populates="reclamations")
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id], back_populates="reclamations")
+    assignee: Mapped["User"] = relationship("User", foreign_keys=[assigned_to_id])
+    replies: Mapped[list["TicketReply"]] = relationship(
+        "TicketReply", back_populates="ticket", cascade="all, delete-orphan",
+        order_by="TicketReply.created_at",
+    )
+
+
+class TicketReply(Base):
+    """A single message in a support ticket thread (from the user or an admin)."""
+    __tablename__ = "ticket_replies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reclamation_id: Mapped[int] = mapped_column(ForeignKey("reclamations.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    ticket: Mapped["Reclamation"] = relationship("Reclamation", back_populates="replies")
+    author: Mapped["User"] = relationship("User", foreign_keys=[author_id])

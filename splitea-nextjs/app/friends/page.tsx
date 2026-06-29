@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import AddFriendModal from "@/components/modals/AddFriendModal";
+import ReportModal from "@/components/support/ReportModal";
 import { personById } from "@/lib/data";
 import { activityApi, type ApiActivityLog } from "@/lib/api/activity";
 import { friendsApi, type ApiFriendSuggestion } from "@/lib/api/friends";
@@ -49,6 +50,7 @@ export default function FriendsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [suggestions, setSuggestions] = useState<ApiFriendSuggestion[]>([]);
   const [activity, setActivity] = useState<ApiActivityLog[]>([]);
+  const [reportUser, setReportUser] = useState<{ id: number; name: string } | null>(null);
 
   const counts = {
     friend: friends.filter((f) => f.status === "friend").length,
@@ -195,6 +197,13 @@ export default function FriendsPage() {
                         <button className="btn-chat"><Icon name="chat" size={15} /></button>
                         <button
                           className="btn-more-i"
+                          title="Report user"
+                          onClick={() => setReportUser({ id: Number(f.personId), name })}
+                        >
+                          <Icon name="alertTriangle" size={15} />
+                        </button>
+                        <button
+                          className="btn-more-i"
                           title="Remove friend"
                           onClick={() => f.friendshipId && removeFriend(f.friendshipId)}
                         >
@@ -297,6 +306,14 @@ export default function FriendsPage() {
             addFriends(ids);
             setShowAdd(false);
           }}
+        />
+      )}
+      {reportUser && (
+        <ReportModal
+          targetType="user"
+          targetId={reportUser.id}
+          targetLabel={reportUser.name}
+          onClose={() => setReportUser(null)}
         />
       )}
     </>

@@ -55,13 +55,16 @@ backend/
 │   ├── debt.py           # Debt, Loan, DebtRepayment, LoanRepayment
 │   ├── econome.py        # JarStrategy, JarTransaction
 │   ├── activity.py       # ActivityLog
-│   └── notification.py   # Notification
+│   ├── notification.py   # Notification
+│   └── admin.py          # AdminAuditLog
 │
-├── schemas/              # Pydantic request/response schemas (mirrors models/)
+├── schemas/              # Pydantic request/response schemas (mirrors models/ + admin.py)
 ├── repositories/         # Data-access queries + balance computation
 │   ├── user.py, group.py, expense.py, finance.py, settlement.py, activity.py
+│   └── admin.py          # Admin list queries + dashboard aggregates + audit log
 ├── services/             # Domain services
-│   └── debt.py           # Cash-flow minimization algorithm for settlements
+│   ├── debt.py           # Cash-flow minimization algorithm for settlements
+│   └── admin.py          # Audit logging, user state transitions, force-logout
 │
 ├── routers/
 │   ├── auth.py           # POST /register, /login — GET /me
@@ -95,9 +98,10 @@ backend/
 ### Users & Auth
 | Model | Description |
 |---|---|
-| `User` | Core user — username, email, hashed password, profile, gender, role |
+| `User` | Core user — username, email, hashed password, profile, gender, role, admin lifecycle (`status`, `email_verified`, `last_login_at`, `token_version`) |
 | `Role` | RBAC role with a JSON string of permission keys |
-| `Reclamation` | Support ticket submitted by a user |
+| `Reclamation` | Support ticket — subject, message, category, priority, status, assignee (table: `reclamations`) |
+| `TicketReply` | One message in a ticket's conversation thread (user or admin) |
 
 ### Groups & Expenses
 | Model | Description |
@@ -136,6 +140,7 @@ backend/
 |---|---|
 | `ActivityLog` | Audit trail of user actions with target type and ID |
 | `Notification` | In-app notification — typed, linked, read/unread |
+| `AdminAuditLog` | Immutable record of an admin-panel action (admin, action, target, IP, time) |
 
 ---
 
@@ -311,18 +316,64 @@ backend/
 |---|---|---|
 | GET | `/activity/` | Last 50 activity log entries |
 
-### Admin — `/admin`
+### Support (user) — `/support`
+The user-facing support portal. Tickets are stored in the `reclamations` table; the
+admin side manages them via `/admin/tickets`.
+
 | Method | Path | Description |
 |---|---|---|
-| GET | `/admin/users` | List all users |
-| PUT | `/admin/users/{id}/role` | Assign role to user |
-| DELETE | `/admin/users/{id}` | Hard delete user |
-| POST | `/admin/roles` | Create role |
-| GET | `/admin/roles` | List roles |
-| PUT | `/admin/roles/{id}` | Update role |
-| DELETE | `/admin/roles/{id}` | Delete role |
-| GET | `/admin/reclamations` | List support tickets |
-| PUT | `/admin/reclamations/{id}` | Update ticket status |
+| POST | `/support/tickets` | Create a ticket (subject, message, category, priority) → notifies support staff |
+| GET | `/support/tickets` | List my tickets (page, status, category, q) |
+| GET | `/support/tickets/{id}` | My ticket detail + reply thread (owner-only) |
+| POST | `/support/tickets/{id}/replies` | Reply (reopens if waiting/resolved; notifies assignee/staff) |
+| POST | `/support/tickets/{id}/close` | Close my own ticket |
+
+Categories: `bug · feature · account · payment · other`. Priorities: `low · medium ·
+high`. Statuses: `open · in_progress · waiting_user · resolved · closed`.
+
+### Admin — `/admin`
+The admin back-office. Every endpoint is guarded by a specific permission via
+`require_permission(...)`; every write records an `AdminAuditLog` row. List endpoints
+return a `Paginated[T]` envelope (`items`, `total`, `page`, `page_size`, `pages`).
+Full reference: [`splitea-nextjs/docs/admin-panel.md`](../splitea-nextjs/docs/admin-panel.md).
+
+| Method | Path | Permission | Description |
+|---|---|---|---|
+| GET | `/admin/permissions` | `view_roles` | Permission catalog (for the roles editor) |
+| GET | `/admin/stats/overview` | `view_dashboard` | KPIs + 14-day signup/expense series |
+| GET | `/admin/stats/recent-activity` | `view_dashboard` | Recent admin audit entries |
+| GET | `/admin/users` | `view_users` | List users (page, q, status, role, sort) |
+| GET | `/admin/users/{id}` | `view_users` | User detail + related counts |
+| PUT | `/admin/users/{id}` | `manage_users` | Edit user profile fields |
+| POST | `/admin/users/{id}/status` | `manage_users` | Set status (active / suspended / banned) |
+| POST | `/admin/users/{id}/role` | `manage_users` | Assign / clear role |
+| POST | `/admin/users/{id}/reset-password` | `manage_users` | Reset password (revokes sessions) |
+| POST | `/admin/users/{id}/force-logout` | `manage_users` | Revoke all sessions (bumps token_version) |
+| POST | `/admin/users/{id}/verify-email` | `manage_users` | Mark email verified |
+| DELETE | `/admin/users/{id}` | `manage_users` | Permanently delete user |
+| GET | `/admin/groups` | `view_groups` | List groups (page, q) |
+| GET | `/admin/groups/{id}` | `view_groups` | Group detail |
+| POST | `/admin/groups/{id}/transfer-owner` | `manage_groups` | Transfer ownership |
+| DELETE | `/admin/groups/{id}` | `manage_groups` | Delete group |
+| GET | `/admin/expenses` | `view_expenses` | List expenses (page, q, group_id) |
+| DELETE | `/admin/expenses/{id}` | `manage_expenses` | Delete expense |
+| GET | `/admin/settlements` | `view_settlements` | List settlements (page, status) |
+| POST | `/admin/settlements/{id}/cancel` | `manage_settlements` | Cancel (mark rejected) |
+| GET | `/admin/tickets` | `view_support` | List tickets (page, status, priority, category, assigned_to_id, q) |
+| GET | `/admin/tickets/{id}` | `view_support` | Ticket detail + reply thread |
+| GET | `/admin/tickets-assignees` | `view_support` | Support staff a ticket can be assigned to |
+| POST | `/admin/tickets/{id}/replies` | `manage_support` | Reply (→ status `waiting_user`, notifies user) |
+| POST | `/admin/tickets/{id}/status` | `manage_support` | Change status (notifies user) |
+| POST | `/admin/tickets/{id}/priority` | `manage_support` | Change priority |
+| POST | `/admin/tickets/{id}/assign` | `manage_support` | Assign / unassign |
+| GET | `/admin/roles` | `view_roles` | List roles |
+| POST | `/admin/roles` | `manage_roles` | Create role |
+| PUT | `/admin/roles/{id}` | `manage_roles` | Update role (name / permissions) |
+| DELETE | `/admin/roles/{id}` | `manage_roles` | Delete role |
+| GET | `/admin/audit-logs` | `view_audit_logs` | List audit entries (page, admin_id, action) |
+
+> Roles (Super Admin / Admin / Moderator / Support Agent / Viewer) are seeded on
+> startup. Set `ADMIN_USERNAME` to auto-grant Super Admin to an existing user.
 
 ---
 

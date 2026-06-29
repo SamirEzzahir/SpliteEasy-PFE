@@ -8,6 +8,9 @@ import Topbar from "./Topbar";
 import Toast from "./Toast";
 import MobileBottomNav from "./MobileBottomNav";
 import { useApp } from "@/lib/store";
+import { usePublicSettings } from "@/lib/public-settings";
+import Icon from "@/components/Icon";
+import AnnouncementBanner from "./AnnouncementBanner";
 import CelebrateOverlay from "@/components/modals/CelebrateOverlay";
 import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
 import CreateGroupModal from "@/components/modals/CreateGroupModal";
@@ -29,6 +32,7 @@ function applyTheme(choice: ThemeChoice) {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { toast, celebrate, closeCelebrate, addExpense } = useApp();
+  const { settings } = usePublicSettings();
   const pathname = usePathname();
 
   // Detect if we're on a group detail page and extract the group id
@@ -74,6 +78,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar dark={effectiveTheme(themeChoice) === "dark"} onToggleDark={toggleDarkMode} />
       <div className="main">
         <Topbar />
+        {settings.maintenance_mode && (
+          <div
+            role="status"
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              margin: "16px 36px 0", padding: "10px 14px", borderRadius: 12,
+              background: "var(--warn-soft)", color: "var(--warn)",
+              border: "1px solid var(--warn)", fontSize: 13, fontWeight: 500,
+            }}
+          >
+            <Icon name="alertTriangle" size={16} />
+            <span><strong>Maintenance mode is ON.</strong> {settings.maintenance_message || "Only administrators can use the app right now."}</span>
+          </div>
+        )}
+        <AnnouncementBanner />
         <div className="page">{children}</div>
       </div>
 

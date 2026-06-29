@@ -12,6 +12,9 @@ export default function ConditionalShell({ children }: { children: React.ReactNo
   const pathname = usePathname() || "/";
   const isPublic = PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (isPublic) return <>{children}</>;
+  // The admin area ships its own shell + guard (app/admin/layout.tsx). Render it
+  // bare here so it isn't wrapped in the regular user sidebar/topbar.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return <>{children}</>;
   return (
     <RequireAuth>
       <AppShell>{children}</AppShell>

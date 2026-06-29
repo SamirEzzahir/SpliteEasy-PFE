@@ -46,7 +46,13 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), session: AsyncSessi
         )
         await crud.create_group(session, personal_group, user)
 
-    token = auth.create_access_token(user.username)
+    # Record last login for the admin panel, then mint a token bound to the
+    # user's current token_version (see core/auth.create_access_token).
+    from datetime import datetime
+    user.last_login_at = datetime.utcnow()
+    await session.commit()
+
+    token = auth.create_access_token(user.username, ver=user.token_version or 0)
     return schemas.Token(access_token=token)
 
 

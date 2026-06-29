@@ -1,3 +1,5 @@
+import json
+import os
 from sqlalchemy import text
 from backend.core.db import engine
 
@@ -12,6 +14,17 @@ async def _exec(sql: str, label: str = ""):
     try:
         async with engine.begin() as conn:
             await conn.execute(text(sql))
+        if label:
+            print(f"✅ {label}")
+    except Exception as e:
+        print(f"⚠️  Skipped ({label or sql[:40]}): {e}")
+
+
+async def _exec_params(sql: str, params: dict, label: str = ""):
+    """Like _exec but with bound parameters (safe for user-supplied values)."""
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text(sql), params)
         if label:
             print(f"✅ {label}")
     except Exception as e:
@@ -150,6 +163,145 @@ async def migrate_onboarding_completed():
     print("✅ Onboarding completed migration check completed!")
 
 
+# ---------------------------------------------------------------------------
+# Admin panel
+# ---------------------------------------------------------------------------
+
+# Canonical permission catalog. Keep in sync with the frontend permission matrix
+# and backend/README.md. "*" (wildcard) is reserved for Super Admin.
+ADMIN_PERMISSIONS = [
+    "view_dashboard",
+    "view_users", "manage_users",
+    "view_groups", "manage_groups",
+    "view_expenses", "manage_expenses",
+    "view_settlements", "manage_settlements",
+    "view_support", "manage_support",
+    "view_roles", "manage_roles",
+    "view_audit_logs",
+]
+
+# Seeded roles. Permissions are stored as a JSON string array on roles.permissions.
+SEED_ROLES = {
+    "Super Admin": ["*"],
+    "Admin": list(ADMIN_PERMISSIONS),
+    "Moderator": [
+        "view_dashboard", "view_users",
+        "view_groups", "manage_groups",
+        "view_expenses", "manage_expenses",
+        "view_settlements", "manage_settlements",
+        "view_support", "manage_support",
+        "view_audit_logs",
+    ],
+    "Support Agent": ["view_dashboard", "view_users", "view_support", "manage_support"],
+    "Viewer": [
+        "view_dashboard", "view_users", "view_groups",
+        "view_expenses", "view_settlements", "view_support", "view_audit_logs",
+    ],
+}
+
+
+async def migrate_admin_user_columns():
+    print("🔄 Checking admin user columns migration...")
+    await _exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'", "users.status")
+    # Backfill: disabled accounts become 'banned', everyone else 'active'.
+    await _exec("UPDATE users SET status = 'active' WHERE status IS NULL AND is_active = TRUE")
+    await _exec("UPDATE users SET status = 'banned' WHERE status IS NULL AND is_active = FALSE")
+    await _exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS status_reason VARCHAR(500)", "users.status_reason")
+    await _exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE", "users.email_verified")
+    await _exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP", "users.last_login_at")
+    await _exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 0", "users.token_version")
+    await _exec("UPDATE users SET token_version = 0 WHERE token_version IS NULL")
+    print("✅ Admin user columns migration check completed!")
+
+
+async def migrate_admin_audit_logs_table():
+    print("🔄 Checking admin_audit_logs table migration...")
+    await _exec(
+        """
+        CREATE TABLE IF NOT EXISTS admin_audit_logs (
+            id SERIAL PRIMARY KEY,
+            admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            action VARCHAR(100) NOT NULL,
+            target_type VARCHAR(50),
+            target_id INTEGER,
+            details TEXT,
+            ip VARCHAR(64),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        "admin_audit_logs table",
+    )
+    await _exec("CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_logs (admin_id)")
+    await _exec("CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs (action)")
+    await _exec("CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit_logs (created_at)")
+    print("✅ Admin audit logs table migration check completed!")
+
+
+async def seed_admin_roles():
+    print("🔄 Seeding admin roles...")
+    for name, perms in SEED_ROLES.items():
+        await _exec_params(
+            "INSERT INTO roles (name, permissions) VALUES (:name, :perms) ON CONFLICT (name) DO NOTHING",
+            {"name": name, "perms": json.dumps(perms)},
+            f"role '{name}'",
+        )
+    print("✅ Admin roles seeded!")
+
+
+async def bootstrap_super_admin():
+    """Grant Super Admin to the user named in ADMIN_USERNAME (if set & present)."""
+    admin_username = os.getenv("ADMIN_USERNAME")
+    if not admin_username:
+        return
+    await _exec_params(
+        "UPDATE users SET role_id = (SELECT id FROM roles WHERE name = 'Super Admin') "
+        "WHERE username = :username",
+        {"username": admin_username},
+        f"bootstrap Super Admin -> '{admin_username}'",
+    )
+
+
+async def migrate_support_tickets():
+    print("🔄 Checking support ticket (reclamations) migration...")
+    await _exec("ALTER TABLE reclamations ADD COLUMN IF NOT EXISTS category VARCHAR(20) DEFAULT 'other'", "reclamations.category")
+    await _exec("ALTER TABLE reclamations ADD COLUMN IF NOT EXISTS priority VARCHAR(10) DEFAULT 'medium'", "reclamations.priority")
+    await _exec("ALTER TABLE reclamations ADD COLUMN IF NOT EXISTS assigned_to_id INTEGER REFERENCES users(id) ON DELETE SET NULL", "reclamations.assigned_to_id")
+    # Remap legacy statuses to the new lifecycle.
+    await _exec("UPDATE reclamations SET status = 'open' WHERE status = 'pending'")
+    await _exec("UPDATE reclamations SET status = 'closed' WHERE status = 'rejected'")
+    await _exec(
+        """
+        CREATE TABLE IF NOT EXISTS ticket_replies (
+            id SERIAL PRIMARY KEY,
+            reclamation_id INTEGER NOT NULL REFERENCES reclamations(id) ON DELETE CASCADE,
+            author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            body TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        "ticket_replies table",
+    )
+    await _exec("CREATE INDEX IF NOT EXISTS idx_ticket_replies_reclamation_id ON ticket_replies (reclamation_id)")
+    print("✅ Support ticket migration check completed!")
+
+
+async def migrate_legacy_users_is_admin():
+    """Neutralize a legacy NOT-NULL `users.is_admin` column.
+
+    Older schemas had an `is_admin` flag on `users` that the current model no
+    longer maps (admin rights now come from roles; per-group admin lives on
+    `memberships.is_admin`). If the column lingers as NOT NULL without a default,
+    every INSERT that omits it (i.e. registration) fails. Give it a default and
+    drop the NOT NULL so inserts succeed. No-op if the column doesn't exist.
+    """
+    print("🔄 Checking legacy users.is_admin column...")
+    await _exec("ALTER TABLE users ALTER COLUMN is_admin SET DEFAULT FALSE", "users.is_admin default")
+    await _exec("ALTER TABLE users ALTER COLUMN is_admin DROP NOT NULL", "users.is_admin drop not null")
+    await _exec("UPDATE users SET is_admin = FALSE WHERE is_admin IS NULL")
+    print("✅ Legacy users.is_admin check completed!")
+
+
 async def run_migrations():
     await migrate_enum_columns_to_varchar()
     await migrate_settlements_table()
@@ -161,3 +313,11 @@ async def run_migrations():
     await migrate_group_messages_table()
     await migrate_preferred_currency()
     await migrate_onboarding_completed()
+    await migrate_legacy_users_is_admin()
+    # Admin panel: columns, audit log, role seeding, first-admin bootstrap.
+    await migrate_admin_user_columns()
+    await migrate_admin_audit_logs_table()
+    await seed_admin_roles()
+    await bootstrap_super_admin()
+    # Support tickets: categories, priority, assignment, status remap, reply thread.
+    await migrate_support_tickets()
