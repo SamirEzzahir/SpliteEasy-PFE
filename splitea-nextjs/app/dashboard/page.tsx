@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const money = (value: number) => fmt(value, userCurrency);
 
   const quickActions = [
+    { label: "Add Friends", icon: "friends", href: "/friends" },
     { label: "Add Expense", icon: "plus", href: "/expenses" },
     { label: "Create Group", icon: "groups", href: "/groups" },
     { label: "Settle Up", icon: "settle", href: "/settlements" },
@@ -206,7 +207,7 @@ export default function DashboardPage() {
       <section className="dash-bottom-grid dash-bottom-grid--single">
         <article className="dash-panel" data-tour="actions">
           <div className="dash-panel-head"><h2>Quick Actions</h2></div>
-          <div className="dash-actions-grid dash-actions-grid--4">
+          <div className="dash-actions-grid dash-actions-grid--5">
             {quickActions.map((action) => (
               <Link key={action.label} href={action.href} className="dash-action">
                 <Icon name={action.icon} size={22} />

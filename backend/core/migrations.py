@@ -289,6 +289,54 @@ async def bootstrap_super_admin():
     )
 
 
+async def seed_superuser_admin():
+    """Create a default 'Admin' superuser (password 'admin') if it doesn't exist.
+
+    Lets a fresh install log in immediately. Idempotent — skipped once the user
+    is present. Runs after seed_admin_roles so the 'Super Admin' role exists.
+    SECURITY: change this password after first login.
+    """
+    from backend.core.db import async_session
+    from backend.core.security import hash_password
+    from backend.models.user import User, Role
+    from sqlalchemy import select, func
+
+    print("🔄 Checking default superuser...")
+    try:
+        async with async_session() as session:
+            existing = (await session.execute(
+                select(User).where(func.lower(User.username) == "admin")
+            )).scalars().first()
+            if existing:
+                # Self-heal: earlier versions seeded an invalid ".local" email that
+                # Pydantic's EmailStr rejects (breaks /auth/me). Fix it in place.
+                if existing.email == "admin@spliteasy.local":
+                    existing.email = "admin@spliteasy.com"
+                    await session.commit()
+                    print("✅ Fixed default superuser email (.local → .com).")
+                else:
+                    print("✅ Default superuser already present.")
+                return
+            role = (await session.execute(
+                select(Role).where(Role.name == "Super Admin")
+            )).scalar_one_or_none()
+            session.add(User(
+                username="Admin",
+                email="admin@spliteasy.com",
+                password_hash=hash_password("admin"),
+                first_name="Admin",
+                is_active=True,
+                status="active",
+                email_verified=True,
+                role_id=role.id if role else None,
+            ))
+            await session.commit()
+            print("✅ Default superuser 'Admin' created (password: 'admin'). "
+                  "Change this password after first login!")
+    except Exception as e:
+        print(f"⚠️  Could not seed default superuser: {e}")
+
+
 async def migrate_support_tickets():
     print("🔄 Checking support ticket (reclamations) migration...")
     await _exec("ALTER TABLE reclamations ADD COLUMN IF NOT EXISTS category VARCHAR(20) DEFAULT 'other'", "reclamations.category")
@@ -412,6 +460,7 @@ async def run_migrations():
     await seed_admin_roles()
     await sync_seeded_role_permissions()
     await bootstrap_super_admin()
+    await seed_superuser_admin()
     # Support tickets: categories, priority, assignment, status remap, reply thread.
     await migrate_support_tickets()
     # Phase 2 — platform settings.

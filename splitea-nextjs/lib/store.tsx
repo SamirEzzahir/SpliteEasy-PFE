@@ -397,11 +397,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const friend = friends.find((f) => f.personId === personId);
     if (!friend) return;
     try {
+      // The backend always records from the current user → recipient, so we send
+      // the friend as to_user_id. (Quick "settle up" = you paying what you owe.)
       await settleApi.recordGlobal({
-        from_user_id: friend.balance < 0 ? user.id : Number(personId),
-        to_user_id: friend.balance < 0 ? Number(personId) : user.id,
+        to_user_id: Number(personId),
         amount: Math.abs(friend.balance),
-        description: "Settle up",
+        message: "Settle up",
       });
       const p = personById(personId);
       showToast("Settled up with " + p.name, "success");

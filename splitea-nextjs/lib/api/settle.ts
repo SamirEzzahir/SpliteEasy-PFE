@@ -28,16 +28,20 @@ export const settleApi = {
     return r.data;
   },
 
-  // Global
+  // Global (cross-group, between friends)
   async globalBalances(): Promise<ApiGlobalBalance[]> {
     const r = await api.get<ApiGlobalBalance[]>("/settle/global/balances");
     return r.data;
   },
+  // Simplified/suggested transfers from the current user's perspective.
+  async globalSuggested(): Promise<ApiSettlement[]> {
+    const r = await api.get<ApiSettlement[]>("/settle/global/settlements");
+    return r.data;
+  },
   async recordGlobal(payload: {
-    from_user_id: number;
     to_user_id: number;
     amount: number;
-    description?: string;
+    message?: string;
   }): Promise<ApiSettlement> {
     const r = await api.post<ApiSettlement>("/settle/global/record", payload);
     return r.data;
@@ -46,8 +50,12 @@ export const settleApi = {
     const r = await api.post<ApiSettlement>(`/settle/global/${id}/accept`);
     return r.data;
   },
-  async rejectGlobal(id: number): Promise<ApiSettlement> {
-    const r = await api.post<ApiSettlement>(`/settle/global/${id}/reject`);
+  async rejectGlobal(id: number, reason?: string): Promise<ApiSettlement> {
+    const r = await api.post<ApiSettlement>(`/settle/global/${id}/reject`, { reason: reason ?? null });
+    return r.data;
+  },
+  async resendGlobal(id: number, amount: number, toUserId: number, message?: string): Promise<ApiSettlement> {
+    const r = await api.post<ApiSettlement>(`/settle/global/${id}/resend`, { to_user_id: toUserId, amount, message });
     return r.data;
   },
   async globalHistory(): Promise<ApiSettlement[]> {

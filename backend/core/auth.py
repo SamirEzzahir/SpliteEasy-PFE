@@ -3,7 +3,7 @@ from jose import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from backend.core.config import settings
@@ -15,7 +15,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 async def authenticate(session: AsyncSession, username: str, password: str) -> User | None:
-    user = (await session.execute(select(User).where(User.username == username))).scalar_one_or_none()
+    # Case-insensitive login: "admin" and "Admin" resolve to the same account.
+    # .first() (not scalar_one_or_none) in case legacy data has usernames that
+    # differ only by case.
+    user = (await session.execute(
+        select(User).where(func.lower(User.username) == username.lower())
+    )).scalars().first()
     if user and verify_password(password, user.password_hash):
         if not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account Was Deleted")

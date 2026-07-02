@@ -10,6 +10,11 @@ RUN npm ci
 FROM node:20-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# next.config.mjs rewrites() are evaluated at BUILD time and baked into
+# routes-manifest.json — a runtime env var is too late. So the proxy target must
+# be present here, during `npm run build`. docker-compose passes it as a build arg.
+ARG BACKEND_PROXY_TARGET=http://backend:8000
+ENV BACKEND_PROXY_TARGET=$BACKEND_PROXY_TARGET
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

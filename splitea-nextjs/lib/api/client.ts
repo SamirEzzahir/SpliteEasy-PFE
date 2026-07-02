@@ -87,16 +87,23 @@ export function apiErrorMessage(err: unknown): string {
   return String(err);
 }
 
-// WebSocket base — strips /api prefix when proxied, otherwise mirrors API base.
+// WebSocket base — WS can't proxy through Next.js rewrites, so it always points
+// straight at the backend. Resolution order:
+//   1. NEXT_PUBLIC_WS_URL          — explicit override (recommended)
+//   2. NEXT_PUBLIC_API_URL → ws    — reuse the public API host
+//   3. derive from the page host   — works on any host the user reaches the app from
+// The dev backend listens on 8800 (uvicorn); override via NEXT_PUBLIC_WS_URL for
+// Docker/prod where the published port differs.
+const DEFAULT_WS_PORT = 8800;
+
 export function wsBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/^http/, "ws");
   }
-  // In dev: WS doesn't proxy through Next.js rewrites, so go straight to the
-  // backend. Read window.location to derive the same host the user is on.
   if (typeof window !== "undefined") {
-    const target = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8800";
-    return target;
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${window.location.hostname}:${DEFAULT_WS_PORT}`;
   }
-  return "ws://127.0.0.1:8800";
+  return `ws://127.0.0.1:${DEFAULT_WS_PORT}`;
 }

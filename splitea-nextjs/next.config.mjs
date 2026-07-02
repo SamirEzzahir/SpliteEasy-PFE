@@ -14,7 +14,9 @@ const nextConfig = {
     // When NEXT_PUBLIC_API_URL is empty, proxy /api/* to the local backend so
     // the frontend can talk to FastAPI without CORS headaches in development.
     if (process.env.NEXT_PUBLIC_API_URL) return [];
-    const target = process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8800";
+    // Fallback only — BACKEND_PROXY_TARGET is normally set in .env.local (dev)
+    // or by docker-compose (http://backend:8000). This default matches local dev.
+    const target = process.env.BACKEND_PROXY_TARGET || "http://backend:8000";
     return [
       { source: "/api/:path*", destination: `${target}/:path*` },
     ];

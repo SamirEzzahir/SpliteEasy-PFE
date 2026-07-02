@@ -124,6 +124,120 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
 
 :root[data-theme="dark"] .modal-backdrop{background:rgba(0,0,0,.58)}
 :root[data-theme="dark"] .dot{box-shadow:0 0 0 2px var(--surface)}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Dark-mode component coverage (dark-mode audit)
+   Two recurring bugs are fixed here, with light mode left untouched:
+   (1) controls/panels hardcode a light background (white / #fff / #fafafa) and
+       have no dark override → they render as glaring white blocks;
+   (2) "-soft" badges pair a translucent tint with a hardcoded dark text tone
+       (#047857, #92400e, …) → unreadable on a dark tint.
+   Everything below routes those through the dark tokens.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Panels & cards → card surface */
+:root[data-theme="dark"] .celebrate-card,
+:root[data-theme="dark"] .gd-hero-card,
+:root[data-theme="dark"] .fr-invite-card,
+:root[data-theme="dark"] .coming-soon,
+:root[data-theme="dark"] .split-opt,
+:root[data-theme="dark"] .jar-pick,
+:root[data-theme="dark"] .modal-f,
+:root[data-theme="dark"] .sl-row,
+:root[data-theme="dark"] .upload-box,
+:root[data-theme="dark"] .toggle-row,
+:root[data-theme="dark"] .alloc-banner{
+  background:var(--surface);
+  border-color:var(--line);
+  color:var(--ink);
+}
+
+/* Secondary / outline controls (white-with-border in light) → surface in dark */
+:root[data-theme="dark"] .preset,
+:root[data-theme="dark"] .stepper,
+:root[data-theme="dark"] .li-quick button,
+:root[data-theme="dark"] .view-toggle,
+:root[data-theme="dark"] .checkbox,
+:root[data-theme="dark"] .btn-more-i,
+:root[data-theme="dark"] .btn-decline,
+:root[data-theme="dark"] .btn-settle,
+:root[data-theme="dark"] .btn-add-sm{
+  background:var(--surface);
+  border-color:var(--line);
+}
+
+/* Raised icon badges — a white circle reads as glare in dark; lift with an
+   elevated tone and drop the white ring on the large detail badge */
+:root[data-theme="dark"] .group-hero-ic,
+:root[data-theme="dark"] .gd-icon-large{background:#1c2438}
+:root[data-theme="dark"] .gd-icon-large{border-color:#1c2438}
+
+/* Hover states that fell back to a light background */
+:root[data-theme="dark"] .dropdown:hover,
+:root[data-theme="dark"] .preset:hover,
+:root[data-theme="dark"] .jar-pick:hover,
+:root[data-theme="dark"] .split-opt:hover,
+:root[data-theme="dark"] .btn-more-i:hover{
+  background:#1c2438;
+  border-color:var(--line);
+}
+
+/* "-soft" success badges: keep the tint, use the bright color token for text */
+:root[data-theme="dark"] .pill-success,
+:root[data-theme="dark"] .tx-type.income,
+:root[data-theme="dark"] .group-balance-pill.owed,
+:root[data-theme="dark"] .cg-solo-note,
+:root[data-theme="dark"] .mem-row .paid-tag,
+:root[data-theme="dark"] .status-badge.friend,
+:root[data-theme="dark"] .st-pill.accepted,
+:root[data-theme="dark"] .notice.success{
+  color:var(--success);
+  border-color:transparent;
+}
+/* rose badges */
+:root[data-theme="dark"] .group-balance-pill.you-owe,
+:root[data-theme="dark"] .st-pill.rejected,
+:root[data-theme="dark"] .notice.error{
+  color:var(--rose);
+  border-color:transparent;
+}
+/* warn badges also hardcode a bright #fef3c7 fill — swap fill + text in dark */
+:root[data-theme="dark"] .status-badge.pending,
+:root[data-theme="dark"] .st-pill.pending,
+:root[data-theme="dark"] .st-amount-pill,
+:root[data-theme="dark"] .acct-role-pill{
+  background:var(--warn-soft);
+  color:var(--warn);
+  border-color:transparent;
+}
+/* primary "soft" note */
+:root[data-theme="dark"] .strat-note{color:var(--ink-2);border-color:var(--line)}
+
+/* rose-tinted boxes that hardcode a bright #fff1f2 fill + light border */
+:root[data-theme="dark"] .tx-type.expense,
+:root[data-theme="dark"] .auth-error,
+:root[data-theme="dark"] .alloc-banner.bad{
+  background:var(--rose-soft);
+  color:var(--rose);
+  border-color:transparent;
+}
+
+/* focused search input → primary border in dark (the input group rule
+   out-specifies the base :focus, so restate it here) */
+:root[data-theme="dark"] .search input:focus{border-color:var(--primary)}
+
+/* Remaining hover states that fell back to a light background — background only,
+   so per-component text/color rules are preserved */
+:root[data-theme="dark"] .tip-x:hover,
+:root[data-theme="dark"] .modal-x:hover,
+:root[data-theme="dark"] .stepper button:hover,
+:root[data-theme="dark"] .pag-btn:hover,
+:root[data-theme="dark"] .friend-row:hover,
+:root[data-theme="dark"] .chip-x:hover,
+:root[data-theme="dark"] .notif-row:hover{
+  background:#1c2438;
+}
+
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
@@ -149,7 +263,7 @@ input,select,textarea{font-family:inherit}
 .topbar{display:flex;align-items:center;gap:16px;padding:14px 36px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:30}
 .search{flex:1;max-width:520px;position:relative}
 .search input{width:100%;background:#f4f4f7;border:1px solid transparent;border-radius:10px;padding:9px 14px 9px 38px;font-size:13.5px;color:var(--ink);outline:none;transition:.15s}
-.search input:focus{background:white;border-color:var(--line);box-shadow:0 0 0 3px var(--primary-soft)}
+.search input:focus{background:white;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
 .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-4)}
 .topbar-spacer{flex:1}
 .icon-btn{position:relative;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:white;display:grid;place-items:center;color:var(--ink-2)}
@@ -168,18 +282,23 @@ input,select,textarea{font-family:inherit}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:600;border:1px solid transparent;transition:.15s;white-space:nowrap}
 .btn svg{width:15px;height:15px;stroke-width:2}
 .btn-primary{background:var(--primary);color:white;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 4px 12px rgba(91,78,240,.3)}
-.btn-primary:hover{background:var(--primary-2)}
+.btn-primary:hover{background:var(--primary-2);transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 8px 20px rgba(91,78,240,.4)}
+.btn-primary:active{transform:translateY(0);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 2px 6px rgba(91,78,240,.2)}
 .btn-secondary{background:white;color:var(--ink);border-color:var(--line)}
-.btn-secondary:hover{background:#fafafa;border-color:#dcdee5}
+.btn-secondary:hover{background:#fafafa;border-color:#dcdee5;transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.btn-secondary:active{transform:translateY(0)}
 .btn-ghost{background:transparent;color:var(--ink-2)}
 .btn-ghost:hover{background:#f1f2f6}
+/* focus-visible rings — keyboard a11y (mouse clicks stay clean) */
+.btn:focus-visible,.icon-btn:focus-visible,.dropdown:focus-visible,
+.nav-item:focus-visible,.tab:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
 /* cards */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
 .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:24px}
 .stat{padding:18px 20px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
 .stat-h{display:flex;align-items:center;justify-content:space-between;color:var(--ink-3);font-size:13px;font-weight:500}
-.stat .v{font-size:26px;font-weight:600;letter-spacing:-0.02em;color:var(--success);margin-top:2px}
+.stat .v{font-size:32px;font-weight:700;letter-spacing:-0.02em;color:var(--success);margin-top:4px}
 .stat-sub{font-size:12.5px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:#f4f4f7;color:var(--ink-2);font-size:12px;font-weight:500;border:1px solid var(--line)}
 .pill svg{width:12px;height:12px}
@@ -443,7 +562,7 @@ table.tx{width:100%;border-collapse:collapse}
 .ui-stat-ic{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}
 .ui-stat-body{min-width:0}
 .ui-stat-lbl{font-size:12.5px;color:var(--ink-3);font-weight:500}
-.ui-stat-val{font-size:21px;font-weight:700;letter-spacing:-.02em;margin-top:1px;color:var(--ink)}
+.ui-stat-val{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:3px;color:var(--ink)}
 .ui-stat-sub{font-size:11.5px;color:var(--ink-3);margin-top:5px;display:flex;align-items:center;gap:4px}
 
 /* Canonical empty state */
@@ -632,9 +751,11 @@ table.tx{width:100%;border-collapse:collapse}
 .group-visual{height:150px;position:relative;border-radius:20px 20px 0 0;background-size:cover;background-position:center;overflow:visible}
 .group-card-modern.list .group-visual{height:100%;min-height:110px;border-radius:20px 0 0 20px}
 .group-visual::after,.gd-hero-img.modern::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,15,26,.08),rgba(11,15,26,.36))}
-.group-type-pill,.group-selected-pill{position:absolute;z-index:2;top:12px;left:12px;border-radius:999px;padding:5px 10px;background:rgba(255,255,255,.88);backdrop-filter:blur(12px);color:var(--ink);font-size:11px;font-weight:800}
+/* Glass chips sit on the cover photo (always light), so the foreground is
+   pinned dark in both themes — var(--ink) would flip to white and vanish. */
+.group-type-pill,.group-selected-pill{position:absolute;z-index:2;top:12px;left:12px;border-radius:999px;padding:5px 10px;background:rgba(255,255,255,.88);backdrop-filter:blur(12px);color:#0b0f1a;font-size:11px;font-weight:800}
 .group-selected-pill{left:auto;right:52px;background:rgba(91,78,240,.92);color:#fff}
-.group-menu-btn{position:absolute;z-index:5;top:11px;right:11px;width:32px;height:32px;border-radius:10px;border:0;background:rgba(255,255,255,.88);color:var(--ink);display:grid;place-items:center;backdrop-filter:blur(12px)}
+.group-menu-btn{position:absolute;z-index:5;top:11px;right:11px;width:32px;height:32px;border-radius:10px;border:0;background:rgba(255,255,255,.88);color:#0b0f1a;display:grid;place-items:center;backdrop-filter:blur(12px)}
 .group-menu-btn.detail{top:12px;right:12px}
 .group-menu{position:absolute;z-index:200;top:48px;right:10px;width:190px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg)}
 .group-menu button{width:100%;border:0;background:transparent;display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;color:var(--ink-2);font-size:12.5px;font-weight:700;text-align:left}
@@ -1122,9 +1243,7 @@ table.tx{width:100%;border-collapse:collapse}
 .settle-inline-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .settle-inline-row .tbl-actions{margin-left:auto}
 .tbl-actions{display:flex;align-items:center;gap:6px}
-.tbl-act{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--ink-2);cursor:pointer;transition:.12s}
-.tbl-act:hover{background:#f1f2f6;color:var(--ink);border-color:#d4d7e0}
-.tbl-act.danger:hover{background:#fff1f2;color:var(--rose);border-color:#fecaca}
+/* .tbl-act base/hover defined once, tokenized, further below (search ".tbl-act") */
 /* More menu on mobile (groups detail page) */
 .gx-more-wrap{position:relative}
 .gx-more-backdrop{position:fixed;inset:0;z-index:40}
@@ -1285,7 +1404,8 @@ table.tx{width:100%;border-collapse:collapse}
 .dash-settle-list span{display:flex;align-items:center;gap:9px;color:var(--ink-2);font-size:12.5px;font-weight:700}.dash-settle-list b{color:var(--primary)}.dash-settle-list .pos{color:var(--success)}.dash-settle-list .neg{color:var(--rose)}
 .dash-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .dash-actions-grid--4{grid-template-columns:repeat(4,1fr)}
-@media(max-width:720px){.dash-actions-grid--4{grid-template-columns:repeat(2,1fr)}}
+.dash-actions-grid--5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:720px){.dash-actions-grid--4,.dash-actions-grid--5{grid-template-columns:repeat(2,1fr)}}
 .dash-action{min-height:82px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#fff,#fbfcff);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--primary);font-weight:800;font-size:11.5px;text-align:center;transition:.15s}
 .dash-action:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
 :root[data-theme="dark"] .dash-action{background:linear-gradient(180deg,var(--surface),var(--surface))}
@@ -1478,10 +1598,10 @@ table.tx{width:100%;border-collapse:collapse}
 .gx-stat .sub{font-size:11.5px;color:var(--ink-4)}
 
 .tbl-actions{display:inline-flex;gap:6px}
-.tbl-act{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--ink-2);cursor:pointer;transition:.15s}
-.tbl-act:hover{background:#fafbfc;color:var(--ink)}
-.tbl-act.danger{color:var(--rose);border-color:#fecaca}
-.tbl-act.danger:hover{background:#fff1f2}
+.tbl-act{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--ink-2);cursor:pointer;transition:.15s}
+.tbl-act:hover{background:var(--line-2);color:var(--ink);border-color:var(--line)}
+.tbl-act.danger{color:var(--rose)}
+.tbl-act.danger:hover{background:var(--rose-soft);color:var(--rose);border-color:transparent}
 
 @media (max-width:1280px){
   .stat-grid-5{grid-template-columns:repeat(2,1fr)}

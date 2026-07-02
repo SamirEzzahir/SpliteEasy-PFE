@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from backend.models import User, Role
 from backend.schemas import UserCreate, UserRead
@@ -69,4 +69,9 @@ async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
 
 
 async def get_user_by_username(session: AsyncSession, username: str) -> User | None:
-    return (await session.execute(select(User).where(User.username == username))).scalar_one_or_none()
+    # Case-insensitive so registration rejects case-duplicate usernames
+    # ("admin" vs "Admin") and lookups match regardless of case. .first()
+    # tolerates any legacy rows that already differ only by case.
+    return (await session.execute(
+        select(User).where(func.lower(User.username) == username.lower())
+    )).scalars().first()

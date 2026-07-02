@@ -1,9 +1,21 @@
+import sys
+
+# Startup/migration logs contain emoji (🔄/✅). On a Windows console the default
+# cp1252 codec raises UnicodeEncodeError on those, which would abort the whole
+# migration chain. Force UTF-8 so logging can never break migrations.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.routers import dashboard, econome, income_types, incomes, wallets, transactions
 from backend.db import engine, Base, get_session
+from backend.core.db import ensure_database_exists
 from backend.routers import memberships, notifications
 
 # Import models to ensure they are registered with Base.metadata
@@ -146,6 +158,8 @@ async def health():
 
 @app.on_event("startup")
 async def on_startup():
+    # Create the database itself if it doesn't exist yet (fresh Postgres server).
+    await ensure_database_exists()
     # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -163,6 +177,16 @@ async def on_startup():
     # app_settings table exists).
     await settings_store.load_settings()
     print("Platform settings loaded.")
+
+    # Optional: populate a rich demo dataset (login: demo / demo). Off by default
+    # so production stays clean; enable with SEED_DEMO=1. Idempotent — no-op once
+    # the demo user exists (see backend/seed_demo.py).
+    if os.getenv("SEED_DEMO", "").lower() in ("1", "true", "yes"):
+        try:
+            from backend.seed_demo import seed_demo
+            await seed_demo(force=os.getenv("SEED_DEMO_FORCE", "").lower() in ("1", "true", "yes"))
+        except Exception as e:
+            print(f"Demo seed warning: {e}")
 
 
 @app.on_event("shutdown")

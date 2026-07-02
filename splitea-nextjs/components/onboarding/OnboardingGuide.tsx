@@ -19,7 +19,11 @@ import SpotlightTour, { type TourStep } from "./SpotlightTour";
 const TOUR_SELECTORS = ['[data-tour="stats"]', '[data-tour="owes"]', '[data-tour="actions"]', '[data-tour="help"]'];
 
 const HIDE_CHECKLIST_KEY = "spliteasy.onboard.hideChecklist";
-const STEP4_KEY = "spliteasy.onboard.step4Done";
+// The final "Settle up" step can't be auto-detected from data, so it's marked
+// done locally once the user visits it. Key kept as step4Done for continuity.
+const SETTLE_STEP_KEY = "spliteasy.onboard.step4Done";
+// Key of the manual "Settle up" step (last in the list).
+const SETTLE_STEP = 5;
 
 function useLang(): string {
   const [lang, setLang] = useState<string>("en");
@@ -47,7 +51,7 @@ export default function OnboardingGuide() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [checklistHidden, setChecklistHidden] = useState(true);
-  const [step4Done, setStep4Done] = useState(false);
+  const [settleDone, setSettleDone] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const tourSteps: TourStep[] = t.tourSteps.map((s, idx) => ({
@@ -61,7 +65,7 @@ export default function OnboardingGuide() {
   // Initialise local UI flags
   useEffect(() => {
     setChecklistHidden(localStorage.getItem(HIDE_CHECKLIST_KEY) === "1");
-    setStep4Done(localStorage.getItem(STEP4_KEY) === "1");
+    setSettleDone(localStorage.getItem(SETTLE_STEP_KEY) === "1");
   }, []);
 
   // Auto-open the welcome modal once, on first login
@@ -77,16 +81,16 @@ export default function OnboardingGuide() {
   }, []);
 
   // ── Data-derived checklist state ──────────────────────────────────────────────
-  const s1 = groups.length > 0;
-  const s2 = groups.some((g) => g.memberIds.length > 1) ||
-    friends.some((f) => f.status === "friend");
-  const s3 = expenses.length > 0;
-  const s4 = step4Done;
+  const sFriends = friends.some((f) => f.status === "friend");
+  const sGroup = groups.length > 0;
+  const sMembers = groups.some((g) => g.memberIds.length > 1);
+  const sExpense = expenses.length > 0;
   const steps = [
-    { key: 1, done: s1, title: t.step1Title, desc: t.step1Desc, icon: "groups", href: "/groups" },
-    { key: 2, done: s2, title: t.step2Title, desc: t.step2Desc, icon: "friends", href: "/friends" },
-    { key: 3, done: s3, title: t.step3Title, desc: t.step3Desc, icon: "expense", href: "/expenses" },
-    { key: 4, done: s4, title: t.step4Title, desc: t.step4Desc, icon: "settle", href: "/settlements" },
+    { key: 1, done: sFriends, title: t.step1Title, desc: t.step1Desc, icon: "friends", href: "/friends" },
+    { key: 2, done: sGroup,   title: t.step2Title, desc: t.step2Desc, icon: "groups",  href: "/groups" },
+    { key: 3, done: sMembers, title: t.step3Title, desc: t.step3Desc, icon: "friends", href: "/groups" },
+    { key: 4, done: sExpense, title: t.step4Title, desc: t.step4Desc, icon: "expense", href: "/expenses" },
+    { key: 5, done: settleDone, title: t.step5Title, desc: t.step5Desc, icon: "settle", href: "/settlements" },
   ];
   const doneCount = steps.filter((x) => x.done).length;
 
@@ -107,7 +111,7 @@ export default function OnboardingGuide() {
   const closeWelcome = async () => { setShowWelcome(false); await markSeen(); };
 
   const goStep = (href: string, key: number) => {
-    if (key === 4) { localStorage.setItem(STEP4_KEY, "1"); setStep4Done(true); }
+    if (key === SETTLE_STEP) { localStorage.setItem(SETTLE_STEP_KEY, "1"); setSettleDone(true); }
     setShowWelcome(false);
     router.push(href);
   };
@@ -150,7 +154,7 @@ export default function OnboardingGuide() {
                 <button className="btn btn-secondary" onClick={() => { void markSeen(); startTour(); }} disabled={saving}>
                   {t.takeTour}
                 </button>
-                <button className="btn btn-primary" onClick={() => { void markSeen(); goStep("/groups", 1); }} disabled={saving}>
+                <button className="btn btn-primary" onClick={() => { void markSeen(); goStep("/friends", 1); }} disabled={saving}>
                   {t.start} <Icon name="chevR" size={14} />
                 </button>
               </div>

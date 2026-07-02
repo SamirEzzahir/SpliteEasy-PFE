@@ -32,6 +32,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@db:5432/${POSTGRES_DB:-spliteasy_db}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # Auto-load the demo dataset (login: demo / demo) on first startup.
+      # Idempotent: only seeds once, then no-ops. Set to 0 to disable.
+      SEED_DEMO: ${SEED_DEMO:-1}
     depends_on:
       db:
         condition: service_healthy
@@ -42,12 +45,14 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
 
   web:
-    build: ./splitea-nextjs
+    build:
+      context: ./splitea-nextjs
+      args:
+        # Next.js rewrites /api/* → backend are baked at BUILD time, so the proxy
+        # target must be passed as a build arg (a runtime env var is too late).
+        BACKEND_PROXY_TARGET: http://backend:8000
     image: spliteasy-web
     restart: unless-stopped
-    environment:
-      # Next.js rewrites /api/* to the backend container (server-side).
-      BACKEND_PROXY_TARGET: http://backend:8000
     depends_on:
       - backend
     ports:
