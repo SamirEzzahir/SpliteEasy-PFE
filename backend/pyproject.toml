@@ -1,0 +1,26 @@
+# Tooling configuration for the SplitEasy backend.
+#
+# Dependency management intentionally stays in requirements.txt (runtime) and
+# requirements-dev.txt (tools). This file ONLY configures developer tools — it
+# has no [project]/[build-system] table, so it does not change how the app is
+# installed or run.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["alembic/versions", ".venv"]
+
+[tool.ruff.lint]
+# Conservative rule set — real-bug checks + import sorting + light modernization.
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # line length is handled by the formatter
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = "alembic/versions"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

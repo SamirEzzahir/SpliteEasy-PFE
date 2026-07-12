@@ -31,16 +31,16 @@ Every screen is built to answer one question in five seconds:
 - **Support / ticketing** — a two-sided system: users raise & follow tickets at
   `/support` (category, priority, threaded replies, close); staff manage them in the
   admin queue (reply, assign, set priority/status, resolve/reopen). Notifications keep
-  both sides in the loop. See [`splitea-nextjs/docs/support.md`](splitea-nextjs/docs/support.md).
+  both sides in the loop. See [`frontend/docs/support.md`](frontend/docs/support.md).
 - **Admin panel** — a dedicated `/admin` back-office: dashboard with KPIs & trend
   charts, user management (suspend/ban, roles, reset password, force logout), group /
   expense / settlement management, a support center, an RBAC roles editor, and an
-  immutable audit log. See [`splitea-nextjs/docs/admin-panel.md`](splitea-nextjs/docs/admin-panel.md).
+  immutable audit log. See [`frontend/docs/admin-panel.md`](frontend/docs/admin-panel.md).
 - **Platform administration** — `/admin/settings` (app identity, **feature flags**,
   auth/password policy, **maintenance mode** via middleware), `/admin/moderation`
   (user reports → review/warn/suspend), `/admin/announcements` (banner/popup/notification),
   `/admin/analytics` (growth charts), and `/admin/system` (service health, uptime, host
-  metrics). See [`splitea-nextjs/docs/platform-admin.md`](splitea-nextjs/docs/platform-admin.md).
+  metrics). See [`frontend/docs/platform-admin.md`](frontend/docs/platform-admin.md).
 - **Dark mode** — full light/dark theming via CSS custom properties.
 - **Responsive design** — desktop sidebar collapses to a mobile bottom nav with an
   action-sheet FAB; skeleton loading states throughout.
@@ -53,7 +53,7 @@ Every screen is built to answer one question in five seconds:
 
 ## Tech Stack
 
-### Frontend (`splitea-nextjs/`)
+### Frontend (`frontend/`)
 
 | Tech | Purpose |
 |---|---|
@@ -94,19 +94,24 @@ Every screen is built to answer one question in five seconds:
 
 ```
 SplitEasy/
-├── backend/                 # FastAPI application (package: `backend`)
-│   ├── main.py              # App entry — CORS, router registration, startup/shutdown
-│   ├── core/                # config, db engine/session, auth, security, migrations
-│   ├── models/              # SQLAlchemy models (one module per domain)
-│   ├── schemas/             # Pydantic request/response schemas
-│   ├── repositories/        # Data-access queries & balance logic
-│   ├── services/            # Domain services (e.g. debt minimization)
-│   ├── routers/             # API route handlers (auth, groups, expenses, settle, …)
-│   ├── auth.py, db.py, …    # Thin compatibility shims re-exporting from core/
+├── backend/                 # FastAPI service
+│   ├── app/                 # Application package (import root: `app`)
+│   │   ├── main.py          # App entry — CORS, router registration, startup/shutdown
+│   │   ├── core/            # config, db engine/session, auth, security, migrations
+│   │   ├── models/          # SQLAlchemy models (one module per domain)
+│   │   ├── schemas/         # Pydantic request/response schemas
+│   │   ├── repositories/    # Data-access queries & balance logic
+│   │   ├── services/        # Domain services (e.g. debt minimization)
+│   │   ├── routers/         # API route handlers (auth, groups, expenses, settle, …)
+│   │   ├── seed_demo.py     # Optional demo dataset seeder (SEED_DEMO=1)
+│   │   └── auth.py, db.py, … # Thin compatibility shims re-exporting from core/
+│   ├── alembic/             # DB migrations (async env.py, versions/)
+│   ├── alembic.ini
+│   ├── tests/               # Backend tests
 │   ├── requirements.txt
 │   └── Dockerfile
 │
-├── splitea-nextjs/          # Next.js 14 web client
+├── frontend/          # Next.js 14 web client
 │   ├── app/                 # App Router pages (login, groups, expenses, jars, …)
 │   ├── components/          # Shell, modals, UI primitives, charts, chat
 │   ├── lib/                 # API client, mappers, types, stores, formatting
@@ -114,19 +119,21 @@ SplitEasy/
 │   ├── docs/                # Design system + page-level documentation
 │   └── Dockerfile
 │
-├── postgres/                # Dockerized PostgreSQL 16 + init scripts
-│   ├── Dockerfile
-│   └── init/01-init.sql     # Enables pg_trgm & citext on first volume creation
+├── database/                # PostgreSQL image + operational artifacts
+│   ├── Dockerfile           # postgres:16-alpine
+│   ├── init/01-init.sql     # Enables pg_trgm & citext on first init
+│   ├── data/                # Live PG data (bind mount — gitignored)
+│   └── backups/ seeds/ scripts/
 │
 ├── docker-compose.yml       # Full stack: db + backend + web
 ├── .env.example             # Copy to .env for Docker Compose
 └── README.md
 ```
 
-> The backend was migrated from a flat-file layout to packages (`core/`, `models/`,
-> `schemas/`, `repositories/`, `services/`). The remaining single-file modules at the
-> backend root (`auth.py`, `config.py`, `db.py`, `crud.py`, etc.) are **compatibility
-> shims** that re-export from those packages.
+> The backend lives in the `app/` package (`app.main:app`). Alongside the sub-packages
+> (`core/`, `models/`, `schemas/`, `repositories/`, `services/`, `routers/`), the
+> single-file modules in `app/` (`auth.py`, `config.py`, `db.py`, `crud.py`, etc.) are
+> **compatibility shims** that re-export from those packages.
 
 ---
 
@@ -159,7 +166,7 @@ SplitEasy/
 - The web client talks to `/api` which Next.js rewrites to the backend (dev) or to a
   full URL via `NEXT_PUBLIC_API_URL` (prod).
 - Tables are created on backend startup via `Base.metadata.create_all`, then custom
-  Postgres migrations in `backend/core/migrations.py` run to reconcile schema drift.
+  Postgres migrations in `backend/app/core/migrations.py` run to reconcile schema drift.
 - Real-time features (group chat, notifications) use WebSocket connections straight to
   the backend.
 
@@ -168,7 +175,7 @@ SplitEasy/
 ## Screenshots
 
 > _Screenshots are not committed to the repository yet. Add images under
-> `splitea-nextjs/public/screenshots/` and update the links below._
+> `frontend/public/screenshots/` and update the links below._
 
 | Dashboard | Group detail | Expenses |
 |---|---|---|
@@ -227,7 +234,7 @@ CREATE DATABASE spliteasy_db;
 ```
 
 Enable the extensions used by the schema (also handled automatically by the Docker
-image via `postgres/init/01-init.sql`):
+image via `database/init/01-init.sql`):
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -252,10 +259,11 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres123@localhost:5432/spliteasy_
 JWT_SECRET=change-me-in-production
 ```
 
-Run the API **from the project root** (imports use the `backend` package):
+Run the API **from the `backend/` folder** (the FastAPI package is `app`):
 
 ```bash
-python -m uvicorn backend.main:app --reload --port 8800
+cd backend
+python -m uvicorn app.main:app --reload --port 8800
 ```
 
 - API: `http://localhost:8800`
@@ -264,7 +272,7 @@ python -m uvicorn backend.main:app --reload --port 8800
 ### 4. Frontend setup
 
 ```bash
-cd splitea-nextjs
+cd frontend
 npm install
 cp .env.example .env.local      # optional — localhost defaults work out of the box
 npm run dev
@@ -384,15 +392,15 @@ SplitEasy uses **JWT bearer authentication**:
 
 - **Type-check the frontend** after UI changes:
   ```bash
-  cd splitea-nextjs && npx tsc --noEmit
+  cd frontend && npx tsc --noEmit
   ```
   The tree must be type-clean — `next build` (and the Docker image) fails on any TS
   error.
 - **Lint the frontend:**
   ```bash
-  cd splitea-nextjs && npm run lint
+  cd frontend && npm run lint
   ```
-- **Design system** — read [`splitea-nextjs/docs/DESIGN_SYSTEM.md`](splitea-nextjs/docs/DESIGN_SYSTEM.md)
+- **Design system** — read [`frontend/docs/DESIGN_SYSTEM.md`](frontend/docs/DESIGN_SYSTEM.md)
   before building or editing any page. Reuse shared primitives, use CSS variables for
   color, and follow the New-Page Checklist.
 - **AI assistant guide** — [`CLAUDE.md`](CLAUDE.md) describes product scope and
@@ -410,7 +418,7 @@ deployment:
 1. Set strong secrets in the root `.env`: `JWT_SECRET`, `POSTGRES_PASSWORD`.
 2. Point the web container at the public API by building with `NEXT_PUBLIC_API_URL`
    (or keep the internal `BACKEND_PROXY_TARGET` rewrite behind a single domain).
-3. Restrict CORS — `backend/main.py` currently allows all origins (`["*"]`); lock this
+3. Restrict CORS — `backend/app/main.py` currently allows all origins (`["*"]`); lock this
    down to your frontend origin before going live.
 4. Put a TLS-terminating reverse proxy (e.g. Nginx, Caddy, Traefik) in front of the
    `web` and `backend` services.

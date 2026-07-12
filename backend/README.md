@@ -330,7 +330,7 @@ backend/
 > (`core/settings_store.py`). **Maintenance mode** is enforced by a middleware in
 > `main.py`: when on, non-admin requests get `503` (admins still pass). Feature flags,
 > registration toggle, and password policy are read from the same store. See
-> [`splitea-nextjs/docs/platform-admin.md`](../splitea-nextjs/docs/platform-admin.md).
+> [`frontend/docs/platform-admin.md`](../frontend/docs/platform-admin.md).
 
 ### Support (user) — `/support`
 The user-facing support portal. Tickets are stored in the `reclamations` table; the
@@ -351,7 +351,7 @@ high`. Statuses: `open · in_progress · waiting_user · resolved · closed`.
 The admin back-office. Every endpoint is guarded by a specific permission via
 `require_permission(...)`; every write records an `AdminAuditLog` row. List endpoints
 return a `Paginated[T]` envelope (`items`, `total`, `page`, `page_size`, `pages`).
-Full reference: [`splitea-nextjs/docs/admin-panel.md`](../splitea-nextjs/docs/admin-panel.md).
+Full reference: [`frontend/docs/admin-panel.md`](../frontend/docs/admin-panel.md).
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -470,7 +470,7 @@ cd SpliteEasy-PFE
 
 > The backend is a Python **package** (`backend`). All commands below run from the
 > **repository root**, not from inside `backend/` — that's why uvicorn is launched as
-> `backend.main:app`.
+> `app.main:app`.
 
 ### Install
 
@@ -495,8 +495,8 @@ JWT_SECRET=your-secret-key
 ### Run
 
 ```bash
-# From the project root (SplitEasy/)
-python -m uvicorn backend.main:app --reload --port 8800
+# From the backend/ folder
+python -m uvicorn app.main:app --reload --port 8800
 ```
 
 API is available at `http://localhost:8800`  

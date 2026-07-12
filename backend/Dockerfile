@@ -13,12 +13,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source into a backend/ subdir to preserve the import structure
-# (the app is imported as the `backend` package: `backend.main:app`).
-COPY . ./backend/
+# Copy the backend source. The FastAPI package lives in ./app, so it is imported
+# as the `app` package (`app.main:app`) with /app as the working directory.
+COPY . .
 
 EXPOSE 8000
 
 # DATABASE_URL is injected at runtime (see docker-compose.yml). On startup the
-# app creates tables and runs the Postgres migrations in backend/core/migrations.py.
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# app creates tables and runs the Postgres migrations in app/core/migrations.py.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

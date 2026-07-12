@@ -1,39 +1,78 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SplitEasy — monorepo .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
 # ---- Secrets & local env ----
 .env
+.env.*.local
 backend/.env
+frontend/.env.local
 *.env.local
-splitea-nextjs/.env.local
 
 # ---- Python ----
 __pycache__/
 *.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+# Virtual environments (root or per-service)
 .venv/
 venv/
-
-# ---- Local databases ----
-*.db
-*.sqlite
-*.sqlite3
+env/
+backend/.venv/
 
 # ---- Node / Next.js ----
 node_modules/
 .next/
-splitea-nextjs/.next/
+frontend/.next/
+frontend/node_modules/
 out/
 build/
 *.tsbuildinfo
+.npm/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Local databases / Postgres data ----
+*.db
+*.sqlite
+*.sqlite3
+# Live Postgres data (bind-mounted to database/data) — never commit.
+# The rest of database/ (Dockerfile, init/, seeds/, scripts/, README) IS tracked.
+database/data/
+# Backups are local artifacts — keep the folder, ignore its contents.
+database/backups/*
+!database/backups/.gitkeep
+
+# ---- Docker ----
+# (compose overrides kept local)
+docker-compose.override.yml
 
 # ---- Logs ----
+logs/
 *.log
 *.err.log
 *.out.log
 
-# ---- Editor / tooling ----
+# ---- Editor / IDE / tooling ----
 .vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
 .claude/
 
 # ---- Archived / non-essential (kept locally, NOT pushed) ----
 _misc/
+_mise/
 mobile/
 rapport/
