@@ -3,14 +3,17 @@ from typing import Dict, List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
+from jose import jwt
 from app.db import get_session
 from app import models, schemas
 from app.auth import get_current_user
+from app.core.config import settings
+from app.core.db import async_session
 
 router = APIRouter(prefix="/Notifications")
 
 # ================== ACTIVE CONNECTIONS ==================
-active_connections: Dict[int, WebSocket] = {}
+active_connections: Dict[uuid.UUID, WebSocket] = {}
 
 # ================== WEBSOCKET ENDPOINT ==================
 @router.websocket("/ws/{user_id}")
@@ -19,6 +22,26 @@ async def websocket_endpoint(websocket: WebSocket, user_id: uuid.UUID):
     WebSocket endpoint for real-time notifications.
     Each connected client subscribes to notifications using their user_id.
     """
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008, reason="Authentication required")
+        return
+
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
+        username = payload.get("username")
+        token_ver = payload.get("ver", 0)
+        async with async_session() as session:
+            user = (await session.execute(
+                select(models.User).where(models.User.username == username)
+            )).scalar_one_or_none()
+        if not user or user.id != user_id or (user.token_version or 0) != token_ver:
+            await websocket.close(code=1008, reason="Invalid session")
+            return
+    except Exception:
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+
     try:
         await websocket.accept()
         
@@ -34,7 +57,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: uuid.UUID):
                 
         except WebSocketDisconnect:
             # Clean up connection when client disconnects
-            if user_id in active_connections:
+            if active_connections.get(user_id) is websocket:
                 del active_connections[user_id]
                 print(f"❌ User {user_id} disconnected from WebSocket")
                 

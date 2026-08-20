@@ -139,9 +139,9 @@ async def send_group_message_ep(
     msg_data = {
         "type": "new_chat_message",
         "message": {
-            "id": msg.id,
-            "group_id": msg.group_id,
-            "user_id": msg.user_id,
+            "id": str(msg.id),
+            "group_id": str(msg.group_id),
+            "user_id": str(msg.user_id),
             "username": msg.username,
             "content": msg.content,
             "created_at": msg.created_at.isoformat()
@@ -177,8 +177,8 @@ async def broadcast_typing_ep(
     memberships = await crud.get_group_members(session, group_id)
     payload = json.dumps({
         "type": "typing",
-        "group_id": group_id,
-        "user_id": current.id,
+        "group_id": str(group_id),
+        "user_id": str(current.id),
         "username": current.username,
     })
 

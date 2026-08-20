@@ -94,7 +94,7 @@ export function apiErrorMessage(err: unknown): string {
 //   3. derive from the page host   — works on any host the user reaches the app from
 // The dev backend listens on 8800 (uvicorn); override via NEXT_PUBLIC_WS_URL for
 // Docker/prod where the published port differs.
-const DEFAULT_WS_PORT = 8800;
+const DEFAULT_WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || "8800";
 
 export function wsBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;

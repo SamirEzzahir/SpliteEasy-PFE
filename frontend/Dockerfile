@@ -15,6 +15,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # be present here, during `npm run build`. docker-compose passes it as a build arg.
 ARG BACKEND_PROXY_TARGET=http://backend:8000
 ENV BACKEND_PROXY_TARGET=$BACKEND_PROXY_TARGET
+ARG NEXT_PUBLIC_WS_PORT=8000
+ENV NEXT_PUBLIC_WS_PORT=$NEXT_PUBLIC_WS_PORT
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
