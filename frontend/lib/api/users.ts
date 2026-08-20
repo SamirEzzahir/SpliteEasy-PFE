@@ -22,25 +22,25 @@ export interface ChangePasswordPayload {
 export type SettlementMode = "separate" | "auto_adjust" | "hybrid";
 
 export const usersApi = {
-  async getById(id: number): Promise<ApiUser> {
+  async getById(id: string): Promise<ApiUser> {
     const r = await api.get<ApiUser>(`/users/${id}`);
     return r.data;
   },
 
-  async updateProfile(id: number, payload: UpdateProfilePayload): Promise<ApiUser> {
+  async updateProfile(id: string, payload: UpdateProfilePayload): Promise<ApiUser> {
     const r = await api.put<ApiUser>(`/users/${id}`, payload);
     return r.data;
   },
 
-  async changePassword(id: number, payload: ChangePasswordPayload): Promise<void> {
+  async changePassword(id: string, payload: ChangePasswordPayload): Promise<void> {
     await api.post("/users/user/me/change-password", payload);
   },
 
-  async setSettlementMode(id: number, mode: SettlementMode): Promise<void> {
+  async setSettlementMode(id: string, mode: SettlementMode): Promise<void> {
     await api.put("/users/user/me/global-settlement-mode", { mode });
   },
 
-  async updateSettlementMode(id: number, mode: SettlementMode): Promise<void> {
+  async updateSettlementMode(id: string, mode: SettlementMode): Promise<void> {
     await this.setSettlementMode(id, mode);
   },
 
@@ -52,7 +52,7 @@ export const usersApi = {
     await api.put("/users/user/me/onboarding", { completed });
   },
 
-  async deactivate(id: number): Promise<void> {
+  async deactivate(id: string): Promise<void> {
     await api.delete(`/users/${id}`);
   },
 };

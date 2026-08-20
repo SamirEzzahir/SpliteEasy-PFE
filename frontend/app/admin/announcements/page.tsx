@@ -16,7 +16,7 @@ const DELIVERIES = ["banner", "popup", "notification"];
 const VISIBILITIES = [{ id: "everyone", label: "Everyone" }, { id: "admins", label: "Administrators only" }];
 
 interface EditorState {
-  id?: number;
+  id?: string;
   title: string;
   body: string;
   type: string;

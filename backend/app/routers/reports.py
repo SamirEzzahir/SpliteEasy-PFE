@@ -1,3 +1,4 @@
+import uuid
 """User-facing content reporting (`POST /reports`).
 
 Anyone authenticated can report a user/group/expense/message. Admin review lives in

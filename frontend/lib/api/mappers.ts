@@ -29,12 +29,22 @@ const COLOR_PAIRS: [string, string][] = [
   ["#22c55e", "#0ea5e9"],
 ];
 
-export function userColors(userId: number): { color: string; color2: string } {
-  const [color, color2] = COLOR_PAIRS[userId % COLOR_PAIRS.length];
+// Stable hash of an id (now a UUID string) → palette index. Deterministic so the
+// same entity always renders with the same gradient.
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+export function userColors(userId: string): { color: string; color2: string } {
+  const [color, color2] = COLOR_PAIRS[hashId(String(userId)) % COLOR_PAIRS.length];
   return { color, color2 };
 }
 
-export function mapUserToPerson(u: ApiUser, currentUserId?: number): Person {
+export function mapUserToPerson(u: ApiUser, currentUserId?: string): Person {
   const { color, color2 } = userColors(u.id);
   const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
   return {
@@ -97,7 +107,7 @@ function formatRelativeDate(iso?: string): string {
 
 export function mapGroup(g: ApiGroup, extras: GroupExtras): Group {
   const type = normalizeGroupType(g.type);
-  const palette = GROUP_PALETTES[g.id % GROUP_PALETTES.length];
+  const palette = GROUP_PALETTES[hashId(String(g.id)) % GROUP_PALETTES.length];
   return {
     id: String(g.id),
     name: g.title,

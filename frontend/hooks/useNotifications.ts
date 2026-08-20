@@ -48,7 +48,7 @@ export function useNotifications() {
     };
   }, [user, refresh, subscribe]);
 
-  const markRead = useCallback(async (id: number) => {
+  const markRead = useCallback(async (id: string) => {
     await notificationsApi.markRead(id);
     setItems((s) => s.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnread((c) => Math.max(0, c - 1));

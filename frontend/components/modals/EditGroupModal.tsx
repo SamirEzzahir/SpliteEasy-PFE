@@ -20,14 +20,15 @@ export default function EditGroupModal({ group, onClose, onSaved, onToast }: Pro
   const [photo, setPhoto] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isBackendGroup = Number.isFinite(Number(group.id));
+  const isBackendGroup =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(group.id);
 
   const save = async () => {
     if (!name.trim() || !isBackendGroup) return;
     setSaving(true);
     setError(null);
     try {
-      await groupsApi.update(Number(group.id), {
+      await groupsApi.update(group.id, {
         title: name.trim(),
         type,
         currency,

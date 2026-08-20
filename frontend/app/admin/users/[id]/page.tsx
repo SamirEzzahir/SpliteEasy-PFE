@@ -19,7 +19,7 @@ import { toast } from "react-toastify";
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const userId = Number(params.id);
+  const userId = String(params.id);
   const { has } = usePerms();
   const canManage = has("manage_users");
 
@@ -52,7 +52,7 @@ export default function AdminUserDetailPage() {
     const choice = await promptSelect({ title: `Assign role to ${user.username}`, options, confirmText: "Assign" });
     if (choice === null) return;
     try {
-      await adminApi.setUserRole(user.id, choice === "" ? null : Number(choice));
+      await adminApi.setUserRole(user.id, choice === "" ? null : choice);
       toast.success("Role updated");
       void load();
     } catch (e) { toast.error(apiErrorMessage(e)); }

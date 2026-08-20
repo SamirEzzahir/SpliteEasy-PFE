@@ -285,7 +285,7 @@ export default function ExpensesPage() {
     const doDelete = async () => {
       if (undone) return;
       try {
-        await expensesApi.remove(Number(expenseId));
+        await expensesApi.remove(expenseId);
         await refetchSplitting();
       } catch {
         toast.error("Could not delete expense");

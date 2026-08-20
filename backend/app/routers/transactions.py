@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -74,7 +75,7 @@ async def list_transactions(
 
 @router.get("/{transaction_id}", response_model=TransactionRead)
 async def get_transaction(
-    transaction_id: int,
+    transaction_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current_user = Depends(get_current_user)
 ):

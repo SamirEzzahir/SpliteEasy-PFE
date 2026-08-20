@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
@@ -10,8 +11,8 @@ class FriendStatus(str, Enum):
 
 
 class FriendBase(BaseModel):
-    user_id: int
-    friend_id: int
+    user_id: UUID
+    friend_id: UUID
     status: FriendStatus = FriendStatus.pending
 
 
@@ -20,7 +21,7 @@ class FriendCreate(FriendBase):
 
 
 class FriendRead(FriendBase):
-    id: int
+    id: UUID
     created_at: datetime
 
     class Config:

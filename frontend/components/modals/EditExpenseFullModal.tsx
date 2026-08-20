@@ -76,18 +76,18 @@ export default function EditExpenseFullModal({ expense: initial, onClose, onSave
     if (!valid || !group) return;
     setSaving(true);
     try {
-      await expensesApi.update(Number(initial.id), {
+      await expensesApi.update(initial.id, {
         description: title.trim(),
         amount: num,
         category: categoryId,
         created_at: new Date().toISOString(),
-        payer_id: Number(paidBy),
-        group_id: Number(group.id),
+        payer_id: paidBy,
+        group_id: group.id,
         // API split_type only knows equal/percentage/share; "custom" and
         // "percentage" both send explicit per-user share_amounts -> "share".
         split_type: splitType === "equal" ? "equal" : "share",
         splits: splitIds.map((id) => ({
-          user_id: Number(id),
+          user_id: id,
           share_amount: getShare(id),
         })),
       });

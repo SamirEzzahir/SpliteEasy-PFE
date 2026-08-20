@@ -6,11 +6,13 @@ import { usePathname } from "next/navigation";
 import AppShell from "./AppShell";
 import RequireAuth from "@/components/RequireAuth";
 
-const PUBLIC_PREFIXES = ["/login", "/signup"];
+const PUBLIC_PREFIXES = ["/", "/login", "/signup"];
 
 export default function ConditionalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
-  const isPublic = PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const isPublic = PUBLIC_PREFIXES.some((p) =>
+    p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(p + "/")
+  );
   if (isPublic) return <>{children}</>;
   // The admin area ships its own shell + guard (app/admin/layout.tsx). Render it
   // bare here so it isn't wrapped in the regular user sidebar/topbar.

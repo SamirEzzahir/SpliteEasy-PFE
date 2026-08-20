@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from enum import Enum
 from typing import Generic, Optional, TypeVar
@@ -23,7 +24,7 @@ class Paginated(BaseModel, Generic[T]):
 # Users
 # ---------------------------------------------------------------------------
 class AdminUserRead(BaseModel):
-    id: int
+    id: UUID
     username: str
     email: EmailStr
     first_name: Optional[str] = None
@@ -37,7 +38,7 @@ class AdminUserRead(BaseModel):
     email_verified: bool = False
     last_login_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
-    role_id: Optional[int] = None
+    role_id: Optional[UUID] = None
     role: Optional[RoleRead] = None
     preferred_currency: Optional[str] = None
 
@@ -65,7 +66,7 @@ class UserStatusUpdate(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-    role_id: Optional[int] = None
+    role_id: Optional[UUID] = None
 
 
 class AdminUserUpdate(BaseModel):
@@ -85,11 +86,11 @@ class ResetPasswordIn(BaseModel):
 # Groups / Expenses / Settlements (admin read views with joined labels)
 # ---------------------------------------------------------------------------
 class AdminGroupRead(BaseModel):
-    id: int
+    id: UUID
     title: str
     type: Optional[str] = None
     currency: Optional[str] = None
-    owner_id: Optional[int] = None
+    owner_id: Optional[UUID] = None
     owner_username: Optional[str] = None
     members_count: int = 0
     expenses_count: int = 0
@@ -97,14 +98,14 @@ class AdminGroupRead(BaseModel):
 
 
 class TransferOwnerIn(BaseModel):
-    new_owner_id: int
+    new_owner_id: UUID
 
 
 class AdminExpenseRead(BaseModel):
-    id: int
-    group_id: int
+    id: UUID
+    group_id: UUID
     group_title: Optional[str] = None
-    payer_id: Optional[int] = None
+    payer_id: Optional[UUID] = None
     payer_username: Optional[str] = None
     description: Optional[str] = None
     amount: float
@@ -114,11 +115,11 @@ class AdminExpenseRead(BaseModel):
 
 
 class AdminSettlementRead(BaseModel):
-    id: int
-    group_id: Optional[int] = None
-    from_user_id: int
+    id: UUID
+    group_id: Optional[UUID] = None
+    from_user_id: UUID
     from_username: Optional[str] = None
-    to_user_id: int
+    to_user_id: UUID
     to_username: Optional[str] = None
     amount: float
     status: str
@@ -129,12 +130,12 @@ class AdminSettlementRead(BaseModel):
 # Audit logs
 # ---------------------------------------------------------------------------
 class AuditLogRead(BaseModel):
-    id: int
-    admin_id: Optional[int] = None
+    id: UUID
+    admin_id: Optional[UUID] = None
     admin_username: Optional[str] = None
     action: str
     target_type: Optional[str] = None
-    target_id: Optional[int] = None
+    target_id: Optional[UUID] = None
     details: Optional[str] = None
     ip: Optional[str] = None
     created_at: datetime

@@ -47,10 +47,10 @@ export default function AdminGroupsPage() {
   }
 
   async function transfer(g: AdminGroup) {
-    const idStr = await promptText({ title: `Transfer "${g.title}"`, label: "New owner — user ID", inputType: "text", placeholder: "e.g. 42", confirmText: "Transfer" });
+    const idStr = await promptText({ title: `Transfer "${g.title}"`, label: "New owner — user ID", inputType: "text", placeholder: "user UUID", confirmText: "Transfer" });
     if (!idStr) return;
-    const newOwnerId = Number(idStr);
-    if (!Number.isInteger(newOwnerId) || newOwnerId <= 0) { toast.error("Enter a valid numeric user ID"); return; }
+    const newOwnerId = idStr.trim();
+    if (!newOwnerId) { toast.error("Enter a valid user ID"); return; }
     try { await adminApi.transferOwner(g.id, newOwnerId); toast.success("Ownership transferred"); void load(); }
     catch (e) { toast.error(apiErrorMessage(e)); }
   }

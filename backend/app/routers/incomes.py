@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ async def income_summary(
 
 @router.put("/{income_id}", response_model=IncomeRead)
 async def edit_income(
-    income_id: int,
+    income_id: uuid.UUID,
     income_data: IncomeUpdate,
     session: AsyncSession = Depends(get_session),
     current_user=Depends(get_current_user)
@@ -43,7 +44,7 @@ async def edit_income(
 
 @router.delete("/{income_id}")
 async def remove_income(
-    income_id: int,
+    income_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current_user=Depends(get_current_user)
 ):

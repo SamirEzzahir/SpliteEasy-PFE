@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 import io
 import pandas as pd
@@ -107,7 +108,7 @@ async def get_all_user_expenses(
 
 @router.get("/{group_id}", response_model=schemas.ExpensePaginatedResponse)
 async def get_group_expenses(
-    group_id: int, 
+    group_id: uuid.UUID, 
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
     limit: int = 20,
@@ -135,7 +136,7 @@ async def get_group_expenses(
 
 
 @router.get("/exp/{expense_id}", response_model=schemas.ExpenseRead)
-async def get_expense(expense_id: int,
+async def get_expense(expense_id: uuid.UUID,
                       session: AsyncSession = Depends(get_session),
                       current: User = Depends(get_current_user)):
     return await get_expense_ById(session, expense_id, current)
@@ -146,7 +147,7 @@ async def get_expense(expense_id: int,
 # ✅ Update Expense
 @router.put("/{expense_id}", response_model=schemas.ExpenseRead)
 async def update_expense_ep(
-    expense_id: int,
+    expense_id: uuid.UUID,
     payload: schemas.ExpenseUpdate,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
@@ -156,7 +157,7 @@ async def update_expense_ep(
 
 @router.delete("/{expense_id}", status_code=204)
 async def delete_expense(
-    expense_id: int, 
+    expense_id: uuid.UUID, 
     session: AsyncSession = Depends(get_session), 
     current: User = Depends(get_current_user)
 ):
@@ -224,7 +225,7 @@ async def delete_expense(
 
 @router.get("/{group_id}/download-template")
 async def download_expenses_template(
-    group_id: int, 
+    group_id: uuid.UUID, 
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -320,7 +321,7 @@ def parse_date(date_str):
 
 @router.post("/{group_id}/upload")
 async def upload_expenses(
-    group_id: int, 
+    group_id: uuid.UUID, 
     file: UploadFile = File(...), 
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -470,7 +471,7 @@ async def upload_expenses(
 
 @router.get("/{group_id}/download")
 async def download_expenses(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):

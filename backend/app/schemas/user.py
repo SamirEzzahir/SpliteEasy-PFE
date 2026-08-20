@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -20,7 +21,7 @@ class RoleCreate(RoleBase):
 
 
 class RoleRead(RoleBase):
-    id: int
+    id: UUID
 
     class Config:
         from_attributes = True
@@ -40,8 +41,8 @@ class ReclamationUpdate(BaseModel):
 
 
 class ReclamationRead(ReclamationBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     status: str
     created_at: datetime
 
@@ -67,7 +68,7 @@ class UserCreate(UserBase):
 
 
 class UserRead(BaseModel):
-    id: int
+    id: UUID
     username: str
     email: EmailStr
     first_name: Optional[str] = None
@@ -76,7 +77,7 @@ class UserRead(BaseModel):
     phone: Optional[str] = None
     profile_photo: Optional[str] = None
     is_active: Optional[bool] = True
-    role_id: Optional[int] = None
+    role_id: Optional[UUID] = None
     role: Optional[RoleRead] = None
     global_settlement_mode: Optional[GlobalSettlementMode] = GlobalSettlementMode.separate
     preferred_currency: Optional[str] = "USD"

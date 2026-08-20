@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/groups")
 # Get all members
 # -------------------
 @router.get("/{group_id}/members", response_model=list[MembershipRead])
-async def list_group_members(group_id: int, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
+async def list_group_members(group_id: uuid.UUID, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
     await ensure_user_in_group(session, current.id, group_id)
     return await get_group_members(session, group_id)
 
@@ -25,7 +26,7 @@ async def list_group_members(group_id: int, session: AsyncSession = Depends(get_
 # Add members
 # -------------------
 @router.post("/{group_id}/add_members", response_model=list[MembershipRead])
-async def add_members(group_id: int, payload: dict, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
+async def add_members(group_id: uuid.UUID, payload: dict, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
     await ensure_user_is_admin(session, current.id, group_id)
     await ensure_user_in_group(session, current.id, group_id)
     memberships = await add_members_to_group(
@@ -53,7 +54,7 @@ async def add_members(group_id: int, payload: dict, session: AsyncSession = Depe
 # Update membership
 # -------------------
 @router.put("/{group_id}/members/{member_id}", response_model=MembershipRead)
-async def update_member(group_id: int, member_id: int, payload: MembershipUpdate, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
+async def update_member(group_id: uuid.UUID, member_id: uuid.UUID, payload: MembershipUpdate, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
     await ensure_user_is_admin(session, current.id, group_id)
     membership = await update_membership(session, group_id, member_id, payload.is_admin)
     return MembershipRead.model_validate(membership, from_attributes=True)
@@ -63,7 +64,7 @@ async def update_member(group_id: int, member_id: int, payload: MembershipUpdate
 # Remove member
 # -------------------
 @router.delete("/{group_id}/members/{member_id}", status_code=204)
-async def delete_member(group_id: int, member_id: int, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
+async def delete_member(group_id: uuid.UUID, member_id: uuid.UUID, session: AsyncSession = Depends(get_session), current: User = Depends(get_current_user)):
     await ensure_user_is_admin(session, current.id, group_id)
     await remove_member(session, group_id, member_id)
     user = await session.get(User, member_id)

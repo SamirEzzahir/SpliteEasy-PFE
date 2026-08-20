@@ -16,7 +16,7 @@ import { toast } from "react-toastify";
 
 export default function AdminReportPage() {
   const params = useParams<{ id: string }>();
-  const reportId = Number(params.id);
+  const reportId = String(params.id);
   const { has } = usePerms();
   const canManage = has("manage_moderation");
 

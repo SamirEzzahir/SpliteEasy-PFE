@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, field_validator
@@ -9,7 +10,7 @@ REPORT_STATUSES = {"open", "reviewing", "dismissed", "actioned"}
 
 class ReportCreate(BaseModel):
     target_type: str
-    target_id: int
+    target_id: UUID
     reason: str
     description: Optional[str] = None
 
@@ -29,17 +30,17 @@ class ReportCreate(BaseModel):
 
 
 class ReportRead(BaseModel):
-    id: int
-    reporter_id: Optional[int] = None
+    id: UUID
+    reporter_id: Optional[UUID] = None
     reporter_username: Optional[str] = None
     target_type: str
-    target_id: int
+    target_id: UUID
     target_username: Optional[str] = None
     reason: str
     description: Optional[str] = None
     status: str
     notes: Optional[str] = None
-    handled_by: Optional[int] = None
+    handled_by: Optional[UUID] = None
     handled_by_username: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

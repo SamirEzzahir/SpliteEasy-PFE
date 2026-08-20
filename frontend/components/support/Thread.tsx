@@ -9,7 +9,7 @@ import type { TicketReply } from "@/lib/api/support";
 
 interface Bubble {
   id: string;
-  authorId?: number | null;
+  authorId?: string | null;
   authorName: string;
   isAdmin: boolean;
   body: string;
@@ -17,12 +17,12 @@ interface Bubble {
 }
 
 interface Props {
-  requesterId: number;
+  requesterId: string;
   requesterName: string;
   description: string;
   descriptionDate: string;
   replies: TicketReply[];
-  meId: number;
+  meId: string;
   onSend?: (body: string) => Promise<void>;
   disabled?: boolean;
   disabledNote?: string;

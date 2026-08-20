@@ -22,13 +22,13 @@ import { toast } from "react-toastify";
 
 export default function AdminTicketPage() {
   const params = useParams<{ id: string }>();
-  const ticketId = Number(params.id);
+  const ticketId = String(params.id);
   const { has } = usePerms();
   const { user } = useAuth();
   const canManage = has("manage_support");
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
-  const [assignees, setAssignees] = useState<{ id: number; username: string }[]>([]);
+  const [assignees, setAssignees] = useState<{ id: string; username: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -66,7 +66,7 @@ export default function AdminTicketPage() {
     assignees.forEach((a) => { options[String(a.id)] = a.username; });
     const choice = await promptSelect({ title: "Assign ticket", options, confirmText: "Assign" });
     if (choice === null) return;
-    try { await adminApi.ticketAssign(ticketId, choice === "" ? null : Number(choice)); toast.success("Assignment updated"); void load(); }
+    try { await adminApi.ticketAssign(ticketId, choice === "" ? null : choice); toast.success("Assignment updated"); void load(); }
     catch (e) { toast.error(apiErrorMessage(e)); }
   }
 
@@ -99,7 +99,7 @@ export default function AdminTicketPage() {
               description={ticket.message}
               descriptionDate={ticket.created_at}
               replies={ticket.replies}
-              meId={Number(user?.id ?? -1)}
+              meId={user?.id ?? ""}
               onSend={canManage && !closed ? sendReply : undefined}
               disabled={closed}
               disabledNote="This ticket is closed. Reopen it to continue the conversation."

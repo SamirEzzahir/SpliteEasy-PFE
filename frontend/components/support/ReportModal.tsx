@@ -10,7 +10,7 @@ import { toast } from "react-toastify";
 
 interface Props {
   targetType: CreateReportPayload["target_type"];
-  targetId: number;
+  targetId: string;
   targetLabel?: string;
   onClose: () => void;
 }

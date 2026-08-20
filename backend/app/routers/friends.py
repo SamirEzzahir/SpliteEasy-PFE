@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -147,7 +148,7 @@ async def requests_received(session: AsyncSession = Depends(get_session), curren
 
 # ----------------- Send friend request -----------------
 @router.post("/request/{friend_id}")
-async def send_friend_request(friend_id: int, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def send_friend_request(friend_id: uuid.UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     if friend_id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot add yourself")
 
@@ -173,7 +174,7 @@ async def send_friend_request(friend_id: int, session: AsyncSession = Depends(ge
 
 # ----------------- Accept request -----------------
 @router.post("/request/{request_id}/accept")
-async def accept_request(request_id: int, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def accept_request(request_id: uuid.UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     request = await session.get(Friend, request_id)
     if not request or request.friend_id != current_user.id or request.status != FriendStatus.pending:
         raise HTTPException(status_code=404, detail="Friend request not found")
@@ -185,7 +186,7 @@ async def accept_request(request_id: int, session: AsyncSession = Depends(get_se
 
 # ----------------- Reject request -----------------
 @router.post("/request/{request_id}/reject")
-async def reject_request(request_id: int, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def reject_request(request_id: uuid.UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     request = await session.get(Friend, request_id)
     if not request or request.friend_id != current_user.id or request.status != FriendStatus.pending:
         raise HTTPException(status_code=404, detail="Friend request not found")
@@ -196,7 +197,7 @@ async def reject_request(request_id: int, session: AsyncSession = Depends(get_se
 
 # ----------------- Remove friend -----------------
 @router.delete("/remove/{friendship_id}")
-async def remove_friend(friendship_id: int, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def remove_friend(friendship_id: uuid.UUID, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     friendship = await session.get(Friend, friendship_id)
     if not friendship:
         raise HTTPException(status_code=404, detail="Friendship not found")

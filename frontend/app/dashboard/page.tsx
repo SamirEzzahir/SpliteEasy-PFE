@@ -128,7 +128,7 @@ export default function DashboardPage() {
           </div>
         ))}
       </section>
-
+ 
       {/* Main grid — Who owes who + Recent activity */}
       <section className="dash-main-grid">
         {/* Who owes who — the actionable core */}

@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -121,7 +122,7 @@ async def list_debts(
 
 @router.get("/debts/{debt_id}", response_model=DebtRead)
 async def get_debt(
-    debt_id: int,
+    debt_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):
@@ -159,7 +160,7 @@ async def get_debt(
 
 @router.put("/debts/{debt_id}", response_model=DebtRead)
 async def update_debt(
-    debt_id: int,
+    debt_id: uuid.UUID,
     debt_data: DebtUpdate,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
@@ -210,7 +211,7 @@ async def update_debt(
 
 @router.delete("/debts/{debt_id}")
 async def delete_debt(
-    debt_id: int,
+    debt_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):
@@ -237,7 +238,7 @@ async def delete_debt(
 
 @router.post("/debts/{debt_id}/repay", response_model=DebtRepaymentRead)
 async def repay_debt(
-    debt_id: int,
+    debt_id: uuid.UUID,
     repayment_data: DebtRepaymentCreate,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
@@ -315,7 +316,7 @@ async def repay_debt(
 
 @router.get("/debts/{debt_id}/repayments", response_model=List[DebtRepaymentRead])
 async def get_debt_repayments(
-    debt_id: int,
+    debt_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):
@@ -463,7 +464,7 @@ async def list_loans(
 
 @router.get("/loans/{loan_id}", response_model=LoanRead)
 async def get_loan(
-    loan_id: int,
+    loan_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):
@@ -501,7 +502,7 @@ async def get_loan(
 
 @router.put("/loans/{loan_id}", response_model=LoanRead)
 async def update_loan(
-    loan_id: int,
+    loan_id: uuid.UUID,
     loan_data: LoanUpdate,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
@@ -552,7 +553,7 @@ async def update_loan(
 
 @router.delete("/loans/{loan_id}")
 async def delete_loan(
-    loan_id: int,
+    loan_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):
@@ -579,7 +580,7 @@ async def delete_loan(
 
 @router.post("/loans/{loan_id}/repay", response_model=LoanRepaymentRead)
 async def receive_loan_repayment(
-    loan_id: int,
+    loan_id: uuid.UUID,
     repayment_data: LoanRepaymentCreate,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
@@ -655,7 +656,7 @@ async def receive_loan_repayment(
 
 @router.get("/loans/{loan_id}/repayments", response_model=List[LoanRepaymentRead])
 async def get_loan_repayments(
-    loan_id: int,
+    loan_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):

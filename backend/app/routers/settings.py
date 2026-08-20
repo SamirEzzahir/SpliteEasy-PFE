@@ -1,3 +1,4 @@
+import uuid
 """Public platform settings (`/settings/public`).
 
 Exposes the safe subset of settings (app identity, feature flags, maintenance

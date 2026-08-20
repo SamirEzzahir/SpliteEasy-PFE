@@ -8,8 +8,8 @@ import type { Paginated } from "./admin";
 export type { Paginated };
 
 export interface TicketReply {
-  id: number;
-  author_id?: number | null;
+  id: string;
+  author_id?: string | null;
   author_username?: string | null;
   is_admin: boolean;
   body: string;
@@ -17,14 +17,14 @@ export interface TicketReply {
 }
 
 export interface Ticket {
-  id: number;
+  id: string;
   subject: string;
   category: string;
   priority: string;
   status: string;
-  user_id: number;
+  user_id: string;
   requester_username?: string | null;
-  assigned_to_id?: number | null;
+  assigned_to_id?: string | null;
   assignee_username?: string | null;
   reply_count: number;
   created_at: string;
@@ -58,13 +58,13 @@ export const supportApi = {
   async list(params: TicketListParams = {}): Promise<Paginated<Ticket>> {
     return (await api.get<Paginated<Ticket>>("/support/tickets", { params })).data;
   },
-  async get(id: number): Promise<TicketDetail> {
+  async get(id: string): Promise<TicketDetail> {
     return (await api.get<TicketDetail>(`/support/tickets/${id}`)).data;
   },
-  async reply(id: number, body: string): Promise<TicketReply> {
+  async reply(id: string, body: string): Promise<TicketReply> {
     return (await api.post<TicketReply>(`/support/tickets/${id}/replies`, { body })).data;
   },
-  async close(id: number) {
+  async close(id: string) {
     return (await api.post(`/support/tickets/${id}/close`)).data;
   },
 };

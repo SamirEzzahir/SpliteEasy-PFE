@@ -5,16 +5,16 @@ import type { ApiUser } from "./types";
 
 // Shapes returned by the backend friends router
 export interface ApiFriendEntry {
-  friendship_id: number;
-  user_id: number;
+  friendship_id: string;
+  user_id: string;
   username: string;
   email: string;
   phone?: string;
 }
 
 export interface ApiReceivedRequest {
-  id: number;
-  user_id?: number;
+  id: string;
+  user_id?: string;
   user_username?: string;
   user_email: string;
   user_full_name?: string | null;
@@ -23,8 +23,8 @@ export interface ApiReceivedRequest {
 }
 
 export interface ApiSentRequest {
-  id: number;
-  friend_id?: number;
+  id: string;
+  friend_id?: string;
   friend_username?: string;
   friend_email: string;
   friend_full_name?: string | null;
@@ -65,22 +65,22 @@ export const friendsApi = {
     return r.data;
   },
 
-  async sendRequest(friendId: number): Promise<{ message: string }> {
+  async sendRequest(friendId: string): Promise<{ message: string }> {
     const r = await api.post<{ message: string }>(`/friends/request/${friendId}`);
     return r.data;
   },
 
-  async accept(requestId: number): Promise<{ message: string }> {
+  async accept(requestId: string): Promise<{ message: string }> {
     const r = await api.post<{ message: string }>(`/friends/request/${requestId}/accept`);
     return r.data;
   },
 
-  async reject(requestId: number): Promise<{ message: string }> {
+  async reject(requestId: string): Promise<{ message: string }> {
     const r = await api.post<{ message: string }>(`/friends/request/${requestId}/reject`);
     return r.data;
   },
 
-  async remove(friendshipId: number): Promise<void> {
+  async remove(friendshipId: string): Promise<void> {
     await api.delete(`/friends/remove/${friendshipId}`);
   },
 };

@@ -7,14 +7,14 @@ import { api } from "./client";
 export type DebtLoanStatus = "active" | "partially_paid" | "fully_paid";
 
 export interface ApiDebt {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   lender_name: string;
   original_amount: number;
   remaining_amount: number;
   total_paid: number;
   status: DebtLoanStatus;
-  wallet_id?: number | null;
+  wallet_id?: string | null;
   due_date?: string | null;
   note?: string | null;
   created_at: string;
@@ -22,14 +22,14 @@ export interface ApiDebt {
 }
 
 export interface ApiLoan {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   borrower_name: string;
   original_amount: number;
   remaining_amount: number;
   total_paid: number;
   status: DebtLoanStatus;
-  wallet_id?: number | null;
+  wallet_id?: string | null;
   due_date?: string | null;
   note?: string | null;
   created_at: string;
@@ -37,7 +37,7 @@ export interface ApiLoan {
 }
 
 export interface ApiRepayment {
-  id: number;
+  id: string;
   amount: number;
   wallet_name?: string | null;
   note?: string | null;
@@ -83,10 +83,10 @@ export const debtsLoansApi = {
     const r = await api.post<ApiDebt>("/debts-loans/debts", payload);
     return r.data;
   },
-  async deleteDebt(id: number): Promise<void> {
+  async deleteDebt(id: string): Promise<void> {
     await api.delete(`/debts-loans/debts/${id}`);
   },
-  async repayDebt(id: number, amount: number, note?: string): Promise<void> {
+  async repayDebt(id: string, amount: number, note?: string): Promise<void> {
     await api.post(`/debts-loans/debts/${id}/repay`, { amount, note });
   },
 
@@ -99,10 +99,10 @@ export const debtsLoansApi = {
     const r = await api.post<ApiLoan>("/debts-loans/loans", payload);
     return r.data;
   },
-  async deleteLoan(id: number): Promise<void> {
+  async deleteLoan(id: string): Promise<void> {
     await api.delete(`/debts-loans/loans/${id}`);
   },
-  async repayLoan(id: number, amount: number, note?: string): Promise<void> {
+  async repayLoan(id: string, amount: number, note?: string): Promise<void> {
     await api.post(`/debts-loans/loans/${id}/repay`, { amount, note });
   },
 };

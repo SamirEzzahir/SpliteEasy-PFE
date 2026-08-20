@@ -9,11 +9,11 @@ import type { ApiSettlement } from "@/lib/api/types";
 
 interface Props {
   settlement: ApiSettlement;
-  myId: number;
+  myId: string;
   currency: string;
   onClose: () => void;
-  onAccept: (id: number) => Promise<void>;
-  onReject: (id: number) => Promise<void>;
+  onAccept: (id: string) => Promise<void>;
+  onReject: (id: string) => Promise<void>;
 }
 
 const STATUS_STYLE: Record<string, { bg: string; label: string; pillClass: string }> = {

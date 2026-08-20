@@ -1,10 +1,11 @@
+from uuid import UUID
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel
 
 
 class SplitBase(BaseModel):
-    user_id: int
+    user_id: UUID
     share_amount: float
     username: Optional[str] = None
 
@@ -14,9 +15,9 @@ class SplitCreate(SplitBase):
 
 
 class SplitRead(SplitBase):
-    id: int
-    expense_id: int
-    user_id: int
+    id: UUID
+    expense_id: UUID
+    user_id: UUID
     share_amount: float
     username: Optional[str] = None
 
@@ -25,14 +26,14 @@ class SplitRead(SplitBase):
 
 
 class ExpenseBase(BaseModel):
-    group_id: Optional[int] = None
-    payer_id: Optional[int] = None
-    added_by: Optional[int] = None
+    group_id: Optional[UUID] = None
+    payer_id: Optional[UUID] = None
+    added_by: Optional[UUID] = None
     description: str
     amount: float
     currency: Optional[str] = None
     category: Optional[str] = None
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     split_type: Optional[str] = "equal"
     jar_type: Optional[str] = None
     is_from_jar: Optional[bool] = False
@@ -46,15 +47,15 @@ class ExpenseCreate(ExpenseBase):
 
 
 class ExpenseRead(BaseModel):
-    id: int
-    group_id: int
-    payer_id: int
-    added_by: int
+    id: UUID
+    group_id: UUID
+    payer_id: UUID
+    added_by: UUID
     description: str
     amount: float
     currency: str
     category: str | None = None
-    wallet_id: int | None = None
+    wallet_id: UUID | None = None
     split_type: str | None = None
     jar_type: str | None = None
     is_from_jar: bool | None = False
@@ -78,8 +79,8 @@ class ExpenseUpdate(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
     category: Optional[str] = None
-    payer_id: Optional[int] = None
-    wallet_id: Optional[int] = None
+    payer_id: Optional[UUID] = None
+    wallet_id: Optional[UUID] = None
     split_type: Optional[str] = None
     jar_type: Optional[str] = None
     is_from_jar: Optional[bool] = None

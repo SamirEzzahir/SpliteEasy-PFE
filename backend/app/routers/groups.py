@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -21,19 +22,19 @@ async def fetch_groups(session: AsyncSession = Depends(get_session), current=Dep
     return [schemas.GroupRead.model_validate(g) for g in groups]
 
 @router.get("/{group_id}", response_model=schemas.GroupRead)
-async def fetch_group(group_id: int, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def fetch_group(group_id: uuid.UUID, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     await crud.ensure_user_in_group(session, current.id, group_id)
     groups = await crud.get_group(session, group_id)
     return schemas.GroupRead.model_validate(groups)
 
 @router.put("/{group_id}", response_model=schemas.GroupRead)
-async def route_update_group(group_id: int, payload: dict, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def route_update_group(group_id: uuid.UUID, payload: dict, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     await crud.ensure_user_in_group(session, current.id, group_id)
     updated = await crud.update_group(session, group_id, payload)
     return schemas.GroupRead.model_validate(updated)
 
 @router.delete("/{group_id}", status_code=204)
-async def route_delete_group(group_id: int, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def route_delete_group(group_id: uuid.UUID, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     await crud.delete_group(session, group_id, current)
     return
  
@@ -41,7 +42,7 @@ async def route_delete_group(group_id: int, session: AsyncSession = Depends(get_
 # 🔹 Join via invitation link (GET to preview, POST to join)
 @router.get("/join/{group_id}/info")
 async def join_group_info(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -68,7 +69,7 @@ async def join_group_info(
 
 @router.post("/join/{group_id}")
 async def join_group_via_link(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -89,7 +90,7 @@ async def join_group_via_link(
 # 🔹 Leave group
 @router.post("/{group_id}/leave")
 async def leave_group_ep(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -99,7 +100,7 @@ async def leave_group_ep(
 # 🔹 Check if user can leave group
 @router.get("/{group_id}/can_leave")
 async def can_leave_group_ep(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -109,7 +110,7 @@ async def can_leave_group_ep(
 # 🔹 Fetch Group Messages
 @router.get("/{group_id}/messages", response_model=list[schemas.GroupMessageRead])
 async def fetch_group_messages_ep(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -119,7 +120,7 @@ async def fetch_group_messages_ep(
 # 🔹 Send Group Message
 @router.post("/{group_id}/messages", response_model=schemas.GroupMessageRead)
 async def send_group_message_ep(
-    group_id: int,
+    group_id: uuid.UUID,
     payload: schemas.GroupMessageCreate,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -164,7 +165,7 @@ async def send_group_message_ep(
 # 🔹 Typing indicator — broadcast to other group members via WebSocket
 @router.post("/{group_id}/typing", status_code=204)
 async def broadcast_typing_ep(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):

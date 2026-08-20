@@ -19,7 +19,7 @@ export interface Jar {
 export type TxType = "expense" | "income";
 
 export interface Tx {
-  id: number;
+  id: string;
   date: string;
   desc: string;
   jarId: string | null;
@@ -65,7 +65,7 @@ export interface Group {
   balance: number;
   updated: string;
   ownerUsername?: string;
-  ownerId?: number;
+  ownerId?: string;
 }
 
 export interface Expense {
@@ -91,8 +91,8 @@ export interface FriendRow {
   status: FriendStatus;
   balance: number;
   mutuals: number;
-  friendshipId?: number;
-  requestId?: number;
+  friendshipId?: string;
+  requestId?: string;
   displayName?: string;
   email?: string;
   requestAt?: string;

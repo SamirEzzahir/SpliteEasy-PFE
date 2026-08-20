@@ -1,3 +1,4 @@
+import uuid
 """Admin panel API.
 
 Every write action is guarded by a specific permission (see core/dependencies
@@ -134,7 +135,7 @@ async def list_users(
 
 @router.get("/users/{user_id}", response_model=schemas.AdminUserDetail)
 async def get_user(
-    user_id: int,
+    user_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("view_users")),
 ):
@@ -153,7 +154,7 @@ async def get_user(
 
 @router.put("/users/{user_id}", response_model=schemas.AdminUserRead)
 async def update_user(
-    user_id: int, payload: schemas.AdminUserUpdate, request: Request,
+    user_id: uuid.UUID, payload: schemas.AdminUserUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -174,7 +175,7 @@ async def update_user(
 
 @router.post("/users/{user_id}/status")
 async def update_user_status(
-    user_id: int, payload: schemas.UserStatusUpdate, request: Request,
+    user_id: uuid.UUID, payload: schemas.UserStatusUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -196,7 +197,7 @@ async def update_user_status(
 
 @router.post("/users/{user_id}/role")
 async def assign_role(
-    user_id: int, payload: schemas.UserRoleUpdate, request: Request,
+    user_id: uuid.UUID, payload: schemas.UserRoleUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -219,7 +220,7 @@ async def assign_role(
 
 @router.post("/users/{user_id}/reset-password")
 async def reset_user_password(
-    user_id: int, payload: schemas.ResetPasswordIn, request: Request,
+    user_id: uuid.UUID, payload: schemas.ResetPasswordIn, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -237,7 +238,7 @@ async def reset_user_password(
 
 @router.post("/users/{user_id}/force-logout")
 async def force_logout_user(
-    user_id: int, request: Request,
+    user_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -253,7 +254,7 @@ async def force_logout_user(
 
 @router.post("/users/{user_id}/verify-email")
 async def verify_user_email(
-    user_id: int, request: Request,
+    user_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -270,7 +271,7 @@ async def verify_user_email(
 
 @router.delete("/users/{user_id}")
 async def delete_user(
-    user_id: int, request: Request,
+    user_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_users")),
 ):
@@ -306,7 +307,7 @@ async def list_groups(
 
 @router.get("/groups/{group_id}", response_model=schemas.AdminGroupRead)
 async def get_group(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("view_groups")),
 ):
@@ -329,7 +330,7 @@ async def get_group(
 
 @router.post("/groups/{group_id}/transfer-owner")
 async def transfer_group_owner(
-    group_id: int, payload: schemas.TransferOwnerIn, request: Request,
+    group_id: uuid.UUID, payload: schemas.TransferOwnerIn, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_groups")),
 ):
@@ -358,7 +359,7 @@ async def transfer_group_owner(
 
 @router.delete("/groups/{group_id}")
 async def delete_group(
-    group_id: int, request: Request,
+    group_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_groups")),
 ):
@@ -392,7 +393,7 @@ async def list_expenses(
 
 @router.delete("/expenses/{expense_id}")
 async def delete_expense(
-    expense_id: int, request: Request,
+    expense_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_expenses")),
 ):
@@ -426,7 +427,7 @@ async def list_settlements(
 
 @router.post("/settlements/{settlement_id}/cancel")
 async def cancel_settlement(
-    settlement_id: int, request: Request,
+    settlement_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_settlements")),
 ):
@@ -445,7 +446,7 @@ async def cancel_settlement(
 # ===========================================================================
 # Support center (tickets)
 # ===========================================================================
-async def _get_ticket_or_404(session, ticket_id: int):
+async def _get_ticket_or_404(session, ticket_id: uuid.UUID):
     ticket = await support_repo.get_ticket(session, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -472,7 +473,7 @@ async def list_tickets(
 
 @router.get("/tickets/{ticket_id}", response_model=schemas.TicketDetail)
 async def get_ticket(
-    ticket_id: int,
+    ticket_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("view_support")),
 ):
@@ -482,7 +483,7 @@ async def get_ticket(
 
 @router.post("/tickets/{ticket_id}/replies", response_model=schemas.TicketReplyRead)
 async def reply_to_ticket(
-    ticket_id: int, payload: schemas.TicketReplyCreate, request: Request,
+    ticket_id: uuid.UUID, payload: schemas.TicketReplyCreate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_support")),
 ):
@@ -504,7 +505,7 @@ async def reply_to_ticket(
 
 @router.post("/tickets/{ticket_id}/status")
 async def update_ticket_status(
-    ticket_id: int, payload: schemas.TicketStatusUpdate, request: Request,
+    ticket_id: uuid.UUID, payload: schemas.TicketStatusUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_support")),
 ):
@@ -520,7 +521,7 @@ async def update_ticket_status(
 
 @router.post("/tickets/{ticket_id}/priority")
 async def update_ticket_priority(
-    ticket_id: int, payload: schemas.TicketPriorityUpdate, request: Request,
+    ticket_id: uuid.UUID, payload: schemas.TicketPriorityUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_support")),
 ):
@@ -532,7 +533,7 @@ async def update_ticket_priority(
 
 @router.post("/tickets/{ticket_id}/assign")
 async def assign_ticket(
-    ticket_id: int, payload: schemas.TicketAssign, request: Request,
+    ticket_id: uuid.UUID, payload: schemas.TicketAssign, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_support")),
 ):
@@ -595,7 +596,7 @@ async def create_role(
 
 @router.put("/roles/{role_id}", response_model=schemas.RoleRead)
 async def update_role(
-    role_id: int, payload: schemas.RoleUpdate, request: Request,
+    role_id: uuid.UUID, payload: schemas.RoleUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_roles")),
 ):
@@ -617,7 +618,7 @@ async def update_role(
 
 @router.delete("/roles/{role_id}")
 async def delete_role(
-    role_id: int, request: Request,
+    role_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_roles")),
 ):
@@ -697,7 +698,7 @@ async def list_reports(
     )
 
 
-async def _get_report_or_404(session, report_id: int):
+async def _get_report_or_404(session, report_id: uuid.UUID):
     report = await moderation_repo.get_report(session, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -706,7 +707,7 @@ async def _get_report_or_404(session, report_id: int):
 
 @router.get("/reports/{report_id}", response_model=schemas.ReportRead)
 async def get_report(
-    report_id: int,
+    report_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("view_moderation")),
 ):
@@ -723,7 +724,7 @@ async def get_report(
 
 @router.post("/reports/{report_id}/status")
 async def update_report_status(
-    report_id: int, payload: schemas.ReportStatusUpdate, request: Request,
+    report_id: uuid.UUID, payload: schemas.ReportStatusUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_moderation")),
 ):
@@ -735,7 +736,7 @@ async def update_report_status(
 
 @router.post("/reports/{report_id}/notes")
 async def update_report_notes(
-    report_id: int, payload: schemas.ReportNotesUpdate, request: Request,
+    report_id: uuid.UUID, payload: schemas.ReportNotesUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_moderation")),
 ):
@@ -747,7 +748,7 @@ async def update_report_notes(
 
 @router.post("/reports/{report_id}/warn")
 async def warn_reported_user(
-    report_id: int, payload: schemas.ReportWarn, request: Request,
+    report_id: uuid.UUID, payload: schemas.ReportWarn, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_moderation")),
 ):
@@ -814,7 +815,7 @@ async def create_announcement(
 
 @router.put("/announcements/{announcement_id}", response_model=schemas.AnnouncementRead)
 async def update_announcement(
-    announcement_id: int, payload: schemas.AnnouncementUpdate, request: Request,
+    announcement_id: uuid.UUID, payload: schemas.AnnouncementUpdate, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_announcements")),
 ):
@@ -833,7 +834,7 @@ async def update_announcement(
 
 @router.post("/announcements/{announcement_id}/publish", response_model=schemas.AnnouncementRead)
 async def publish_announcement(
-    announcement_id: int, request: Request,
+    announcement_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_announcements")),
 ):
@@ -852,7 +853,7 @@ async def publish_announcement(
 
 @router.delete("/announcements/{announcement_id}")
 async def delete_announcement(
-    announcement_id: int, request: Request,
+    announcement_id: uuid.UUID, request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_announcements")),
 ):

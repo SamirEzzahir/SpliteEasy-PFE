@@ -18,20 +18,22 @@ interface Props {
   onToast?: (message: string, type?: "success" | "error" | "info" | "warning") => void;
 }
 
-const canUseBackend = (id: string) => Number.isFinite(Number(id));
+// A real backend group has a UUID id; local/demo placeholders do not.
+const canUseBackend = (id: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 export default function ManageGroupMembersModal({ group, onClose, onChanged, onToast }: Props) {
   const { friends } = useApp();
   const [members, setMembers] = useState<ApiMembership[]>([]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ApiUser[]>([]);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [makeAdmin, setMakeAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const groupId = Number(group.id);
+  const groupId = String(group.id);
   const backendReady = canUseBackend(group.id);
 
   const memberIds = useMemo(
@@ -83,19 +85,19 @@ export default function ManageGroupMembersModal({ group, onClose, onChanged, onT
       .map((friend) => {
         const person = personById(friend.personId);
         return {
-          id: Number(friend.personId),
+          id: friend.personId,
           username: person.name,
           full_name: person.name,
           email: person.email || "",
         } as ApiUser;
       })
-      .filter((user) => Number.isFinite(user.id));
+      .filter((user) => !!user.id);
   }, [friends, memberIds]);
 
   const visibleResults = (query.trim().length >= 2 ? results : friendOptions)
     .filter((user) => !memberIds.has(String(user.id)));
 
-  const toggleSelected = (id: number) => {
+  const toggleSelected = (id: string) => {
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -124,7 +126,7 @@ export default function ManageGroupMembersModal({ group, onClose, onChanged, onT
     }
   };
 
-  const removeMember = async (userId: number) => {
+  const removeMember = async (userId: string) => {
     if (!backendReady || !confirm("Remove this member from the group?")) return;
     setSaving(true);
     setError(null);
@@ -157,9 +159,9 @@ export default function ManageGroupMembersModal({ group, onClose, onChanged, onT
   };
 
   const fallbackMembers: ApiMembership[] = group.memberIds.map((id, index) => ({
-    id: index,
-    user_id: Number(id) || index,
-    group_id: Number(group.id) || 0,
+    id: String(index),
+    user_id: id,
+    group_id: group.id,
     is_admin: index === 0,
     username: null,
     email: null,

@@ -27,7 +27,7 @@ import {
 type Tab = "debts" | "loans";
 
 interface Row {
-  id: number; name: string;
+  id: string; name: string;
   original_amount: number; remaining_amount: number; total_paid: number;
   status: DebtLoanStatus; due_date?: string | null; note?: string | null;
 }
@@ -178,7 +178,7 @@ export default function DebtsLoansPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [acting, setActing] = useState<Set<number>>(new Set());
+  const [acting, setActing] = useState<Set<string>>(new Set());
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -204,7 +204,7 @@ export default function DebtsLoansPage() {
   const totalLoans = summary?.total_loans ?? 0;
   const net = summary?.net ?? 0;
 
-  const setActingId = (id: number, on: boolean) =>
+  const setActingId = (id: string, on: boolean) =>
     setActing((prev) => { const s = new Set(prev); on ? s.add(id) : s.delete(id); return s; });
 
   // ── Actions ─────────────────────────────────────────────────────────────────

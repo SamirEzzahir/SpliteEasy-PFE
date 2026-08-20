@@ -13,13 +13,13 @@ export interface Paginated<T> {
 }
 
 export interface AdminRole {
-  id: number;
+  id: string;
   name: string;
   permissions: string; // JSON string array
 }
 
 export interface AdminUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name?: string | null;
@@ -33,7 +33,7 @@ export interface AdminUser {
   email_verified: boolean;
   last_login_at?: string | null;
   created_at?: string | null;
-  role_id?: number | null;
+  role_id?: string | null;
   role?: AdminRole | null;
   preferred_currency?: string | null;
 }
@@ -46,11 +46,11 @@ export interface AdminUserDetail extends AdminUser {
 }
 
 export interface AdminGroup {
-  id: number;
+  id: string;
   title: string;
   type?: string | null;
   currency?: string | null;
-  owner_id?: number | null;
+  owner_id?: string | null;
   owner_username?: string | null;
   members_count: number;
   expenses_count: number;
@@ -58,10 +58,10 @@ export interface AdminGroup {
 }
 
 export interface AdminExpense {
-  id: number;
-  group_id: number;
+  id: string;
+  group_id: string;
   group_title?: string | null;
-  payer_id?: number | null;
+  payer_id?: string | null;
   payer_username?: string | null;
   description?: string | null;
   amount: number;
@@ -71,11 +71,11 @@ export interface AdminExpense {
 }
 
 export interface AdminSettlement {
-  id: number;
-  group_id?: number | null;
-  from_user_id: number;
+  id: string;
+  group_id?: string | null;
+  from_user_id: string;
   from_username?: string | null;
-  to_user_id: number;
+  to_user_id: string;
   to_username?: string | null;
   amount: number;
   status: "pending" | "accepted" | "rejected";
@@ -83,12 +83,12 @@ export interface AdminSettlement {
 }
 
 export interface AuditLog {
-  id: number;
-  admin_id?: number | null;
+  id: string;
+  admin_id?: string | null;
   admin_username?: string | null;
   action: string;
   target_type?: string | null;
-  target_id?: number | null;
+  target_id?: string | null;
   details?: string | null;
   ip?: string | null;
   created_at: string;
@@ -144,24 +144,24 @@ export interface PlatformSettings {
 }
 
 export interface ModerationReport {
-  id: number;
-  reporter_id?: number | null;
+  id: string;
+  reporter_id?: string | null;
   reporter_username?: string | null;
   target_type: string;
-  target_id: number;
+  target_id: string;
   target_username?: string | null;
   reason: string;
   description?: string | null;
   status: string;
   notes?: string | null;
-  handled_by?: number | null;
+  handled_by?: string | null;
   handled_by_username?: string | null;
   created_at: string;
   updated_at?: string | null;
 }
 
 export interface Announcement {
-  id: number;
+  id: string;
   title: string;
   body: string;
   type: string;
@@ -170,7 +170,7 @@ export interface Announcement {
   publish_at?: string | null;
   expires_at?: string | null;
   is_published: boolean;
-  created_by?: number | null;
+  created_by?: string | null;
   author_username?: string | null;
   created_at: string;
   updated_at?: string | null;
@@ -216,28 +216,28 @@ export const adminApi = {
   async users(params: ListParams = {}): Promise<Paginated<AdminUser>> {
     return (await api.get<Paginated<AdminUser>>("/admin/users", { params })).data;
   },
-  async user(id: number): Promise<AdminUserDetail> {
+  async user(id: string): Promise<AdminUserDetail> {
     return (await api.get<AdminUserDetail>(`/admin/users/${id}`)).data;
   },
-  async updateUser(id: number, body: Partial<Pick<AdminUser, "username" | "email" | "first_name" | "last_name" | "phone" | "email_verified">>) {
+  async updateUser(id: string, body: Partial<Pick<AdminUser, "username" | "email" | "first_name" | "last_name" | "phone" | "email_verified">>) {
     return (await api.put<AdminUser>(`/admin/users/${id}`, body)).data;
   },
-  async setUserStatus(id: number, status: string, reason?: string) {
+  async setUserStatus(id: string, status: string, reason?: string) {
     return (await api.post(`/admin/users/${id}/status`, { status, reason })).data;
   },
-  async setUserRole(id: number, role_id: number | null) {
+  async setUserRole(id: string, role_id: string | null) {
     return (await api.post(`/admin/users/${id}/role`, { role_id })).data;
   },
-  async resetPassword(id: number, new_password: string) {
+  async resetPassword(id: string, new_password: string) {
     return (await api.post(`/admin/users/${id}/reset-password`, { new_password })).data;
   },
-  async forceLogout(id: number) {
+  async forceLogout(id: string) {
     return (await api.post(`/admin/users/${id}/force-logout`)).data;
   },
-  async verifyEmail(id: number) {
+  async verifyEmail(id: string) {
     return (await api.post(`/admin/users/${id}/verify-email`)).data;
   },
-  async deleteUser(id: number) {
+  async deleteUser(id: string) {
     return (await api.delete(`/admin/users/${id}`)).data;
   },
 
@@ -245,10 +245,10 @@ export const adminApi = {
   async groups(params: ListParams = {}): Promise<Paginated<AdminGroup>> {
     return (await api.get<Paginated<AdminGroup>>("/admin/groups", { params })).data;
   },
-  async deleteGroup(id: number) {
+  async deleteGroup(id: string) {
     return (await api.delete(`/admin/groups/${id}`)).data;
   },
-  async transferOwner(id: number, new_owner_id: number) {
+  async transferOwner(id: string, new_owner_id: string) {
     return (await api.post(`/admin/groups/${id}/transfer-owner`, { new_owner_id })).data;
   },
 
@@ -256,7 +256,7 @@ export const adminApi = {
   async expenses(params: ListParams = {}): Promise<Paginated<AdminExpense>> {
     return (await api.get<Paginated<AdminExpense>>("/admin/expenses", { params })).data;
   },
-  async deleteExpense(id: number) {
+  async deleteExpense(id: string) {
     return (await api.delete(`/admin/expenses/${id}`)).data;
   },
 
@@ -264,31 +264,31 @@ export const adminApi = {
   async settlements(params: ListParams = {}): Promise<Paginated<AdminSettlement>> {
     return (await api.get<Paginated<AdminSettlement>>("/admin/settlements", { params })).data;
   },
-  async cancelSettlement(id: number) {
+  async cancelSettlement(id: string) {
     return (await api.post(`/admin/settlements/${id}/cancel`)).data;
   },
 
   // Support tickets
-  async tickets(params: TicketListParams & { priority?: string; assigned_to_id?: number } = {}): Promise<Paginated<Ticket>> {
+  async tickets(params: TicketListParams & { priority?: string; assigned_to_id?: string } = {}): Promise<Paginated<Ticket>> {
     return (await api.get<Paginated<Ticket>>("/admin/tickets", { params })).data;
   },
-  async ticket(id: number): Promise<TicketDetail> {
+  async ticket(id: string): Promise<TicketDetail> {
     return (await api.get<TicketDetail>(`/admin/tickets/${id}`)).data;
   },
-  async ticketReply(id: number, body: string): Promise<TicketReply> {
+  async ticketReply(id: string, body: string): Promise<TicketReply> {
     return (await api.post<TicketReply>(`/admin/tickets/${id}/replies`, { body })).data;
   },
-  async ticketStatus(id: number, status: string) {
+  async ticketStatus(id: string, status: string) {
     return (await api.post(`/admin/tickets/${id}/status`, { status })).data;
   },
-  async ticketPriority(id: number, priority: string) {
+  async ticketPriority(id: string, priority: string) {
     return (await api.post(`/admin/tickets/${id}/priority`, { priority })).data;
   },
-  async ticketAssign(id: number, assignee_id: number | null) {
+  async ticketAssign(id: string, assignee_id: string | null) {
     return (await api.post(`/admin/tickets/${id}/assign`, { assignee_id })).data;
   },
-  async ticketAssignees(): Promise<{ id: number; username: string }[]> {
-    return (await api.get<{ id: number; username: string }[]>("/admin/tickets-assignees")).data;
+  async ticketAssignees(): Promise<{ id: string; username: string }[]> {
+    return (await api.get<{ id: string; username: string }[]>("/admin/tickets-assignees")).data;
   },
 
   // Roles & permissions
@@ -301,10 +301,10 @@ export const adminApi = {
   async createRole(name: string, permissions: string) {
     return (await api.post<AdminRole>("/admin/roles", { name, permissions })).data;
   },
-  async updateRole(id: number, body: { name?: string; permissions?: string }) {
+  async updateRole(id: string, body: { name?: string; permissions?: string }) {
     return (await api.put<AdminRole>(`/admin/roles/${id}`, body)).data;
   },
-  async deleteRole(id: number) {
+  async deleteRole(id: string) {
     return (await api.delete(`/admin/roles/${id}`)).data;
   },
 
@@ -325,16 +325,16 @@ export const adminApi = {
   async reports(params: ListParams & { status?: string; reason?: string; target_type?: string } = {}): Promise<Paginated<ModerationReport>> {
     return (await api.get<Paginated<ModerationReport>>("/admin/reports", { params })).data;
   },
-  async report(id: number): Promise<ModerationReport> {
+  async report(id: string): Promise<ModerationReport> {
     return (await api.get<ModerationReport>(`/admin/reports/${id}`)).data;
   },
-  async reportStatus(id: number, status: string) {
+  async reportStatus(id: string, status: string) {
     return (await api.post(`/admin/reports/${id}/status`, { status })).data;
   },
-  async reportNotes(id: number, notes: string) {
+  async reportNotes(id: string, notes: string) {
     return (await api.post(`/admin/reports/${id}/notes`, { notes })).data;
   },
-  async warnReport(id: number, message?: string) {
+  async warnReport(id: string, message?: string) {
     return (await api.post(`/admin/reports/${id}/warn`, { message })).data;
   },
 
@@ -345,13 +345,13 @@ export const adminApi = {
   async createAnnouncement(body: Partial<Announcement> & { publish_now?: boolean }): Promise<Announcement> {
     return (await api.post<Announcement>("/admin/announcements", body)).data;
   },
-  async updateAnnouncement(id: number, body: Partial<Announcement>): Promise<Announcement> {
+  async updateAnnouncement(id: string, body: Partial<Announcement>): Promise<Announcement> {
     return (await api.put<Announcement>(`/admin/announcements/${id}`, body)).data;
   },
-  async publishAnnouncement(id: number): Promise<Announcement> {
+  async publishAnnouncement(id: string): Promise<Announcement> {
     return (await api.post<Announcement>(`/admin/announcements/${id}/publish`)).data;
   },
-  async deleteAnnouncement(id: number) {
+  async deleteAnnouncement(id: string) {
     return (await api.delete(`/admin/announcements/${id}`)).data;
   },
 

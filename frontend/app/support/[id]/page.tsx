@@ -16,7 +16,7 @@ import { toast } from "react-toastify";
 
 export default function SupportTicketPage() {
   const params = useParams<{ id: string }>();
-  const ticketId = Number(params.id);
+  const ticketId = String(params.id);
   const { user } = useAuth();
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
@@ -88,7 +88,7 @@ export default function SupportTicketPage() {
               description={ticket.message}
               descriptionDate={ticket.created_at}
               replies={ticket.replies}
-              meId={Number(user?.id ?? -1)}
+              meId={user?.id ?? ""}
               onSend={sendReply}
               disabled={closed}
               disabledNote="This ticket is closed. Open a new one if you still need help."

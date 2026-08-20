@@ -46,7 +46,7 @@ export default function BalancesPage() {
     setGroupLoading(true);
     Promise.all(
       groups.map((g) =>
-        settleApi.groupBalances(Number(g.id))
+        settleApi.groupBalances(g.id)
           .then((entries) => [g.id, entries] as const)
           .catch(() => [g.id, [] as ApiBalanceEntry[]] as const),
       ),

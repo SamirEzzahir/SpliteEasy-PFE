@@ -4,7 +4,7 @@ import { api } from "./client";
 
 export interface CreateReportPayload {
   target_type: "user" | "group" | "expense" | "message";
-  target_id: number;
+  target_id: string;
   reason: "spam" | "abuse" | "fake_account" | "inappropriate" | "other";
   description?: string;
 }

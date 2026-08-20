@@ -3,7 +3,7 @@
 import { api } from "./client";
 
 export interface ActiveAnnouncement {
-  id: number;
+  id: string;
   title: string;
   body: string;
   type: string;

@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_session
@@ -14,7 +15,7 @@ async def fetch_users(session: AsyncSession = Depends(get_session), current=Depe
     return [schemas.UserRead.model_validate(u, from_attributes=True) for u in users]
 
 @router.get("/{user_id}", response_model=schemas.UserRead)
-async def fetch_user(user_id: int, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def fetch_user(user_id: uuid.UUID, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     user = await crud.get_user_by_id(session, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -69,7 +70,7 @@ async def update_onboarding(
 
 
 @router.put("/{user_id}", response_model=schemas.UserRead)
-async def edit_user(user_id: int, payload: schemas.UserUpdate, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def edit_user(user_id: uuid.UUID, payload: schemas.UserUpdate, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     updated = await crud.update_user(session, user_id, payload.dict(exclude_unset=True))
     return schemas.UserRead.model_validate(updated)
 
@@ -101,12 +102,12 @@ async def change_password(
 
 """
 @router.delete("/{user_id}", status_code=204)
-async def remove_user(user_id: int, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def remove_user(user_id: uuid.UUID, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     await crud.delete_user(session, user_id)
     return
 """
 
 @router.delete("/{user_id}", response_model=dict)
-async def deactivate_user(user_id: int, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
+async def deactivate_user(user_id: uuid.UUID, session: AsyncSession = Depends(get_session), current=Depends(get_current_user)):
     await crud.delete_user(session, user_id)
     return {"detail": "User deactivated"}

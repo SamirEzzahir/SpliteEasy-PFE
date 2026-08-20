@@ -37,9 +37,8 @@ export default function GroupDetailPage() {
   const { user } = useAuth();
   const { groups, expenses, addExpense, refetchSplitting, showToast, loading } = useApp();
 
-  const groupId = Number(params.id);
-  // Fix: numeric comparison prevents string/number mismatch (g.id is stored as string in store)
-  const group = groups.find((g) => Number(g.id) === groupId);
+  const groupId = String(params.id);
+  const group = groups.find((g) => g.id === groupId);
   // Convenience: group currency with MAD fallback
   const currency = group?.currency ?? "MAD";
 
@@ -69,11 +68,11 @@ export default function GroupDetailPage() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // ── Settlement inline action loading state ───────────────────────────────────
-  const [actingSettlementId, setActingSettlementId] = useState<number | null>(null);
+  const [actingSettlementId, setActingSettlementId] = useState<string | null>(null);
 
   // ── Side data fetch ──────────────────────────────────────────────────────────
   const fetchSideData = useCallback(async () => {
-    if (!Number.isFinite(groupId)) return;
+    if (!groupId) return;
     const [bal, hist] = await Promise.allSettled([
       settleApi.groupBalances(groupId),
       settleApi.groupHistory(groupId),
@@ -180,7 +179,7 @@ export default function GroupDetailPage() {
     const doDelete = async () => {
       if (undone) return;
       try {
-        await expensesApi.remove(Number(expenseId));
+        await expensesApi.remove(expenseId);
         await refetchSplitting();
       } catch {
         toast.error("Could not delete expense");
@@ -215,7 +214,7 @@ export default function GroupDetailPage() {
   };
 
   // Inline settlement accept — surfaces action without requiring modal open
-  const acceptSettlementInline = async (id: number) => {
+  const acceptSettlementInline = async (id: string) => {
     setActingSettlementId(id);
     try {
       await settleApi.acceptSettlement(id);
@@ -229,7 +228,7 @@ export default function GroupDetailPage() {
   };
 
   // Inline settlement reject
-  const rejectSettlementInline = async (id: number) => {
+  const rejectSettlementInline = async (id: string) => {
     const result = await Swal.fire({
       title: "Reject Settlement",
       input: "textarea",

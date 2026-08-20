@@ -16,8 +16,8 @@ import RecordSettlementModal from "@/components/modals/RecordSettlementModal";
 import type { ApiBalanceEntry, ApiSettlement } from "@/lib/api/types";
 
 interface SuggestedSettlement {
-  from_user_id: number;
-  to_user_id: number;
+  from_user_id: string;
+  to_user_id: string;
   from_username?: string;
   to_username?: string;
   amount: number;
@@ -57,24 +57,23 @@ export default function GroupSettlePage() {
   const { user } = useAuth();
   const { groups } = useApp();
 
-  const groupId = Number(params.id);
-  // Fix: compare as numbers to avoid string/number mismatch
-  const group = groups.find((g) => Number(g.id) === groupId);
+  const groupId = String(params.id);
+  const group = groups.find((g) => g.id === groupId);
 
   const [balances, setBalances] = useState<ApiBalanceEntry[]>([]);
   const [suggested, setSuggested] = useState<SuggestedSettlement[]>([]);
   const [history, setHistory] = useState<ApiSettlement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<Set<number>>(new Set());
+  const [acting, setActing] = useState<Set<string>>(new Set());
   const [showAllMembers, setShowAllMembers] = useState(false);
 
   const [settleModal, setSettleModal] = useState<{
-    defaultToId?: number;
+    defaultToId?: string;
     defaultAmount?: number;
   } | null>(null);
 
   const refetch = useCallback(async () => {
-    if (!Number.isFinite(groupId)) return;
+    if (!groupId) return;
     setLoading(true);
     // Use allSettled so a single endpoint failure doesn't blank the whole page
     const [balRes, sugRes, histRes] = await Promise.allSettled([
@@ -117,10 +116,10 @@ export default function GroupSettlePage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────────
 
-  const setActingId = (id: number, on: boolean) =>
+  const setActingId = (id: string, on: boolean) =>
     setActing((prev) => { const s = new Set(prev); on ? s.add(id) : s.delete(id); return s; });
 
-  const quickSettle = (fromId: number, toId: number, amount: number) => {
+  const quickSettle = (fromId: string, toId: string, amount: number) => {
     if (fromId !== myId) {
       toast.warning("You can only settle your own debts", { position: "bottom-right" });
       return;
@@ -128,7 +127,7 @@ export default function GroupSettlePage() {
     setSettleModal({ defaultToId: toId, defaultAmount: amount });
   };
 
-  const handleConfirmSettle = async (toUserId: number, amount: number, message?: string) => {
+  const handleConfirmSettle = async (toUserId: string, amount: number, message?: string) => {
     try {
       await settleApi.recordGroup({ group_id: groupId, from_user_id: myId!, to_user_id: toUserId, amount, description: message });
       toast.success("Settlement recorded! Waiting for confirmation.");
@@ -139,7 +138,7 @@ export default function GroupSettlePage() {
     }
   };
 
-  const resendSettlement = async (id: number, amount: number, toUserId: number) => {
+  const resendSettlement = async (id: string, amount: number, toUserId: string) => {
     const result = await Swal.fire({
       title: "Resend Settlement",
       input: "number",
@@ -163,7 +162,7 @@ export default function GroupSettlePage() {
     }
   };
 
-  const acceptSettlement = async (id: number) => {
+  const acceptSettlement = async (id: string) => {
     setActingId(id, true);
     try {
       await settleApi.acceptSettlement(id);
@@ -176,7 +175,7 @@ export default function GroupSettlePage() {
     }
   };
 
-  const rejectSettlement = async (id: number) => {
+  const rejectSettlement = async (id: string) => {
     const result = await Swal.fire({
       title: "Reject Settlement",
       input: "textarea",
@@ -208,7 +207,7 @@ export default function GroupSettlePage() {
     return <span className="st-pill pending">🕐 Pending</span>;
   };
 
-  const pairwiseBalance = (memberId: number): { label: string; color: string; amount: number } => {
+  const pairwiseBalance = (memberId: string): { label: string; color: string; amount: number } => {
     const iOwe = suggested.find((s) => s.from_user_id === myId && s.to_user_id === memberId);
     if (iOwe) return { label: "Owe", color: "var(--rose)", amount: iOwe.amount };
     const theyOwe = suggested.find((s) => s.from_user_id === memberId && s.to_user_id === myId);

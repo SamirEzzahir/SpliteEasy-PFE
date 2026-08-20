@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { useWS } from "@/lib/ws-context";
 
 interface Props {
-  groupId: number;
+  groupId: string;
   groupName: string;
 }
 
@@ -72,14 +72,14 @@ export default function GroupChat({ groupId, groupName }: Props) {
   const [sending, setSending] = useState(false);
   const [unread, setUnread] = useState(0);
   const [showNewPill, setShowNewPill] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<Record<number, string>>({}); // userId → username
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({}); // userId → username
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
   // timers to auto-clear typing indicators after 3s
-  const typingTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // debounce timer for sending typing events
   const typingSendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -115,7 +115,7 @@ export default function GroupChat({ groupId, groupName }: Props) {
   // ── Subscribe to shared WebSocket (no new socket opened here) ───────────────
   useEffect(() => {
     const unsubTyping = subscribe("typing", (raw) => {
-      const data = raw as { group_id: number; user_id: number; username: string };
+      const data = raw as { group_id: string; user_id: string; username: string };
       if (data.group_id !== groupId) return;
       const uid = data.user_id;
       setTypingUsers((prev) => ({ ...prev, [uid]: data.username }));

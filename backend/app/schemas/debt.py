@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -13,7 +14,7 @@ class DebtLoanStatus(str, Enum):
 class DebtBase(BaseModel):
     lender_name: str
     original_amount: float
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     due_date: Optional[datetime] = None
     note: Optional[str] = None
 
@@ -29,8 +30,8 @@ class DebtUpdate(BaseModel):
 
 
 class DebtRead(DebtBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     remaining_amount: float
     status: DebtLoanStatus
     created_at: datetime
@@ -44,7 +45,7 @@ class DebtRead(DebtBase):
 class LoanBase(BaseModel):
     borrower_name: str
     original_amount: float
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     due_date: Optional[datetime] = None
     note: Optional[str] = None
 
@@ -60,8 +61,8 @@ class LoanUpdate(BaseModel):
 
 
 class LoanRead(LoanBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     remaining_amount: float
     status: DebtLoanStatus
     created_at: datetime
@@ -74,15 +75,15 @@ class LoanRead(LoanBase):
 
 class DebtRepaymentCreate(BaseModel):
     amount: float
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     note: Optional[str] = None
 
 
 class DebtRepaymentRead(BaseModel):
-    id: int
-    debt_id: int
+    id: UUID
+    debt_id: UUID
     amount: float
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     wallet_name: Optional[str] = None
     note: Optional[str] = None
     created_at: datetime
@@ -93,15 +94,15 @@ class DebtRepaymentRead(BaseModel):
 
 class LoanRepaymentCreate(BaseModel):
     amount: float
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     note: Optional[str] = None
 
 
 class LoanRepaymentRead(BaseModel):
-    id: int
-    loan_id: int
+    id: UUID
+    loan_id: UUID
     amount: float
-    wallet_id: Optional[int] = None
+    wallet_id: Optional[UUID] = None
     wallet_name: Optional[str] = None
     note: Optional[str] = None
     created_at: datetime

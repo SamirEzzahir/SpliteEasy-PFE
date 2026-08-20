@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/stats", tags=["Statistics"])
 # 🔹 Global expenses by group (for overview page)
 @router.get("/groups")
 async def stats_groups(
-    user_id: int | None = Query(None, description="Filter by specific user ID"),
+    user_id: uuid.UUID | None = Query(None, description="Filter by specific user ID"),
     time_range: str | None = Query("monthly", description="Time range: daily, monthly, yearly, lifetime"),
     from_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
     to_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),

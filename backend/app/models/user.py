@@ -1,7 +1,8 @@
 import enum
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Boolean, Enum, Text
+import uuid
+from sqlalchemy import Uuid, text, String, Integer, ForeignKey, DateTime, Boolean, Enum, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -29,7 +30,7 @@ class ReclamationStatus(enum.Enum):
 class Role(Base):
     __tablename__ = "roles"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     permissions: Mapped[str] = mapped_column(String(5000), default="[]")
 
@@ -39,7 +40,7 @@ class Role(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     username: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
@@ -57,7 +58,7 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Bumped to invalidate all of a user's outstanding JWTs ("force logout").
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    role_id: Mapped[int | None] = mapped_column(ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
+    role_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
     global_settlement_mode: Mapped[GlobalSettlementMode] = mapped_column(
         Enum(GlobalSettlementMode, native_enum=False), default=GlobalSettlementMode.separate
     )
@@ -93,14 +94,14 @@ class Reclamation(Base):
     surfaced as a "ticket" throughout the API/UI.)"""
     __tablename__ = "reclamations"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     subject: Mapped[str] = mapped_column(String(200), nullable=False)
     message: Mapped[str] = mapped_column(String(2000), nullable=False)
     category: Mapped[str] = mapped_column(String(20), default="other", server_default="other")
     priority: Mapped[str] = mapped_column(String(10), default="medium", server_default="medium")
     status: Mapped[ReclamationStatus] = mapped_column(Enum(ReclamationStatus, native_enum=False), default=ReclamationStatus.open)
-    assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    assigned_to_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -116,9 +117,9 @@ class TicketReply(Base):
     """A single message in a support ticket thread (from the user or an admin)."""
     __tablename__ = "ticket_replies"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    reclamation_id: Mapped[int] = mapped_column(ForeignKey("reclamations.id", ondelete="CASCADE"), index=True)
-    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    reclamation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("reclamations.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

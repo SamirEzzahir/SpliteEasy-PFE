@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, field_validator
@@ -39,7 +40,7 @@ class AnnouncementUpdate(BaseModel):
 
 
 class AnnouncementRead(BaseModel):
-    id: int
+    id: UUID
     title: str
     body: str
     type: str
@@ -48,7 +49,7 @@ class AnnouncementRead(BaseModel):
     publish_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     is_published: bool
-    created_by: Optional[int] = None
+    created_by: Optional[UUID] = None
     author_username: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -56,7 +57,7 @@ class AnnouncementRead(BaseModel):
 
 class ActiveAnnouncement(BaseModel):
     """Public shape shown to end users (banner/popup)."""
-    id: int
+    id: UUID
     title: str
     body: str
     type: str

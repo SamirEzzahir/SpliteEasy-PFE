@@ -23,7 +23,7 @@ export interface CreateStrategyPayload {
 export interface DistributePayload {
   amount: number;
   source_name?: string;
-  strategy_id?: number;
+  strategy_id?: string;
 }
 
 export interface SpendPayload {
@@ -41,11 +41,11 @@ export const economeApi = {
     const r = await api.post<ApiJarStrategy>("/econome/strategies", p);
     return r.data;
   },
-  async updateStrategy(id: number, p: Partial<CreateStrategyPayload>): Promise<ApiJarStrategy> {
+  async updateStrategy(id: string, p: Partial<CreateStrategyPayload>): Promise<ApiJarStrategy> {
     const r = await api.put<ApiJarStrategy>(`/econome/strategies/${id}`, p);
     return r.data;
   },
-  async deleteStrategy(id: number): Promise<void> {
+  async deleteStrategy(id: string): Promise<void> {
     await api.delete(`/econome/strategies/${id}`);
   },
   async distribute(p: DistributePayload): Promise<ApiIncomeLog> {

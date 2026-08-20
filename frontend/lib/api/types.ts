@@ -1,15 +1,15 @@
 // lib/api/types.ts — backend response shapes (subset; expand as new fields surface)
 
 export interface ApiUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name?: string | null;
   last_name?: string | null;
   full_name?: string | null;
   gender?: string | null;
-  role_id?: number | null;
-  role?: { id: number; name: string; permissions?: string } | null;
+  role_id?: string | null;
+  role?: { id: string; name: string; permissions?: string } | null;
   is_active?: boolean;
   phone?: string | null;
   profile_photo?: string | null;
@@ -25,13 +25,13 @@ export interface ApiLoginResponse {
 }
 
 export interface ApiGroup {
-  id: number;
+  id: string;
   title: string;
   currency: string;
   type?: string | null;
   photo?: string | null;
   description?: string | null;
-  owner_id: number;
+  owner_id: string;
   owner_username?: string | null;
   members_usernames?: string[];
   expenses_count?: number;
@@ -41,9 +41,9 @@ export interface ApiGroup {
 }
 
 export interface ApiMembership {
-  id: number;
-  group_id: number;
-  user_id: number;
+  id: string;
+  group_id: string;
+  user_id: string;
   is_admin: boolean;
   username?: string | null;
   email?: string | null;
@@ -52,34 +52,34 @@ export interface ApiMembership {
 }
 
 export interface ApiSplit {
-  id: number;
-  expense_id: number;
-  user_id: number;
+  id: string;
+  expense_id: string;
+  user_id: string;
   amount: number;
 }
 
 export interface ApiExpense {
-  id: number;
-  group_id: number;
-  payer_id: number;
+  id: string;
+  group_id: string;
+  payer_id: string;
   amount: number;
   currency?: string | null;
   description: string;
   category?: string | null;
   date?: string;
   created_at?: string;
-  added_by?: number | null;
+  added_by?: string | null;
   added_by_username?: string | null;
   split_type?: "equal" | "percentage" | "share" | null;
-  wallet_id?: number | null;
+  wallet_id?: string | null;
   splits?: ApiSplit[];
   payer?: ApiUser;
 }
 
 export interface ApiFriend {
-  id: number;
-  user_id: number;
-  friend_id: number;
+  id: string;
+  user_id: string;
+  friend_id: string;
   status: "pending" | "accepted" | "rejected";
   user?: ApiUser;
   friend?: ApiUser;
@@ -87,7 +87,7 @@ export interface ApiFriend {
 }
 
 export interface ApiBalanceEntry {
-  user_id: number;
+  user_id: string;
   username?: string;
   balance?: number;
   net?: number;
@@ -96,17 +96,17 @@ export interface ApiBalanceEntry {
 }
 
 export interface ApiGlobalBalance {
-  user_id: number;
+  user_id: string;
   username?: string;
   net: number; // positive = friend owes you, negative = you owe
 }
 
 export interface ApiSettlement {
-  id: number;
-  group_id?: number;
-  from_user_id: number;
+  id: string;
+  group_id?: string;
+  from_user_id: string;
   from_username?: string;
-  to_user_id: number;
+  to_user_id: string;
   to_username?: string;
   amount: number;
   status: "pending" | "accepted" | "rejected";
@@ -119,13 +119,13 @@ export interface ApiSettlement {
 }
 
 export interface ApiNotification {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   type: string;
   message: string;
   is_read: boolean;
   link?: string | null;
-  related_id?: number | null;
+  related_id?: string | null;
   created_at: string;
 }
 
@@ -134,7 +134,7 @@ export interface ApiNotification {
 export type JarCode = "NEC" | "FFA" | "EDU" | "LTSS" | "PLAY" | "GIVE";
 
 export interface ApiJarStrategy {
-  id: number;
+  id: string;
   name: string;
   is_default?: boolean;
   necessities_pct: number;
@@ -151,8 +151,8 @@ export interface ApiJarBalance {
 }
 
 export interface ApiJarTransaction {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   jar_type: JarCode;
   amount: number; // signed
   description?: string | null;
@@ -160,11 +160,11 @@ export interface ApiJarTransaction {
 }
 
 export interface ApiIncomeLog {
-  id: number;
+  id: string;
   amount: number;
   source_name?: string | null;
   distributed_at?: string;
-  strategy_id?: number | null;
+  strategy_id?: string | null;
 }
 
 // ── Dashboard ───────────────────────────────────────────────────────────────

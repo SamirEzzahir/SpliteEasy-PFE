@@ -50,7 +50,7 @@ export default function FriendsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [suggestions, setSuggestions] = useState<ApiFriendSuggestion[]>([]);
   const [activity, setActivity] = useState<ApiActivityLog[]>([]);
-  const [reportUser, setReportUser] = useState<{ id: number; name: string } | null>(null);
+  const [reportUser, setReportUser] = useState<{ id: string; name: string } | null>(null);
 
   const counts = {
     friend: friends.filter((f) => f.status === "friend").length,
@@ -197,7 +197,7 @@ export default function FriendsPage() {
                         <button
                           className="btn-more-i"
                           title="Report user"
-                          onClick={() => setReportUser({ id: Number(f.personId), name })}
+                          onClick={() => setReportUser({ id: f.personId, name })}
                         >
                           <Icon name="alertTriangle" size={15} />
                         </button>

@@ -13,7 +13,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 interface EditorState {
-  id?: number;
+  id?: string;
   name: string;
   perms: Set<string>;
   wildcard: boolean;

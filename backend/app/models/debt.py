@@ -1,7 +1,8 @@
 import enum
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Numeric, Enum
+import uuid
+from sqlalchemy import Uuid, text, String, Integer, ForeignKey, DateTime, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -16,13 +17,13 @@ class DebtLoanStatus(enum.Enum):
 class Debt(Base):
     __tablename__ = "debts"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     lender_name: Mapped[str] = mapped_column(String(200), nullable=False)
     original_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     remaining_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[DebtLoanStatus] = mapped_column(Enum(DebtLoanStatus, native_enum=False), default=DebtLoanStatus.active)
-    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
+    wallet_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     note: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -36,13 +37,13 @@ class Debt(Base):
 class Loan(Base):
     __tablename__ = "loans"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     borrower_name: Mapped[str] = mapped_column(String(200), nullable=False)
     original_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     remaining_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[DebtLoanStatus] = mapped_column(Enum(DebtLoanStatus, native_enum=False), default=DebtLoanStatus.active)
-    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
+    wallet_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     note: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -56,10 +57,10 @@ class Loan(Base):
 class DebtRepayment(Base):
     __tablename__ = "debt_repayments"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    debt_id: Mapped[int] = mapped_column(ForeignKey("debts.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"), index=True)
+    debt_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("debts.id", ondelete="CASCADE"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
+    wallet_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -70,10 +71,10 @@ class DebtRepayment(Base):
 class LoanRepayment(Base):
     __tablename__ = "loan_repayments"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    loan_id: Mapped[int] = mapped_column(ForeignKey("loans.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"), index=True)
+    loan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("loans.id", ondelete="CASCADE"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    wallet_id: Mapped[int | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
+    wallet_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

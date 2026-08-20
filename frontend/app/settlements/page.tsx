@@ -51,11 +51,11 @@ export default function GlobalSettlementsPage() {
   const [suggested, setSuggested] = useState<ApiSettlement[]>([]);
   const [history, setHistory] = useState<ApiSettlement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<Set<number>>(new Set());
+  const [acting, setActing] = useState<Set<string>>(new Set());
   const [showAllFriends, setShowAllFriends] = useState(false);
 
   const [settleModal, setSettleModal] = useState<{
-    defaultToId?: number;
+    defaultToId?: string;
     defaultAmount?: number;
   } | null>(null);
 
@@ -104,10 +104,10 @@ export default function GlobalSettlementsPage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────────
 
-  const setActingId = (id: number, on: boolean) =>
+  const setActingId = (id: string, on: boolean) =>
     setActing((prev) => { const s = new Set(prev); on ? s.add(id) : s.delete(id); return s; });
 
-  const quickSettle = (fromId: number, toId: number, amount: number) => {
+  const quickSettle = (fromId: string, toId: string, amount: number) => {
     if (fromId !== myId) {
       toast.warning("You can only settle your own debts", { position: "bottom-right" });
       return;
@@ -115,7 +115,7 @@ export default function GlobalSettlementsPage() {
     setSettleModal({ defaultToId: toId, defaultAmount: amount });
   };
 
-  const handleConfirmSettle = async (toUserId: number, amount: number, message?: string) => {
+  const handleConfirmSettle = async (toUserId: string, amount: number, message?: string) => {
     try {
       await settleApi.recordGlobal({ to_user_id: toUserId, amount, message });
       toast.success("Settlement recorded! Waiting for confirmation.");
@@ -126,7 +126,7 @@ export default function GlobalSettlementsPage() {
     }
   };
 
-  const resendSettlement = async (id: number, amount: number, toUserId: number) => {
+  const resendSettlement = async (id: string, amount: number, toUserId: string) => {
     const result = await Swal.fire({
       title: "Resend Settlement",
       input: "number",
@@ -150,7 +150,7 @@ export default function GlobalSettlementsPage() {
     }
   };
 
-  const acceptSettlement = async (id: number) => {
+  const acceptSettlement = async (id: string) => {
     setActingId(id, true);
     try {
       await settleApi.acceptGlobal(id);
@@ -163,7 +163,7 @@ export default function GlobalSettlementsPage() {
     }
   };
 
-  const rejectSettlement = async (id: number) => {
+  const rejectSettlement = async (id: string) => {
     const result = await Swal.fire({
       title: "Reject Settlement",
       input: "textarea",

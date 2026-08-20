@@ -55,7 +55,9 @@ const groupVisuals: Record<GroupType, { image: string; label: string }> = {
   },
 };
 
-const isBackendGroup = (group: Group) => Number.isFinite(Number(group.id));
+// A real backend group has a UUID id; local/demo placeholders do not.
+const isBackendGroup = (group: Group) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(group.id);
 
 function balanceMeta(balance: number, currency?: string) {
   if (balance > 0) return { className: "owed", label: "You are owed", value: fmt(balance, currency) };
@@ -134,10 +136,8 @@ export default function GroupsPage() {
         if (sort === "name") return a.name.localeCompare(b.name);
         if (sort === "total") return b.total - a.total;
         if (sort === "balance") return Math.abs(b.balance) - Math.abs(a.balance);
-        // P1.5 — "recent" now sorts by group.id descending (higher id = created later)
-        // group.updated is a formatted string ("Jun 1, 2026") not sortable as-is;
-        // group.id is a reliable proxy for creation order until backend exposes updated_at
-        if (sort === "recent") return Number(b.id) - Number(a.id);
+        // "recent" keeps the API's own ordering (newest-first). Ids are opaque UUIDs
+        // now, so they can no longer proxy creation order.
         return 0;
       });
   }, [groups, query, sort, typeFilter, balanceFilter]);
@@ -208,7 +208,7 @@ export default function GroupsPage() {
     });
     if (!result.isConfirmed) return;
     try {
-      await groupsApi.remove(Number(group.id));
+      await groupsApi.remove(group.id);
       showToast("Group deleted");
       setSelected(null);
       await refetchSplitting();
@@ -236,7 +236,7 @@ export default function GroupsPage() {
     });
     if (!result.isConfirmed) return;
     try {
-      await groupsApi.leave(Number(group.id));
+      await groupsApi.leave(group.id);
       showToast("You left the group");
       setSelected(null);
       await refetchSplitting();

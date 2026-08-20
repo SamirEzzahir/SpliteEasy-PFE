@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,12 +70,4 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), session: AsyncSessi
 
 @router.get("/me", response_model=schemas.UserRead)
 async def fetch_current_user(current: User = Depends(auth.get_current_user)):
-    print(f"DEBUG: User ID: {current.id}, Role ID: {current.role_id}")
-    if current.role:
-        print(f"DEBUG: Role Loaded: {current.role.name}")
-    else:
-        print("DEBUG: Role NOT Loaded")
-    
-    response = schemas.UserRead.model_validate(current, from_attributes=True)
-    print(f"DEBUG: Serialized Response: {response.model_dump()}")
-    return response
+    return schemas.UserRead.model_validate(current, from_attributes=True)

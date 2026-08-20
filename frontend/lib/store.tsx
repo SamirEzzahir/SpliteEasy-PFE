@@ -66,9 +66,9 @@ interface AppState {
   addExpense: (e: Expense) => Promise<void>;
   createGroup: (g: Group) => Promise<void>;
   addFriends: (ids: string[]) => Promise<void>;
-  acceptFriendRequest: (requestId: number) => Promise<void>;
-  rejectFriendRequest: (requestId: number) => Promise<void>;
-  removeFriend: (friendshipId: number) => Promise<void>;
+  acceptFriendRequest: (requestId: string) => Promise<void>;
+  rejectFriendRequest: (requestId: string) => Promise<void>;
+  removeFriend: (friendshipId: string) => Promise<void>;
   settleFriend: (personId: string) => Promise<void>;
 
   // demo triggers (still client-side — they only mutate local UI state)
@@ -90,7 +90,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [jars, setJars] = useState<Jar[]>(INITIAL_JARS);
   const [tx, setTx] = useState<Tx[]>(INITIAL_TX);
   const [income, setIncome] = useState<number>(INITIAL_INCOME);
-  const [strategyId, setStrategyId] = useState<number | null>(null);
+  const [strategyId, setStrategyId] = useState<string | null>(null);
   const [strategyName, setStrategyName] = useState<string>("default");
   const [empty, setEmpty] = useState<boolean>(false);
 
@@ -136,7 +136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .slice(0, 50)
         .map((t) => mapJarTxToTx(t, JAR_UI_ID_BY_CODE));
       const incomeTx: Tx[] = logs.slice(0, 10).map((l) => ({
-        id: 1000000 + l.id,
+        id: `inc-${l.id}`,
         date: l.distributed_at
           ? new Date(l.distributed_at).toLocaleDateString("en-US", {
               month: "short", day: "numeric", year: "numeric",
@@ -147,8 +147,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         type: "income",
         amount: l.amount,
       }));
-      // Newest first by descending id (the ledger is already newest-first on most APIs).
-      setTx([...incomeTx, ...ledgerTx].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 20));
+      // Both sources arrive newest-first from the API; interleave and cap at 20.
+      // (ids are now opaque UUID strings, so we no longer sort numerically by id.)
+      setTx([...incomeTx, ...ledgerTx].slice(0, 20));
     } catch {
       // Leave the seed data in place if the API call fails (e.g. no jars yet).
     }
@@ -194,7 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // ── Groups ────────────────────────────────────────────────
       // Build a total per group from the flat expenses list (no extra API calls).
-      const totalByGroup = new Map<number, number>();
+      const totalByGroup = new Map<string, number>();
       for (const e of rawAllExpenses) {
         totalByGroup.set(e.group_id, (totalByGroup.get(e.group_id) ?? 0) + e.amount);
       }
@@ -210,7 +211,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setExpenses(allExp);
 
       // ── Friends ───────────────────────────────────────────────
-      const balByUser = new Map<number, number>();
+      const balByUser = new Map<string, number>();
       for (const b of globals) balByUser.set(b.user_id, b.net);
       const friendRows: FriendRow[] = rawFriends.map((f) => ({
         ...mapAcceptedFriend(f),
@@ -309,9 +310,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const splitType = ((exp as any).splitType as "equal" | "percentage" | "share") || "equal";
       const customAmounts = (exp as any).customAmounts as Record<string, string> | undefined;
       await expensesApi.create({
-        group_id: Number(exp.groupId),
-        payer_id: Number(exp.paidBy),
-        added_by: user?.id ?? Number(exp.paidBy),
+        group_id: exp.groupId,
+        payer_id: exp.paidBy,
+        added_by: user?.id ?? exp.paidBy,
         amount: exp.amount,
         currency: (exp as any).currency || "USD",
         description: exp.title,
@@ -319,7 +320,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         split_type: splitType,
         splits: exp.splitIds.map((id) => ({
-          user_id: Number(id),
+          user_id: id,
           share_amount: customAmounts?.[id]
             ? parseFloat(customAmounts[id]) || 0
             : exp.amount / Math.max(1, exp.splitIds.length),
@@ -339,10 +340,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currency: g.currency || "USD",
         type: g.type,
         photo: g.photo || null,
-        member_ids: g.memberIds
-          .filter((id) => id !== String(user?.id))
-          .map((id) => Number(id))
-          .filter((id) => Number.isFinite(id)),
+        member_ids: g.memberIds.filter((id) => id !== String(user?.id)),
       });
       showToast("Group created · " + g.name, "success");
       await refetchSplitting();
@@ -354,7 +352,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addFriends = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
     try {
-      await Promise.all(ids.map((id) => friendsApi.sendRequest(Number(id))));
+      await Promise.all(ids.map((id) => friendsApi.sendRequest(id)));
       showToast(ids.length + " friend request" + (ids.length > 1 ? "s" : "") + " sent", "success");
       await refetchSplitting();
     } catch {
@@ -362,7 +360,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refetchSplitting, showToast]);
 
-  const acceptFriendRequest = useCallback(async (requestId: number) => {
+  const acceptFriendRequest = useCallback(async (requestId: string) => {
     try {
       await friendsApi.accept(requestId);
       showToast("Friend request accepted", "success");
@@ -372,7 +370,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refetchSplitting, showToast]);
 
-  const rejectFriendRequest = useCallback(async (requestId: number) => {
+  const rejectFriendRequest = useCallback(async (requestId: string) => {
     try {
       await friendsApi.reject(requestId);
       showToast("Friend request declined", "info");
@@ -382,7 +380,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refetchSplitting, showToast]);
 
-  const removeFriend = useCallback(async (friendshipId: number) => {
+  const removeFriend = useCallback(async (friendshipId: string) => {
     try {
       await friendsApi.remove(friendshipId);
       showToast("Friend removed", "info");
@@ -400,7 +398,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // The backend always records from the current user → recipient, so we send
       // the friend as to_user_id. (Quick "settle up" = you paying what you owe.)
       await settleApi.recordGlobal({
-        to_user_id: Number(personId),
+        to_user_id: personId,
         amount: Math.abs(friend.balance),
         message: "Settle up",
       });

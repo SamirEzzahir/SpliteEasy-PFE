@@ -1,3 +1,4 @@
+import uuid
 """User-facing announcements (`GET /announcements/active`).
 
 Returns the banner/popup announcements currently visible to the signed-in user.

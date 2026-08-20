@@ -1,3 +1,4 @@
+import uuid
 """User-facing support portal (`/support`).
 
 Authenticated users create and follow their own tickets. Admin-side management lives
@@ -60,7 +61,7 @@ async def my_tickets(
     )
 
 
-async def _owned_ticket(session: AsyncSession, ticket_id: int, current: User):
+async def _owned_ticket(session: AsyncSession, ticket_id: uuid.UUID, current: User):
     ticket = await support_repo.get_ticket(session, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -71,7 +72,7 @@ async def _owned_ticket(session: AsyncSession, ticket_id: int, current: User):
 
 @router.get("/tickets/{ticket_id}", response_model=schemas.TicketDetail)
 async def get_my_ticket(
-    ticket_id: int,
+    ticket_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
 ):
@@ -81,7 +82,7 @@ async def get_my_ticket(
 
 @router.post("/tickets/{ticket_id}/replies", response_model=schemas.TicketReplyRead)
 async def reply_to_ticket(
-    ticket_id: int, payload: schemas.TicketReplyCreate,
+    ticket_id: uuid.UUID, payload: schemas.TicketReplyCreate,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
 ):
@@ -105,7 +106,7 @@ async def reply_to_ticket(
 
 @router.post("/tickets/{ticket_id}/close")
 async def close_my_ticket(
-    ticket_id: int,
+    ticket_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user),
 ):

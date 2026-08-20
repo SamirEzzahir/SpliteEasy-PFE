@@ -12,7 +12,7 @@ import ConditionalShell from "@/components/shell/ConditionalShell";
 
 export const metadata: Metadata = {
   title: "SplitEasy — Econome",
-  description: "Split bills, track jars, manage your money with the 6-jar system.",
+  description: "Split bills, track shared spending, settle balances, and organize your money in one simple place.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

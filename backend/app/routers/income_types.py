@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,7 +25,7 @@ async def list_income_types(session: AsyncSession = Depends(get_session), user=D
     return result.scalars().all()
 
 @router.put("/{type_id}", response_model=IncomeTypeRead)
-async def update_income_type(type_id: int, data: IncomeTypeUpdate, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
+async def update_income_type(type_id: uuid.UUID, data: IncomeTypeUpdate, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
     income_type = await session.get(IncomeType, type_id)
     if not income_type or income_type.user_id != user.id:
         raise HTTPException(status_code=404, detail="Income type not found")
@@ -35,7 +36,7 @@ async def update_income_type(type_id: int, data: IncomeTypeUpdate, session: Asyn
     return income_type
 
 @router.delete("/{type_id}")
-async def delete_income_type(type_id: int, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
+async def delete_income_type(type_id: uuid.UUID, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
     income_type = await session.get(IncomeType, type_id)
     if not income_type or income_type.user_id != user.id:
         raise HTTPException(status_code=404, detail="Income type not found")

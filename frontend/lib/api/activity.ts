@@ -2,11 +2,11 @@ import { api } from "./client";
 import type { ApiUser } from "./types";
 
 export interface ApiActivityLog {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   action: string;
   target_type?: string | null;
-  target_id?: number | null;
+  target_id?: string | null;
   created_at: string;
   user: ApiUser;
 }

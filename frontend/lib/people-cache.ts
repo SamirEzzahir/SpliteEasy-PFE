@@ -6,9 +6,9 @@ import type { ApiUser } from "./api/types";
 import { mapUserToPerson } from "./api/mappers";
 
 const cache = new Map<string, Person>();
-let currentUserId: number | null = null;
+let currentUserId: string | null = null;
 
-export function setCurrentUserId(id: number | null) {
+export function setCurrentUserId(id: string | null) {
   currentUserId = id;
   // Refresh any cached entry for the current user so the `you` flag flips.
   if (id != null) {

@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -8,7 +9,7 @@ class GroupBase(BaseModel):
     currency: Optional[str] = "USD"
     type: Optional[str] = "Other"
     photo: Optional[str] = None
-    owner_id: int
+    owner_id: UUID
 
 
 class GroupCreate(BaseModel):
@@ -20,12 +21,12 @@ class GroupCreate(BaseModel):
 
 
 class GroupRead(BaseModel):
-    id: int
+    id: UUID
     title: str
     currency: str
     type: str
     photo: Optional[str]
-    owner_id: int
+    owner_id: UUID
     description: str
     owner_username: Optional[str] = None
     members_usernames: list[str] = []
@@ -40,7 +41,7 @@ class GroupRead(BaseModel):
 
 class GroupMessageBase(BaseModel):
     content: str
-    group_id: int
+    group_id: UUID
 
 
 class GroupMessageCreate(GroupMessageBase):
@@ -48,8 +49,8 @@ class GroupMessageCreate(GroupMessageBase):
 
 
 class GroupMessageRead(GroupMessageBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     username: Optional[str] = None
     created_at: datetime
 
@@ -58,8 +59,8 @@ class GroupMessageRead(GroupMessageBase):
 
 
 class MembershipBase(BaseModel):
-    user_id: int
-    group_id: int
+    user_id: UUID
+    group_id: UUID
     is_admin: Optional[bool] = False
     username: Optional[str] = None
     email: Optional[str] = None
@@ -75,7 +76,7 @@ class MembershipUpdate(BaseModel):
 
 
 class MembershipRead(MembershipBase):
-    id: int
+    id: UUID
 
     class Config:
         from_attributes = True

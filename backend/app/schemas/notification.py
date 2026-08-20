@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -10,12 +11,12 @@ class NotificationBase(BaseModel):
 
 
 class NotificationCreate(NotificationBase):
-    user_id: int
+    user_id: UUID
 
 
 class NotificationRead(NotificationBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     is_read: bool
     created_at: datetime
 

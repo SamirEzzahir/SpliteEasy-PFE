@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -70,7 +71,7 @@ async def create_strategy(
 
 @router.put("/strategies/{strategy_id}", response_model=schemas.JarStrategyRead)
 async def update_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     strategy_update: schemas.JarStrategyCreate,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -101,7 +102,7 @@ async def update_strategy(
 
 @router.delete("/strategies/{strategy_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -233,7 +234,7 @@ async def get_balances(
 @router.post("/distribute")
 async def distribute_income(
     amount: float,
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     income_source: str,
     description: str = "Income Distribution",
     db: AsyncSession = Depends(get_db),
@@ -340,7 +341,7 @@ async def create_income_source(
 
 @router.delete("/income-sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_income_source(
-    source_id: int,
+    source_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -416,7 +417,7 @@ async def get_jar_history(
 @router.delete("/transactions/{type}/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_transaction(
     type: str,
-    id: int,
+    id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -453,7 +454,7 @@ async def delete_transaction(
 @router.put("/transactions/{type}/{id}")
 async def update_transaction(
     type: str,
-    id: int,
+    id: uuid.UUID,
     data: dict,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)

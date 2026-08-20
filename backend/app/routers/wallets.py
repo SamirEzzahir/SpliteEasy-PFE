@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -13,8 +14,8 @@ from app.schemas import WalletCreate, WalletRead, WalletUpdate
 router = APIRouter(prefix="/wallets", tags=["Wallets"])
 
 class WalletTransfer(BaseModel):
-    from_wallet_id: int
-    to_wallet_id: int
+    from_wallet_id: uuid.UUID
+    to_wallet_id: uuid.UUID
     amount: float
     note: str = ""
 
@@ -33,7 +34,7 @@ async def list_wallets(session: AsyncSession = Depends(get_session), user=Depend
     return result.scalars().all()
 
 @router.put("/{wallet_id}", response_model=WalletRead)
-async def update_wallet(wallet_id: int, data: WalletUpdate, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
+async def update_wallet(wallet_id: uuid.UUID, data: WalletUpdate, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
     wallet = await session.get(Wallet, wallet_id)
     if not wallet or wallet.user_id != user.id:
         raise HTTPException(status_code=404, detail="Wallet not found")
@@ -44,7 +45,7 @@ async def update_wallet(wallet_id: int, data: WalletUpdate, session: AsyncSessio
     return wallet
 
 @router.delete("/{wallet_id}")
-async def delete_wallet(wallet_id: int, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
+async def delete_wallet(wallet_id: uuid.UUID, session: AsyncSession = Depends(get_session), user=Depends(get_current_user)):
     wallet = await session.get(Wallet, wallet_id)
     if not wallet or wallet.user_id != user.id:
         raise HTTPException(status_code=404, detail="Wallet not found")

@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -27,8 +28,8 @@ class WalletUpdate(BaseModel):
 
 
 class WalletRead(WalletBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     created_at: datetime
     updated_at: datetime
 
@@ -51,8 +52,8 @@ class IncomeTypeUpdate(BaseModel):
 
 
 class IncomeTypeRead(IncomeTypeBase):
-    id: int
-    user_id: Optional[int] = None
+    id: UUID
+    user_id: Optional[UUID] = None
 
     class Config:
         from_attributes = True
@@ -66,13 +67,13 @@ class IncomeBase(BaseModel):
 
 
 class IncomeCreate(IncomeBase):
-    income_type_id: int
-    wallet_id: int
+    income_type_id: UUID
+    wallet_id: UUID
 
 
 class IncomeRead(IncomeBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     income_type: IncomeTypeRead
     wallet: WalletRead
     created_at: datetime
@@ -87,19 +88,19 @@ class IncomeUpdate(BaseModel):
     source_type: Optional[str] = None
     note: Optional[str] = None
     date: Optional[datetime] = None
-    income_type_id: Optional[int] = None
-    wallet_id: Optional[int] = None
+    income_type_id: Optional[UUID] = None
+    wallet_id: Optional[UUID] = None
 
 
 class IncomeReadWithNames(BaseModel):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     amount: float
     date: datetime
     note: str | None
-    wallet_id: int
+    wallet_id: UUID
     wallet_name: str
-    income_type_id: int
+    income_type_id: UUID
     category_name: str
     created_at: datetime
     updated_at: datetime
@@ -112,13 +113,13 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    from_wallet_id: int
-    to_wallet_id: Optional[int] = None
+    from_wallet_id: UUID
+    to_wallet_id: Optional[UUID] = None
 
 
 class TransactionRead(TransactionBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     created_at: datetime
     from_wallet: WalletRead
     to_wallet: Optional[WalletRead] = None

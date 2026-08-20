@@ -7,7 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { fmt } from "@/lib/format";
 
 interface Recipient {
-  id: number;
+  id: string;
   username: string;
   amount: number; // amount you owe/are owed
   label: string;  // "You owe X" or "You lent X"
@@ -15,14 +15,14 @@ interface Recipient {
 
 interface Props {
   currency?: string;
-  myId: number;
+  myId: string;
   myUsername?: string;
   currentBalance: number;   // positive = you owe, negative = you lent
   recipients: Recipient[];  // people you owe money to
-  defaultRecipientId?: number;
+  defaultRecipientId?: string;
   defaultAmount?: number;
   onClose: () => void;
-  onConfirm: (toUserId: number, amount: number, message?: string) => Promise<void>;
+  onConfirm: (toUserId: string, amount: number, message?: string) => Promise<void>;
 }
 
 export default function RecordSettlementModal({
@@ -36,8 +36,8 @@ export default function RecordSettlementModal({
   onClose,
   onConfirm,
 }: Props) {
-  const initialId = defaultRecipientId ?? (defaultAmount != null ? recipients[0]?.id : 0) ?? 0;
-  const [selectedId, setSelectedId] = useState<number>(initialId);
+  const initialId = defaultRecipientId ?? (defaultAmount != null ? recipients[0]?.id : "") ?? "";
+  const [selectedId, setSelectedId] = useState<string>(initialId);
   const [amount, setAmount] = useState<string>(
     defaultAmount != null
       ? String(defaultAmount)
@@ -59,7 +59,7 @@ export default function RecordSettlementModal({
       : "Settled";
 
   const handleRecipientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = Number(e.target.value);
+    const id = e.target.value;
     setSelectedId(id);
     const r = recipients.find((r) => r.id === id);
     if (r) setAmount(String(r.amount));

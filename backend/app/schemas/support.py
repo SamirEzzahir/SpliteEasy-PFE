@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
@@ -30,8 +31,8 @@ class TicketReplyCreate(BaseModel):
 
 
 class TicketReplyRead(BaseModel):
-    id: int
-    author_id: Optional[int] = None
+    id: UUID
+    author_id: Optional[UUID] = None
     author_username: Optional[str] = None
     is_admin: bool = False
     body: str
@@ -39,14 +40,14 @@ class TicketReplyRead(BaseModel):
 
 
 class TicketRead(BaseModel):
-    id: int
+    id: UUID
     subject: str
     category: str
     priority: str
     status: str
-    user_id: int
+    user_id: UUID
     requester_username: Optional[str] = None
-    assigned_to_id: Optional[int] = None
+    assigned_to_id: Optional[UUID] = None
     assignee_username: Optional[str] = None
     reply_count: int = 0
     created_at: datetime
@@ -82,4 +83,4 @@ class TicketPriorityUpdate(BaseModel):
 
 
 class TicketAssign(BaseModel):
-    assignee_id: Optional[int] = None
+    assignee_id: Optional[UUID] = None

@@ -10,7 +10,7 @@ import { announcementsApi, type ActiveAnnouncement } from "@/lib/api/announcemen
 const DISMISS_KEY = "spliteasy.ann.dismissed";
 const POPUP_KEY = "spliteasy.ann.popups";
 
-function readIds(storage: Storage, key: string): number[] {
+function readIds(storage: Storage, key: string): string[] {
   try { return JSON.parse(storage.getItem(key) || "[]"); } catch { return []; }
 }
 
@@ -25,7 +25,7 @@ const TONE: Record<string, { bg: string; fg: string; border: string }> = {
 export default function AnnouncementBanner() {
   const { user } = useAuth();
   const [items, setItems] = useState<ActiveAnnouncement[]>([]);
-  const [dismissed, setDismissed] = useState<number[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>([]);
   const [popup, setPopup] = useState<ActiveAnnouncement | null>(null);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function AnnouncementBanner() {
     return () => { alive = false; };
   }, [user]);
 
-  function dismiss(id: number) {
+  function dismiss(id: string) {
     const next = [...dismissed, id];
     setDismissed(next);
     localStorage.setItem(DISMISS_KEY, JSON.stringify(next));

@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -18,8 +19,8 @@ class JarStrategyCreate(JarStrategyBase):
 
 
 class JarStrategyRead(JarStrategyBase):
-    id: int
-    user_id: Optional[int] = None
+    id: UUID
+    user_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 
@@ -45,8 +46,8 @@ class JarTransactionUpdate(BaseModel):
 
 
 class JarTransactionRead(JarTransactionBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     created_at: datetime
 
     class Config:
@@ -67,8 +68,8 @@ class IncomeSourceCreate(IncomeSourceBase):
 
 
 class IncomeSourceRead(IncomeSourceBase):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     created_at: datetime
 
     class Config:
@@ -87,8 +88,8 @@ class MonthlySummary(BaseModel):
 
 
 class IncomeLogRead(BaseModel):
-    id: int
-    user_id: int
+    id: UUID
+    user_id: UUID
     amount: float
     income_source: str
     strategy_name: str
@@ -108,7 +109,7 @@ class IncomeLogUpdate(BaseModel):
 
 
 class LedgerItem(BaseModel):
-    id: int
+    id: UUID
     type: str
     amount: float
     description: str

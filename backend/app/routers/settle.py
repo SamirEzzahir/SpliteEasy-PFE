@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -302,7 +303,7 @@ async def global_settlement_history(
 # -----------------------------
 @router.post("/global/{settlement_id}/accept", response_model=GlobalSettlementOut)
 async def accept_global_settlement(
-    settlement_id: int,
+    settlement_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -368,7 +369,7 @@ async def accept_global_settlement(
 # -----------------------------
 @router.post("/global/{settlement_id}/reject", response_model=GlobalSettlementOut)
 async def reject_global_settlement(
-    settlement_id: int,
+    settlement_id: uuid.UUID,
     payload: SettlementAction,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -437,7 +438,7 @@ async def reject_global_settlement(
 # -----------------------------
 @router.post("/global/{settlement_id}/resend", response_model=GlobalSettlementOut)
 async def resend_global_settlement(
-    settlement_id: int,
+    settlement_id: uuid.UUID,
     payload: GlobalSettlementCreate,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -557,7 +558,7 @@ async def get_pending_global_settlements(
 # -----------------------------
 @router.get("/{group_id}/balances", response_model=list[BalanceItem])
 async def group_balances(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -616,7 +617,7 @@ async def group_balances(
 # -----------------------------
 @router.get("/{group_id}/settlements", response_model=list[SettlementOut])
 async def suggested_settlements(
-    group_id: int,
+    group_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -666,7 +667,7 @@ async def suggested_settlements(
 # -----------------------------
 @router.get("/{group_id}/history", response_model=list[SettlementOut])
 async def settlement_history(
-    group_id: int,
+    group_id: uuid.UUID,
     status: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -744,7 +745,7 @@ async def settlement_history(
 # -----------------------------
 @router.post("/{group_id}/record", response_model=SettlementOut, status_code=status.HTTP_201_CREATED)
 async def record_settlement(
-    group_id: int,
+    group_id: uuid.UUID,
     payload: SettlementCreate,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -825,7 +826,7 @@ async def record_settlement(
 # -----------------------------
 @router.post("/{settlement_id}/accept", response_model=SettlementOut)
 async def accept_settlement(
-    settlement_id: int,
+    settlement_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
@@ -894,7 +895,7 @@ async def accept_settlement(
 # -----------------------------
 @router.post("/{settlement_id}/reject", response_model=SettlementOut)
 async def reject_settlement(
-    settlement_id: int,
+    settlement_id: uuid.UUID,
     payload: SettlementAction,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
@@ -966,7 +967,7 @@ async def reject_settlement(
 # -----------------------------
 @router.post("/{settlement_id}/resend", response_model=SettlementOut)
 async def resend_settlement(
-    settlement_id: int,
+    settlement_id: uuid.UUID,
     payload: SettlementCreate,
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)

@@ -24,12 +24,12 @@ export const INITIAL_JARS: Jar[] = [
 ];
 
 export const INITIAL_TX: Tx[] = [
-  { id: 1, date: "May 16, 2026", desc: "Grocery Shopping", jarId: "necessities", type: "expense", amount: 76.80 },
-  { id: 2, date: "May 15, 2026", desc: "Stock Investment", jarId: "financial",   type: "expense", amount: 500.00 },
-  { id: 3, date: "May 14, 2026", desc: "Online Course",    jarId: "education",   type: "expense", amount: 120.00 },
-  { id: 4, date: "May 13, 2026", desc: "Movie Night",      jarId: "play",        type: "expense", amount: 45.00 },
-  { id: 5, date: "May 12, 2026", desc: "Charity Donation", jarId: "give",        type: "expense", amount: 30.00 },
-  { id: 6, date: "May 1, 2026",  desc: "Salary May 2026",  jarId: null,          type: "income",  amount: 8420.00 },
+  { id: "seed-1", date: "May 16, 2026", desc: "Grocery Shopping", jarId: "necessities", type: "expense", amount: 76.80 },
+  { id: "seed-2", date: "May 15, 2026", desc: "Stock Investment", jarId: "financial",   type: "expense", amount: 500.00 },
+  { id: "seed-3", date: "May 14, 2026", desc: "Online Course",    jarId: "education",   type: "expense", amount: 120.00 },
+  { id: "seed-4", date: "May 13, 2026", desc: "Movie Night",      jarId: "play",        type: "expense", amount: 45.00 },
+  { id: "seed-5", date: "May 12, 2026", desc: "Charity Donation", jarId: "give",        type: "expense", amount: 30.00 },
+  { id: "seed-6", date: "May 1, 2026",  desc: "Salary May 2026",  jarId: null,          type: "income",  amount: 8420.00 },
 ];
 
 export const INITIAL_INCOME = 8420.00;

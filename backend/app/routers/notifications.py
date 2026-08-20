@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,7 @@ active_connections: Dict[int, WebSocket] = {}
 
 # ================== WEBSOCKET ENDPOINT ==================
 @router.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: int):
+async def websocket_endpoint(websocket: WebSocket, user_id: uuid.UUID):
     """
     WebSocket endpoint for real-time notifications.
     Each connected client subscribes to notifications using their user_id.
@@ -45,7 +46,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
             pass
 
 # ================== HELPER FUNCTION ==================
-async def send_notification(session: AsyncSession, user_id: int, message: str, type: str = "info", link: str = None):
+async def send_notification(session: AsyncSession, user_id: uuid.UUID, message: str, type: str = "info", link: str = None):
     """
     Send a real-time notification to a connected user AND save to database.
     """
@@ -105,7 +106,7 @@ async def get_my_notifications(
 
 @router.put("/{notification_id}/read", response_model=schemas.NotificationRead)
 async def mark_notification_read(
-    notification_id: int,
+    notification_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
     current: models.User = Depends(get_current_user)
 ):
