@@ -91,10 +91,8 @@ export function apiErrorMessage(err: unknown): string {
 // straight at the backend. Resolution order:
 //   1. NEXT_PUBLIC_WS_URL          — explicit override (recommended)
 //   2. NEXT_PUBLIC_API_URL → ws    — reuse the public API host
-//   3. derive from the page host   — works on any host the user reaches the app from
-// The dev backend listens on 8800 (uvicorn); override via NEXT_PUBLIC_WS_URL for
-// Docker/prod where the published port differs.
-const DEFAULT_WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || "8800";
+//   3. derive from the page origin — uses wss + port 443 behind an HTTPS proxy
+// Local development uses NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8800 in .env.local.
 
 export function wsBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
@@ -103,7 +101,7 @@ export function wsBaseUrl(): string {
   }
   if (typeof window !== "undefined") {
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${window.location.hostname}:${DEFAULT_WS_PORT}`;
+    return `${proto}://${window.location.host}`;
   }
-  return `ws://127.0.0.1:${DEFAULT_WS_PORT}`;
+  return "ws://127.0.0.1:8800";
 }

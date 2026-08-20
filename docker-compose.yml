@@ -43,6 +43,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - default
+      - proxy
     # Published on the host as BACKEND_PORT (default 8000); the container always
     # listens on 8000 internally. Note: the local dev workflow runs uvicorn on
     # 8800 instead — see the root README "Installation" vs "Docker" sections.
