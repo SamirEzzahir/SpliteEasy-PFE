@@ -177,7 +177,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Register all users we've seen so personById() resolves correctly.
       for (const members of membersPerGroup) {
-        registerUsers(members.map((m) => m.user!).filter(Boolean));
+        registerUsers(members.map((m) => m.user ?? ({
+          id: String(m.user_id),
+          username: m.username || m.email || `User ${m.user_id}`,
+          email: m.email || "",
+          full_name: m.full_name ?? null,
+        })));
       }
       registerUsers(
         [
