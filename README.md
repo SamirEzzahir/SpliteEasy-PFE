@@ -295,28 +295,38 @@ Open `http://localhost:3000` (redirects to `/login`).
 
 ## Docker
 
-The repository ships a full-stack `docker-compose.yml` (PostgreSQL + backend + web).
+For local development, run from the repository root:
 
 ```bash
-# 1. Copy the env template and adjust secrets/credentials as needed
-cp .env.example .env
-
-# 2. Build and start everything
-docker compose up --build
+docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-| Service | Container port | Host port | Notes |
-|---|---|---|---|
-| `db` (PostgreSQL 16) | 5432 | `POSTGRES_PORT` (5432) | Data persists in the `pgdata` volume |
-| `backend` (FastAPI) | 8000 | `BACKEND_PORT` (8000) | Waits for the DB healthcheck before starting |
-| `web` (Next.js) | 3000 | `WEB_PORT` (3000) | Rewrites `/api/*` to the backend container |
+No `.env` setup is required. The development stack has its own `spliteasy-dev`
+Compose project and named database volume, with a fresh demo dataset (login:
+`demo` / `demo`). Data persists when the stack is stopped or recreated.
 
-Then open `http://localhost:3000`. The backend creates tables and runs migrations on
-first startup. To reset the database completely:
+| Service | Local address | Optional root `.env` override |
+|---|---|---|
+| Frontend | http://localhost:3100 | `DEV_WEB_PORT` |
+| Backend / API docs | http://localhost:8800/docs | `DEV_BACKEND_PORT` |
+| PostgreSQL | `localhost:5433` | `DEV_POSTGRES_PORT` |
+
+Port 3100 avoids the Windows reserved range covering port 3000 on this machine.
+The `DEV_*` defaults are separate from the server's environment variables. Python
+and Next.js reload when source files change; the frontend uses Webpack polling
+for Windows file changes. Frontend npm dependencies are synchronized on startup.
+After changing backend `requirements.txt`, rerun the build/start command above.
 
 ```bash
-docker compose down -v && docker compose up --build
+# Follow logs
+docker compose -f docker-compose.dev.yml logs -f
+
+# Stop and remove development containers, keeping database data
+docker compose -f docker-compose.dev.yml down
 ```
+
+The server stack remains in `docker-compose.yml` for Nginx Proxy Manager (NPM)
+and Dockhand. It uses the preexisting external `proxy` network.
 
 ---
 

@@ -6,22 +6,25 @@
 # Override credentials/secrets in a root .env file (see .env.example).
 
 services:
-  db:
+  database:
     build: ./database
     image: spliteasy-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: ${POSTGRES_DB:-spliteasy_db}
+      #POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      #POSTGRES_DB: ${POSTGRES_DB:-spliteasy_db}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     volumes:
-      - ./database/data:/var/lib/postgresql/data
+      - ./database/data:/var/lib/postgresql/data:Z
       #- pgdata:/var/lib/postgresql/data
     #ports:
     #  - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       # Backend waits for this to pass before starting (see depends_on below).
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-spliteasy_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -35,24 +38,29 @@ services:
     image: spliteasy-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@db:5432/${POSTGRES_DB:-spliteasy_db}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@database:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       # Auto-load the demo dataset (login: demo / demo) on first startup.
       # Idempotent: only seeds once, then no-ops. Set to 0 to disable.
       SEED_DEMO: ${SEED_DEMO:-1}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3).close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     depends_on:
-      db:
+      database:
         condition: service_healthy
     networks:
       - default
-      - proxy
     # Published on the host as BACKEND_PORT (default 8000); the container always
     # listens on 8000 internally. Note: the local dev workflow runs uvicorn on
     # 8800 instead — see the root README "Installation" vs "Docker" sections.
-   # ports:
+    # ports:
     #  - "${BACKEND_PORT:-8000}:8000"
 
-  web:
+  frontend:
     build:
       context: ./frontend
       args:
@@ -60,15 +68,16 @@ services:
     image: spliteasy-web
     restart: unless-stopped
     depends_on:
-      - backend
-    ports:
-      - "${WEB_PORT:-3000}:3000"
+      backend:
+        condition: service_healthy
+    #ports:
+    #  - "${WEB_PORT:-3000}:3000"
     networks:
       - default
       - proxy
 
-volumes:
-  pgdata:
+#volumes:
+#  pgdata:
 
 networks:
   proxy:

@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from "react";
 import Icon from "@/components/Icon";
-import { Avatar } from "@/components/Avatar";
+import { PeoplePicker } from "@/components/ui/PeoplePicker";
 import { GROUP_TYPES, PEOPLE, personById } from "@/lib/data";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useApp } from "@/lib/store";
@@ -38,7 +38,6 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
   const [photo, setPhoto] = useState("");
   const [personal, setPersonal] = useState(false);
   const [memberIds, setMemberIds] = useState<string[]>([]);
-  const [memberQuery, setMemberQuery] = useState("");
 
   const friendSource = useMemo(() => {
     const accepted = friends
@@ -47,34 +46,10 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
     return accepted.length ? accepted : PEOPLE.filter((person) => !person.you);
   }, [friends]);
 
-  const friendCandidates = useMemo(() => {
-    const q = memberQuery.trim().toLowerCase();
-    return friendSource.filter((person) => {
-      if (memberIds.includes(person.id)) return false;
-      if (!q) return true;
-      return `${person.name} ${person.email || ""}`.toLowerCase().includes(q);
-    });
-  }, [friendSource, memberIds, memberQuery]);
-
   const valid = name.trim().length > 0;
-
-  const addMember = (id: string) => {
-    if (!memberIds.includes(id)) setMemberIds((ids) => [...ids, id]);
-    setMemberQuery("");
-  };
-
-  const removeMember = (id: string) => {
-    setMemberIds((ids) => ids.filter((memberId) => memberId !== id));
-  };
-
-  const selectAll = () => {
-    setMemberIds(friendSource.map((friend) => friend.id));
-    setMemberQuery("");
-  };
 
   const clearMembers = () => {
     setMemberIds([]);
-    setMemberQuery("");
   };
 
   const togglePersonal = () => {
@@ -204,60 +179,7 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
             </div>
 
             {!personal ? (
-              <div className="cg-members-panel">
-                <div className="cg-members-head">
-                  <div>
-                    <h3>Invite Friends</h3>
-                    <span>{memberIds.length} selected</span>
-                  </div>
-                  <div className="cg-member-actions">
-                    <button type="button" onClick={selectAll}>Select All</button>
-                    <button type="button" onClick={clearMembers}>Clear All</button>
-                  </div>
-                </div>
-
-                <div className="form-input cg-member-search">
-                  <Icon name="search" size={15} className="ic" />
-                  <input
-                    value={memberQuery}
-                    onChange={(event) => setMemberQuery(event.target.value)}
-                    placeholder="Search by name or email..."
-                  />
-                </div>
-
-                <div className="cg-friend-grid">
-                  {friendCandidates.length === 0 ? (
-                    <div className="cg-empty-friends">
-                      {friendSource.length === 0 ? "No friends available yet." : "No matching friends found."}
-                    </div>
-                  ) : (
-                    friendCandidates.slice(0, 12).map((person) => (
-                      <button key={person.id} type="button" className="cg-friend-card" onClick={() => addMember(person.id)}>
-                        <Avatar id={person.id} size="md" />
-                        <span>{person.name}</span>
-                        <small>Add</small>
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                {memberIds.length > 0 && (
-                  <div className="member-chips cg-selected-members">
-                    {memberIds.map((id) => {
-                      const person = personById(id);
-                      return (
-                        <span key={id} className="chip">
-                          <Avatar id={id} size="sm" />
-                          <span className="chip-nm">{person.name}</span>
-                          <button className="chip-x" onClick={() => removeMember(id)}>
-                            <Icon name="x" size={10} />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <PeoplePicker title="Invite Friends" people={friendSource} selectedIds={memberIds} onChange={setMemberIds} />
             ) : (
               <div className="cg-solo-note">
                 <Icon name="shield" size={18} />

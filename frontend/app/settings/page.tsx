@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import PageTabs from "@/components/ui/PageTabs";
+import PasswordInput from "@/components/ui/PasswordInput";
 import Icon from "@/components/Icon";
 import { apiErrorMessage } from "@/lib/api/client";
 import { usersApi } from "@/lib/api/users";
@@ -50,6 +53,10 @@ function joinedDate(value?: string): string {
 
 export default function SettingsPage() {
   const { user, refresh, logout } = useAuth();
+  const [section, setSection] = useState<"profile" | "appearance" | "security">("profile");
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [currencySaving, setCurrencySaving] = useState(false);
+  const [preferenceError, setPreferenceError] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -91,6 +98,7 @@ export default function SettingsPage() {
     setCurrency(localStorage.getItem("spliteasy.currency") || "MAD");
     setDateFormat(localStorage.getItem("spliteasy.dateFormat") || "dmy");
     setNumberFormat(localStorage.getItem("spliteasy.numberFormat") || "dot");
+    setPreferencesReady(true);
 
     const onThemeChange = (event: Event) => {
       const detail = (event as CustomEvent<{ choice?: ThemeChoice }>).detail;
@@ -101,7 +109,7 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
+    if (!preferencesReady || typeof window === "undefined" || !window.matchMedia) return;
     localStorage.setItem("spliteasy.theme", theme);
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
@@ -116,30 +124,30 @@ export default function SettingsPage() {
       mq.addEventListener?.("change", apply);
       return () => mq.removeEventListener?.("change", apply);
     }
-  }, [theme]);
+  }, [theme, preferencesReady]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!preferencesReady || typeof window === "undefined") return;
     localStorage.setItem("spliteasy.lang", lang);
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-  }, [lang]);
+    // Page content is English; the onboarding guide reads this preference independently.
+  }, [lang, preferencesReady]);
+
+  const saveCurrency = async (next: string) => {
+    setCurrencySaving(true); setPreferenceError("");
+    try { await usersApi.updatePreferredCurrency(next); setCurrency(next); localStorage.setItem("spliteasy.currency", next); await refresh(); }
+    catch { setPreferenceError("Could not save your currency preference. Please try again."); }
+    finally { setCurrencySaving(false); }
+  };
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("spliteasy.currency", currency);
-    usersApi.updatePreferredCurrency(currency).catch(() => {});
-  }, [currency]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!preferencesReady || typeof window === "undefined") return;
     localStorage.setItem("spliteasy.dateFormat", dateFormat);
-  }, [dateFormat]);
+  }, [dateFormat, preferencesReady]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!preferencesReady || typeof window === "undefined") return;
     localStorage.setItem("spliteasy.numberFormat", numberFormat);
-  }, [numberFormat]);
+  }, [numberFormat, preferencesReady]);
 
   const flashSaved = () => {
     setSavedFlash(true);
@@ -219,13 +227,11 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="page-head settings-head">
-        <div>
-          <h1>Settings</h1>
-          <p>Manage your profile, security, and display preferences.</p>
-        </div>
-      </div>
-
+      <PageHeader title="Settings" subtitle="Manage your profile, display preferences, and account security." />
+      <PageTabs id="settings" label="Settings sections" value={section} onChange={setSection} items={[
+        {value: "profile", label: "Profile"}, {value: "appearance", label: "Appearance & language"}, {value: "security", label: "Security"},
+      ]} />
+      <div role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-profile" hidden={section !== "profile"}>
       <div className="settings-eyebrow">Account</div>
 
       <section className="settings-card">
@@ -253,7 +259,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {error && <div className="settings-error"><Icon name="info" size={14} /> {error}</div>}
+        {error && <div className="settings-error" role="alert"><Icon name="info" size={14} /> {error}</div>}
 
         <div className="settings-profile">
           <div className="profile-photo-block">
@@ -299,6 +305,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      </div>
+      <div role="tabpanel" id="settings-panel-appearance" aria-labelledby="settings-appearance" hidden={section !== "appearance"}>
+      {preferenceError && <p className="form-error" role="alert">{preferenceError}</p>}
       <section className="settings-card">
         <div className="settings-card-h">
           <h2>Preferences</h2>
@@ -308,7 +317,7 @@ export default function SettingsPage() {
           <div className="pref-tile">
             <div className="ic"><Icon name="coin" size={18} /></div>
             <div className="lbl">Currency</div>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <select aria-label="Preferred currency" value={currency} disabled={currencySaving} onChange={(e) => void saveCurrency(e.target.value)}>
               <option value="MAD">MAD — Moroccan Dirham</option>
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
@@ -361,6 +370,7 @@ export default function SettingsPage() {
               key={choice}
               type="button"
               className={"theme-card" + (theme === choice ? " active" : "")}
+              aria-pressed={theme === choice}
               onClick={() => setTheme(choice)}
             >
               <div className={"theme-preview theme-preview--" + choice}>
@@ -380,7 +390,7 @@ export default function SettingsPage() {
       <section className="settings-card">
         <div className="settings-card-h">
           <h2>Language</h2>
-          <span className="sub">App language and region</span>
+          <span className="sub">Guide language; page translations are not yet available</span>
         </div>
         <div className="lang-pills">
           {LANGUAGES.map((language) => (
@@ -388,6 +398,7 @@ export default function SettingsPage() {
               key={language.id}
               type="button"
               className={"lang-pill" + (lang === language.id ? " active" : "")}
+              aria-pressed={lang === language.id}
               onClick={() => setLang(language.id)}
             >
               <span className="flag">{language.code}</span>
@@ -397,6 +408,8 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      </div>
+      <div role="tabpanel" id="settings-panel-security" aria-labelledby="settings-security" hidden={section !== "security"}>
       <div className="settings-eyebrow">Security</div>
 
       <section className="settings-card">
@@ -433,15 +446,15 @@ export default function SettingsPage() {
           <div className="password-panel">
             <label className="field">
               <span>Current password</span>
-              <input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
+              <PasswordInput value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
             </label>
             <label className="field">
               <span>New password</span>
-              <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+              <PasswordInput value={newPw} onChange={(e) => setNewPw(e.target.value)} />
             </label>
             <label className="field">
               <span>Confirm password</span>
-              <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+              <PasswordInput value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
             </label>
             <button className="btn btn-primary" onClick={handleChangePassword} disabled={passwordSaving || !oldPw || !newPw}>
               {passwordSaving ? "Updating..." : "Update password"}
@@ -485,6 +498,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      </div>
       <style jsx>{`
         :global(.settings-head){margin-bottom:6px}
         :global(.settings-eyebrow){

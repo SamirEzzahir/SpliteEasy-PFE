@@ -212,15 +212,19 @@ async def update_expense(session: AsyncSession, expense_id: int, payload: Expens
         raise HTTPException(status_code=404, detail="Expense not found")
 
     is_payer = expense.payer_id == current.id
+    is_creator = expense.added_by == current.id
     is_group_owner = expense.group and expense.group.owner_id == current.id
 
-    if not is_payer and not is_group_owner:
-        raise HTTPException(status_code=403, detail="Not allowed to edit. Only the payer or group owner can edit expenses.")
+    if not is_payer and not is_creator and not is_group_owner:
+        raise HTTPException(status_code=403, detail="Not allowed to edit. Only the creator, payer, or group owner can edit expenses.")
 
     original_amount = round_amount(Decimal(str(expense.amount)))
     original_wallet_id = expense.wallet_id
 
-    for field, value in payload.dict(exclude={"splits"}, exclude_unset=True).items():
+    update_values = payload.model_dump(exclude={"splits"}, exclude_unset=True)
+    if "created_at" in update_values:
+        update_values["created_at"] = to_naive_utc(update_values["created_at"])
+    for field, value in update_values.items():
         setattr(expense, field, value)
 
     if expense.payer_id == current.id:
@@ -233,12 +237,22 @@ async def update_expense(session: AsyncSession, expense_id: int, payload: Expens
             await update_wallet_balance(session, new_wallet_id, -new_amount_decimal, current.id)
 
     if payload.splits is not None:
+        target_amount = round_amount(payload.amount if payload.amount is not None else expense.amount)
+        split_rows = [
+            Split(expense_id=expense_id, user_id=s.user_id, share_amount=float(round_amount(s.share_amount)))
+            for s in payload.splits
+        ]
+        split_total = sum((round_amount(row.share_amount) for row in split_rows), Decimal("0.00"))
+        if split_rows:
+            split_rows[0].share_amount = float(
+                round_amount(round_amount(split_rows[0].share_amount) + (target_amount - split_total))
+            )
+        elif target_amount != Decimal("0.00"):
+            raise HTTPException(status_code=400, detail="At least one expense split is required.")
+
         await session.execute(delete(Split).where(Split.expense_id == expense_id))
         await session.flush()
-        session.add_all([
-            Split(expense_id=expense_id, user_id=s.user_id, share_amount=s.share_amount)
-            for s in payload.splits
-        ])
+        session.add_all(split_rows)
 
     await session.commit()
 

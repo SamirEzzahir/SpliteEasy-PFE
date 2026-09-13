@@ -1,6 +1,10 @@
 "use client";
 // app/dashboard/page.tsx — debt & settlement focused home (Splitwise-style)
 
+import { useState } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import PendingSettlements from "@/components/dashboard/PendingSettlements";
+import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -17,7 +21,8 @@ function safeCategory(id: string) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { expenses, groups, friends } = useApp();
+  const { expenses, groups, friends, addExpense, loading } = useApp();
+  const [showAdd, setShowAdd] = useState(false);
 
   // ── Relationship math (who owes who) — no wallet/savings concepts ────────────
   const youAreOwed = friends
@@ -26,11 +31,7 @@ export default function DashboardPage() {
   const youOwe = Math.abs(
     friends.filter((f) => f.balance < 0).reduce((sum, f) => sum + f.balance, 0),
   );
-  const net = youAreOwed - youOwe;
-  const activeGroups = groups.length;
-  const pendingSettlements = friends.filter(
-    (f) => f.balance !== 0 && f.status === "friend",
-  ).length;
+
 
   // People you owe / who owe you — the actionable per-person breakdown
   const owedToYou = friends
@@ -63,72 +64,18 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-page">
-      {/* Mobile top bar */}
-      <div className="dash-mobile-head">
-        <button className="dash-mobile-icon" aria-label="Open menu">
-          <Icon name="list" size={20} />
-        </button>
-        <div className="dash-mobile-logo">Split<span>Easy</span></div>
-        <button className="dash-mobile-icon" aria-label="Notifications">
-          <Icon name="bell" size={19} />
-        </button>
-      </div>
-
-      {/* Header */}
-      <div className="dash-head">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Hi {displayName.split(" ")[0]} — here&apos;s who owes what and what to settle next.</p>
-        </div>
-        <span data-tour="help"><OnboardingHelpButton /></span>
-      </div>
-
+      <PageHeader title="Dashboard" subtitle={`Hi ${displayName.split(" ")[0]}, see who owes what and what needs your attention.`}
+        actions={<><span data-tour="help"><OnboardingHelpButton /></span><button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={16} />Add expense</button></>} />
       {/* First-time onboarding (welcome modal + getting-started checklist) */}
       <OnboardingGuide />
 
-      {/* Mobile hero — overall relationship position (not wealth) */}
-      <section className="dash-mobile-hero">
-        <div className="hero-copy">
-          <span>{net >= 0 ? "You are owed overall" : "You owe overall"}</span>
-          <strong>{money(Math.abs(net))}</strong>
-          <small>{net >= 0 ? "More coming in than going out" : "Settle up to clear this"}</small>
-        </div>
-        <Icon name="settle" size={18} />
+      <section className="ui-stat-grid cols-2" data-tour="stats" aria-busy={loading}>
+        {loading ? <><div className="sk-block" style={{height:112}} /><div className="sk-block" style={{height:112}} /></> : <>
+          <StatCard icon="download" tone="danger" label="You owe" value={youOwe} currency={userCurrency} sub={`${youOweList.length} people to pay`} />
+          <StatCard icon="upload" tone="success" label="You are owed" value={youAreOwed} currency={userCurrency} sub={`${owedToYou.length} people owe you`} />
+        </>}
       </section>
-
-      {/* Stat cards — relationship metrics only */}
-      <section className="ui-stat-grid cols-4" data-tour="stats">
-        <StatCard icon="upload" tone="success" label="You Are Owed"
-          value={youAreOwed} currency={userCurrency}
-          colorValue={youAreOwed > 0}
-          sub={`${owedToYou.length} ${owedToYou.length === 1 ? "person owes" : "people owe"} you`} />
-        <StatCard icon="download" tone="danger" label="You Owe"
-          value={youOwe} currency={userCurrency}
-          colorValue={youOwe > 0}
-          sub={`${youOweList.length} ${youOweList.length === 1 ? "person" : "people"} to pay`} />
-        <StatCard icon="activity" tone="primary" label="Pending Settlements"
-          value={pendingSettlements} sub="Awaiting action" />
-        <StatCard icon="groups" tone="info" label="Active Groups"
-          value={activeGroups} sub="Sharing expenses" />
-      </section>
-
-      {/* Mobile summary chips */}
-      <section className="dash-mobile-summary">
-        {[
-          ["Groups", activeGroups, "Active", "groups"],
-          ["Friends", friends.filter((f) => f.status === "friend").length, "Total", "friends"],
-          ["Owed", owedToYou.length, "To you", "upload"],
-          ["Pending", pendingSettlements, "Settle", "settle"],
-        ].map(([label, value, sub, icon]) => (
-          <div key={String(label)} className="dash-quick-mini">
-            <Icon name={String(icon)} size={18} />
-            <strong>{String(value)}</strong>
-            <span>{String(label)}</span>
-            <small>{String(sub)}</small>
-          </div>
-        ))}
-      </section>
- 
+      <PendingSettlements />
       {/* Main grid — Who owes who + Recent activity */}
       <section className="dash-main-grid">
         {/* Who owes who — the actionable core */}
@@ -138,7 +85,7 @@ export default function DashboardPage() {
             <Link href="/balances">View all</Link>
           </div>
 
-          {owedToYou.length === 0 && youOweList.length === 0 ? (
+          {loading ? <div className="sk-block" style={{ height: 120 }} /> : owedToYou.length === 0 && youOweList.length === 0 ? (
             <div style={{ padding: "32px 0", textAlign: "center", color: "var(--ink-3)" }}>
               <Icon name="check" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--success)" }} />
               You&apos;re all settled up! 🎉
@@ -173,9 +120,9 @@ export default function DashboardPage() {
             <h2>Recent Activity</h2>
             <Link href="/expenses">View all</Link>
           </div>
-          {recentExpenses.length === 0 ? (
+          {loading ? <div className="sk-block" style={{ height: 120 }} /> : recentExpenses.length === 0 ? (
             <div style={{ padding: "32px 0", textAlign: "center", color: "var(--ink-3)" }}>
-              No expenses yet.
+              No expenses yet. <button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first expense</button>
             </div>
           ) : (
             <div className="dash-recent-list">
@@ -192,7 +139,7 @@ export default function DashboardPage() {
                       <span>{grp?.name || expense.subtitle || "Expense"}</span>
                     </div>
                     <div className="amount">
-                      <b>{money(expense.amount)}</b>
+                      <b>{fmt(expense.amount, expense.currency || grp?.currency || "MAD")}</b>
                       <span>{expense.date}</span>
                     </div>
                   </Link>
@@ -217,6 +164,7 @@ export default function DashboardPage() {
           </div>
         </article>
       </section>
+      {showAdd && <AddExpenseFullModal onClose={() => setShowAdd(false)} onSubmit={addExpense} />}
     </div>
   );
 }

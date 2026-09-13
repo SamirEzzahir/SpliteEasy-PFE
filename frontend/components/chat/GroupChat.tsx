@@ -11,6 +11,7 @@ import { useWS } from "@/lib/ws-context";
 interface Props {
   groupId: string;
   groupName: string;
+  embedded?: boolean;
 }
 
 // ── notification sound (Web Audio API — no file needed) ──────────────────────
@@ -62,10 +63,10 @@ function sameDay(a: string, b: string) {
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function GroupChat({ groupId, groupName }: Props) {
+export default function GroupChat({ groupId, groupName, embedded = false }: Props) {
   const { user } = useAuth();
   const { subscribe } = useWS();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [input, setInput] = useState("");
@@ -192,7 +193,7 @@ export default function GroupChat({ groupId, groupName }: Props) {
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
-    <div className={"gc-wrap" + (open ? " gc-wrap--open" : "")}>
+    <div className={"gc-wrap" + (embedded ? " gc-embedded" : "") + (open ? " gc-wrap--open" : "")}>
       {/* Floating bubble button */}
       <button
         className="gc-bubble"
@@ -206,11 +207,11 @@ export default function GroupChat({ groupId, groupName }: Props) {
       </button>
 
       {/* Mobile-only backdrop behind the full-screen sheet */}
-      {open && <div className="gc-backdrop" onClick={() => setOpen(false)} />}
+      {open && !embedded && <div className="gc-backdrop" onClick={() => setOpen(false)} />}
 
       {/* Chat panel */}
       {open && (
-        <div className="gc-panel" role="dialog" aria-modal="true" aria-label={`${groupName} chat`}>
+        <div className="gc-panel" role={embedded ? "region" : "dialog"} aria-modal={embedded ? undefined : true} aria-label={`${groupName} chat`}>
           {/* Header */}
           <div className="gc-header">
             {/* Mobile back chevron — reads as "close sheet" */}

@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 import Icon from "@/components/Icon";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -47,10 +48,10 @@ export default function LoginPage() {
           <div className="brand-name">Split<em>Easy</em></div>
         </div>
         <h1>Welcome back</h1>
-        <p className="auth-sub">Sign in to track expenses, jars, and friends.</p>
+        <p className="auth-sub">Sign in to split expenses and settle up with your groups.</p>
 
         {error && (
-          <div className="auth-error">
+          <div className="auth-error" role="alert">
             <Icon name="info" size={14} /> {error}
           </div>
         )}
@@ -68,8 +69,7 @@ export default function LoginPage() {
           </label>
           <label>
             <span>Password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -82,7 +82,7 @@ export default function LoginPage() {
         </form>
 
         {/* Demo account hint — lets reviewers explore instantly */}
-        <div className="auth-demo">
+        <details className="auth-demo"><summary>Just exploring? Try the demo</summary>
           <div className="auth-demo-head">
             <Icon name="info" size={14} />
             <span>Just exploring? Use the demo account</span>
@@ -99,7 +99,7 @@ export default function LoginPage() {
           >
             <Icon name="settle" size={14} /> Try the demo
           </button>
-        </div>
+        </details>
 
         <div className="auth-foot">
           New here? <Link href="/signup">Create an account</Link>

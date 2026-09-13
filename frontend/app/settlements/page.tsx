@@ -7,6 +7,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
+import StatCard from "@/components/ui/StatCard";
+import PageHeader from "@/components/ui/PageHeader";
+import PageTabs from "@/components/ui/PageTabs";
 import Icon from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { fmt } from "@/lib/format";
@@ -49,6 +52,7 @@ export default function GlobalSettlementsPage() {
 
   const [balances, setBalances] = useState<ApiGlobalBalance[]>([]);
   const [suggested, setSuggested] = useState<ApiSettlement[]>([]);
+  const [view, setView] = useState<"action" | "waiting" | "history">("action");
   const [history, setHistory] = useState<ApiSettlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<Set<string>>(new Set());
@@ -81,6 +85,11 @@ export default function GlobalSettlementsPage() {
   // ── Derived ───────────────────────────────────────────────────────────────────
 
   const myId = user?.id;
+  const incoming = history.filter((h) => h.status === "pending" && h.to_user_id === myId);
+  const outgoing = history.filter((h) => h.status === "pending" && h.from_user_id === myId);
+  const visibleHistory = view === "action" ? incoming : view === "waiting" ? outgoing : history.filter((h) => h.status !== "pending");
+  const viewTitle = view === "action" ? "Needs your action" : view === "waiting" ? "Waiting for confirmation" : "Payment history";
+
   const currency = user?.preferred_currency || "MAD";
 
   // net: positive = friend owes you, negative = you owe the friend.
@@ -229,12 +238,7 @@ export default function GlobalSettlementsPage() {
   return (
     <>
       {/* Page header */}
-      <div className="page-head">
-        <div>
-          <h1>Settlements</h1>
-          <p>Settle up across <strong>all your groups</strong> with each friend</p>
-        </div>
-        <div className="page-actions">
+      <PageHeader title="Settlements" subtitle="Record payments and confirm money you have received." actions={
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -246,65 +250,121 @@ export default function GlobalSettlementsPage() {
             }}
           >
             <Icon name="settle" size={14} /> New Settlement
-          </button>
+          </button>      } />
+
+      {/* ── Stat cards ───────────────────────────────────────────────────────── */}
+      <div className="ui-stat-grid cols-2">
+        {loading ? <><StatCardSkeleton /><StatCardSkeleton /></> : <>
+          <StatCard icon="download" label="You owe" tone="danger" value={youOwe} currency={currency} sub="Outstanding payments" />
+          <StatCard icon="upload" label="You are owed" tone="success" value={youLent} currency={currency} sub="From your friends" />
+        </>}
+      </div>
+      <PageTabs id="payments" label="Payment status" value={view} onChange={setView} items={[
+        {value: "action", label: `Needs your action (${incoming.length})`},
+        {value: "waiting", label: `Waiting for confirmation (${outgoing.length})`},
+        {value: "history", label: "History"},
+      ]} />
+      <p className="field-help">{view === "action" ? "Confirm only payments you have received. Recording a payment does not transfer money." : view === "waiting" ? "These payments are waiting for the recipient to confirm receipt." : "Confirmed and rejected payment records."}</p>
+      <div role="tabpanel" id={`payments-panel-${view}`} aria-labelledby={`payments-${view}`}>
+      {/* ── Settlement History ────────────────────────────────────────────────── */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="st-section-hd st-hd-green">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>🕐</span><span>{viewTitle}</span>
+          </div>
+          <span className="st-badge st-badge-green">{loading ? "…" : `${visibleHistory.length} records`}</span>
+        </div>
+
+        {/* Desktop table */}
+        <table className="exp-table st-desktop-table" style={{ margin: 0 }}>
+          <thead>
+            <tr><th>Payer</th><th>Receiving</th><th>Amount</th><th>Status</th><th>Date</th><th style={{ textAlign: "right" }}>Actions</th></tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={6} />)
+            ) : visibleHistory.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: "48px 0", textAlign: "center", color: "var(--ink-3)" }}>
+                <Icon name="settle" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--ink-4)" }} />
+                {view === "action" ? "No payments need your confirmation." : view === "waiting" ? "No payments are waiting for confirmation." : "No payment history yet."}
+              </td></tr>
+            ) : visibleHistory.map((h) => {
+              const canAct = h.status === "pending" && h.to_user_id === myId;
+              const canResend = h.status === "rejected" && h.from_user_id === myId;
+              return (
+                <tr key={h.id}>
+                  <td><div style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar id={String(h.from_user_id)} size="sm" /><span style={{ fontWeight: 600, fontSize: 13 }}>{h.from_username ?? `User ${h.from_user_id}`}</span></div></td>
+                  <td><div style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar id={String(h.to_user_id)} size="sm" /><span style={{ fontWeight: 600, fontSize: 13 }}>{h.to_username ?? `User ${h.to_user_id}`}</span></div></td>
+                  <td><span style={{ fontWeight: 700, color: "var(--success)", fontVariantNumeric: "tabular-nums", fontSize: 13.5 }}>{fmt(h.amount, currency)}</span></td>
+                  <td>{statusPill(h.status)}</td>
+                  <td style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{relDate(h.created_at)}</td>
+                  <td style={{ textAlign: "right" }}>
+                    {canAct && (
+                      <div className="tbl-actions" style={{ justifyContent: "flex-end" }}>
+                        <button className="btn btn-primary" style={{ padding: "5px 11px", fontSize: 12 }} disabled={acting.has(h.id)} onClick={() => acceptSettlement(h.id)}><Icon name="check" size={13} /> Confirm receipt</button>
+                        <button className="btn btn-secondary" style={{ padding: "5px 11px", fontSize: 12, color: "var(--rose)", borderColor: "var(--rose-soft)" }} disabled={acting.has(h.id)} onClick={() => rejectSettlement(h.id)}><Icon name="x" size={13} /> Reject</button>
+                      </div>
+                    )}
+                    {canResend && (
+                      <button className="btn st-quick-btn" style={{ padding: "5px 12px", fontSize: 12 }} disabled={acting.has(h.id)} onClick={() => resendSettlement(h.id, h.amount, h.to_user_id)}>
+                        <Icon name="settle" size={13} /> Resend
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* Mobile cards */}
+        <div className="st-mobile-cards">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="sk-block" style={{ height: 100, borderRadius: 12, margin: "10px 14px" }} />
+            ))
+          ) : visibleHistory.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 13.5 }}>
+              <Icon name="settle" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--ink-4)" }} />
+              {view === "action" ? "No payments need your confirmation." : view === "waiting" ? "No payments are waiting for confirmation." : "No payment history yet."}
+            </div>
+          ) : visibleHistory.map((h) => {
+            const canAct = h.status === "pending" && h.to_user_id === myId;
+            const canResend = h.status === "rejected" && h.from_user_id === myId;
+            return (
+              <div key={h.id} className="st-mob-card">
+                <div className="st-mob-card-row">
+                  <div className="st-mob-user"><Avatar id={String(h.from_user_id)} size="sm" /><span>{h.from_username ?? `User ${h.from_user_id}`}</span></div>
+                  <Icon name="settle" size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                  <div className="st-mob-user"><Avatar id={String(h.to_user_id)} size="sm" /><span>{h.to_username ?? `User ${h.to_user_id}`}</span></div>
+                </div>
+                <div className="st-mob-card-meta">
+                  <span style={{ fontWeight: 700, color: "var(--success)", fontVariantNumeric: "tabular-nums" }}>{fmt(h.amount, currency)}</span>
+                  {statusPill(h.status)}
+                  <span style={{ fontSize: 12, color: "var(--ink-3)", marginLeft: "auto" }}>{relDate(h.created_at)}</span>
+                </div>
+                {(canAct || canResend) && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    {canAct && <>
+                      <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center", fontSize: 12.5 }} disabled={acting.has(h.id)} onClick={() => acceptSettlement(h.id)}><Icon name="check" size={13} /> Confirm receipt</button>
+                      <button className="btn btn-secondary" style={{ flex: 1, justifyContent: "center", fontSize: 12.5, color: "var(--rose)", borderColor: "var(--rose-soft)" }} disabled={acting.has(h.id)} onClick={() => rejectSettlement(h.id)}><Icon name="x" size={13} /> Reject</button>
+                    </>}
+                    {canResend && (
+                      <button className="btn st-quick-btn" style={{ flex: 1, justifyContent: "center", fontSize: 12.5 }} disabled={acting.has(h.id)} onClick={() => resendSettlement(h.id, h.amount, h.to_user_id)}>
+                        <Icon name="settle" size={13} /> Resend
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Stat cards ───────────────────────────────────────────────────────── */}
-      <div className="settle-stat-grid">
-        {loading ? (
-          <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          <>
-            <div className="card stat-c">
-              <div className="ic" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
-                <Icon name="coin" size={22} />
-              </div>
-              <div>
-                <div className="lbl">You Lent</div>
-                <div className="v" style={{ color: "var(--success)" }}>{fmt(youLent, currency)}</div>
-                <div className="sub">Others owe you</div>
-              </div>
-            </div>
-            <div className="card stat-c">
-              <div className="ic" style={{ background: "var(--rose-soft)", color: "var(--rose)" }}>
-                <Icon name="receipt" size={22} />
-              </div>
-              <div>
-                <div className="lbl">You Owe</div>
-                <div className="v" style={{ color: "var(--rose)" }}>{fmt(youOwe, currency)}</div>
-                <div className="sub">Your outstanding debt</div>
-              </div>
-            </div>
-            <div className="card stat-c">
-              <div className="ic" style={{ background: "var(--primary-soft)", color: "var(--primary)" }}>
-                <Icon name="settle" size={22} />
-              </div>
-              <div>
-                <div className="lbl">Net Balance</div>
-                <div className="v" style={{ color: myNet >= 0 ? "var(--success)" : "var(--rose)" }}>{fmt(myNet, currency)}</div>
-                <div className="sub">{myNet > 0 ? "You are owed" : myNet < 0 ? "You owe overall" : "All settled!"}</div>
-              </div>
-            </div>
-            <div className="card stat-c">
-              <div className="ic" style={{ background: "var(--success-soft)", color: "var(--success)" }}>
-                <Icon name="check" size={22} />
-              </div>
-              <div>
-                <div className="lbl">Total Settled</div>
-                <div className="v" style={{ color: "var(--success)" }}>{fmt(totalSettled, currency)}</div>
-                <div className="sub">Accepted payments</div>
-              </div>
-            </div>
-          </>
-        )}
+      {/* Record Settlement Modal */}
       </div>
-
+      <details className="optional-details" style={{marginTop: 24}}><summary>Balances and suggested payments</summary>
       {/* ── Friend Balances ───────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 18, marginBottom: 20, marginTop: 4 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
@@ -431,109 +491,13 @@ export default function GlobalSettlementsPage() {
         </div>
       </div>
 
-      {/* ── Settlement History ────────────────────────────────────────────────── */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="st-section-hd st-hd-green">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span>🕐</span><span>Settlement History</span>
-          </div>
-          <span className="st-badge st-badge-green">{loading ? "…" : `${history.length} records`}</span>
-        </div>
-
-        {/* Desktop table */}
-        <table className="exp-table st-desktop-table" style={{ margin: 0 }}>
-          <thead>
-            <tr><th>Payer</th><th>Receiving</th><th>Amount</th><th>Status</th><th>Date</th><th style={{ textAlign: "right" }}>Actions</th></tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={6} />)
-            ) : history.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: "48px 0", textAlign: "center", color: "var(--ink-3)" }}>
-                <Icon name="settle" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--ink-4)" }} />
-                No settlements recorded yet.
-              </td></tr>
-            ) : history.map((h) => {
-              const canAct = h.status === "pending" && h.to_user_id === myId;
-              const canResend = h.status === "rejected" && h.from_user_id === myId;
-              return (
-                <tr key={h.id}>
-                  <td><div style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar id={String(h.from_user_id)} size="sm" /><span style={{ fontWeight: 600, fontSize: 13 }}>{h.from_username ?? `User ${h.from_user_id}`}</span></div></td>
-                  <td><div style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar id={String(h.to_user_id)} size="sm" /><span style={{ fontWeight: 600, fontSize: 13 }}>{h.to_username ?? `User ${h.to_user_id}`}</span></div></td>
-                  <td><span style={{ fontWeight: 700, color: "var(--success)", fontVariantNumeric: "tabular-nums", fontSize: 13.5 }}>{fmt(h.amount, currency)}</span></td>
-                  <td>{statusPill(h.status)}</td>
-                  <td style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{relDate(h.created_at)}</td>
-                  <td style={{ textAlign: "right" }}>
-                    {canAct && (
-                      <div className="tbl-actions" style={{ justifyContent: "flex-end" }}>
-                        <button className="btn btn-primary" style={{ padding: "5px 11px", fontSize: 12 }} disabled={acting.has(h.id)} onClick={() => acceptSettlement(h.id)}><Icon name="check" size={13} /> Accept</button>
-                        <button className="btn btn-secondary" style={{ padding: "5px 11px", fontSize: 12, color: "var(--rose)", borderColor: "var(--rose-soft)" }} disabled={acting.has(h.id)} onClick={() => rejectSettlement(h.id)}><Icon name="x" size={13} /> Reject</button>
-                      </div>
-                    )}
-                    {canResend && (
-                      <button className="btn st-quick-btn" style={{ padding: "5px 12px", fontSize: 12 }} disabled={acting.has(h.id)} onClick={() => resendSettlement(h.id, h.amount, h.to_user_id)}>
-                        <Icon name="settle" size={13} /> Resend
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {/* Mobile cards */}
-        <div className="st-mobile-cards">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="sk-block" style={{ height: 100, borderRadius: 12, margin: "10px 14px" }} />
-            ))
-          ) : history.length === 0 ? (
-            <div style={{ padding: "32px 0", textAlign: "center", color: "var(--ink-3)", fontSize: 13.5 }}>
-              <Icon name="settle" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--ink-4)" }} />
-              No settlements recorded yet.
-            </div>
-          ) : history.map((h) => {
-            const canAct = h.status === "pending" && h.to_user_id === myId;
-            const canResend = h.status === "rejected" && h.from_user_id === myId;
-            return (
-              <div key={h.id} className="st-mob-card">
-                <div className="st-mob-card-row">
-                  <div className="st-mob-user"><Avatar id={String(h.from_user_id)} size="sm" /><span>{h.from_username ?? `User ${h.from_user_id}`}</span></div>
-                  <Icon name="settle" size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />
-                  <div className="st-mob-user"><Avatar id={String(h.to_user_id)} size="sm" /><span>{h.to_username ?? `User ${h.to_user_id}`}</span></div>
-                </div>
-                <div className="st-mob-card-meta">
-                  <span style={{ fontWeight: 700, color: "var(--success)", fontVariantNumeric: "tabular-nums" }}>{fmt(h.amount, currency)}</span>
-                  {statusPill(h.status)}
-                  <span style={{ fontSize: 12, color: "var(--ink-3)", marginLeft: "auto" }}>{relDate(h.created_at)}</span>
-                </div>
-                {(canAct || canResend) && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    {canAct && <>
-                      <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center", fontSize: 12.5 }} disabled={acting.has(h.id)} onClick={() => acceptSettlement(h.id)}><Icon name="check" size={13} /> Accept</button>
-                      <button className="btn btn-secondary" style={{ flex: 1, justifyContent: "center", fontSize: 12.5, color: "var(--rose)", borderColor: "var(--rose-soft)" }} disabled={acting.has(h.id)} onClick={() => rejectSettlement(h.id)}><Icon name="x" size={13} /> Reject</button>
-                    </>}
-                    {canResend && (
-                      <button className="btn st-quick-btn" style={{ flex: 1, justifyContent: "center", fontSize: 12.5 }} disabled={acting.has(h.id)} onClick={() => resendSettlement(h.id, h.amount, h.to_user_id)}>
-                        <Icon name="settle" size={13} /> Resend
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Record Settlement Modal */}
+      </details>
       {settleModal && (
         <RecordSettlementModal
           currency={currency}
           myId={myId}
           myUsername={user?.username}
-          currentBalance={-myNet}
+          currentBalance={myNet}
           defaultRecipientId={settleModal.defaultToId}
           defaultAmount={settleModal.defaultAmount}
           recipients={allRecipients}

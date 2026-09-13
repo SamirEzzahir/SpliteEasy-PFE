@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import PageHeader from "@/components/ui/PageHeader";
 import Icon from "@/components/Icon";
 import { Avatar, AvatarStack } from "@/components/Avatar";
 import CreateGroupModal from "@/components/modals/CreateGroupModal";
@@ -330,7 +331,7 @@ export default function GroupsPage() {
 
             <div className="gd-actions modern">
               <Link href={`/groups/${group.id}`} className="btn btn-primary" onClick={closeMobilePreview}>
-                View Expenses
+                Open group
               </Link>
               <button className="btn btn-secondary" onClick={() => router.push(`/groups/${group.id}/settle`)}>
                 Settle Up
@@ -396,26 +397,14 @@ export default function GroupsPage() {
   return (
     <>
       <div className="groups-page">
-        <div className="groups-hero-head">
-          <div>
-            <p className="eyebrow">Shared Money Spaces</p>
-            <h1>Groups</h1>
-            <p>Create, manage, and settle every shared expense group without losing the thread.</p>
-          </div>
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            <Icon name="plus" size={14} /> Create Group
-          </button>
-        </div>
+        <PageHeader title="Groups" subtitle="Open a group to see expenses, balances, and your next payment."
+          actions={<button className="btn btn-primary" onClick={() => setShowCreate(true)}><Icon name="plus" size={16} />Create group</button>} />
 
         <div className="ui-stat-grid cols-4">
           {loading ? (
             <><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /></>
           ) : (
             <>
-              <StatCard icon="groups" tone="primary" label="Active Groups"
-                value={groupStats.active} sub="Ready to split" />
-              <StatCard icon="wallet" tone="neutral" label="Total Spending"
-                value={groupStats.total} currency={userCurrency} sub="Across all groups" />
               {/* Clickable balance shortcuts that apply a balance quick-filter */}
               <StatCard icon="upload" tone="success" label="You Are Owed"
                 value={groupStats.owed} currency={userCurrency}
@@ -429,6 +418,10 @@ export default function GroupsPage() {
                 onClick={() => setBalanceFilter((f) => f === "owe" ? "all" : "owe")}
                 active={balanceFilter === "owe"}
                 title="Show only groups where you owe money" />
+              <StatCard icon="groups" tone="primary" label="Active Groups"
+                value={groupStats.active} sub="Ready to split" />
+              <StatCard icon="wallet" tone="neutral" label="Total Spending"
+                value={groupStats.total} currency={userCurrency} sub="Across all groups" />
             </>
           )}
         </div>
@@ -545,20 +538,11 @@ export default function GroupsPage() {
                             <AvatarStack ids={group.memberIds} max={5} size="sm" />
                           </div>
 
-                          {/* P1.6 — replace misleading % estimate with honest balance status */}
-                          <div className="group-settlement">
-                            <div>
-                              <span>Balance status</span>
-                              <b style={{ color: group.balance !== 0 ? (group.balance > 0 ? "var(--success)" : "var(--rose)") : "var(--ink-3)" }}>
-                                {group.balance === 0 ? "✓ Settled" : group.balance > 0 ? `+${fmt(group.balance, group.currency)}` : fmt(group.balance, group.currency)}
-                              </b>
-                            </div>
-                            <i><em style={{ width: `${pct}%`, background: group.color }} /></i>
-                          </div>
+                          <p className="group-last-activity">Last expense: {expenses.find((e) => e.groupId === group.id)?.date || "No expenses yet"}</p>
 
                           <div className="group-card-actions">
                             <Link href={`/groups/${group.id}`} className="btn btn-primary" onClick={(event) => event.stopPropagation()}>
-                              View Expenses
+                              Open group
                             </Link>
                             <button className="btn btn-secondary" onClick={(event) => { event.stopPropagation(); openMembers(group); }}>
                               Members
@@ -624,7 +608,7 @@ export default function GroupsPage() {
 
                   <div className="gd-actions modern">
                     <Link href={`/groups/${selected.id}`} className="btn btn-primary">
-                      View Expenses
+                      Open group
                     </Link>
                     <Link href={`/groups/${selected.id}/settle`} className="btn btn-secondary">
                       Settle Up

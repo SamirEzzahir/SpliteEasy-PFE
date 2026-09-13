@@ -10,6 +10,7 @@ export interface CreateExpensePayload {
   amount: number;
   currency?: string;
   description: string;
+  note?: string;
   category?: string;
   created_at: string;          // required by backend — ISO datetime string
   split_type?: "equal" | "percentage" | "share";

@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
+import FilterPanel from "@/components/ui/FilterPanel";
+import PageHeader from "@/components/ui/PageHeader";
 import Icon from "@/components/Icon";
 import { Avatar, AvatarStack } from "@/components/Avatar";
 import CategoryDonut from "@/components/expenses/CategoryDonut";
@@ -297,7 +299,7 @@ export default function ExpensesPage() {
     toast.warning(
       ({ closeToast }) => (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%" }}>
-          <span style={{ fontSize: 14 }}><strong>"{title}"</strong> will be deleted</span>
+          <span style={{ fontSize: 14 }}><strong>&ldquo;{title}&rdquo;</strong> will be deleted</span>
           <button
             onClick={() => {
               undone = true;
@@ -471,20 +473,10 @@ export default function ExpensesPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Expenses</h1>
-          <p>Track and manage all shared expenses.</p>
-        </div>
-        <div className="page-actions">
-          <button className="btn btn-secondary" onClick={exportCSV}>
-            <Icon name="download" size={14} /> Export CSV
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            <Icon name="plus" size={14} /> Add Expense
-          </button>
-        </div>
-      </div>
+      <PageHeader title="Expenses" subtitle="See what was paid and how much is your share." actions={<>
+        <button className="btn btn-secondary" onClick={exportCSV}><Icon name="download" size={16} />Export CSV</button>
+        <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={16} />Add expense</button>
+      </>} />
 
       <div className="page-2col">
         <div>
@@ -531,6 +523,7 @@ export default function ExpensesPage() {
             </div>
 
             {/* Filter row */}
+            <FilterPanel count={[dateFilter, groupFilter, categoryFilter].filter((v) => v !== "all").length}>
             <div className="filter-row">
               <FilterDropdown icon="receipt" label="All Time"       options={dateOptions}     value={dateFilter}     onChange={setDateFilter} />
               <FilterDropdown icon="groups"  label="All Groups"     options={groupOptions}    value={groupFilter}    onChange={setGroupFilter} />
@@ -559,6 +552,8 @@ export default function ExpensesPage() {
                 />
               </div>
             </div>
+
+            </FilterPanel>
 
             {/* Empty state */}
             {filtered.length === 0 ? (
@@ -785,7 +780,7 @@ export default function ExpensesPage() {
       {showAdd && (
         <AddExpenseFullModal
           onClose={() => setShowAdd(false)}
-          onSubmit={(e) => { addExpense(e); setShowAdd(false); }}
+          onSubmit={addExpense}
         />
       )}
 

@@ -72,6 +72,7 @@ export interface Expense {
   id: string;
   title: string;
   subtitle: string;
+  note?: string;
   groupId: string;
   paidBy: string;
   categoryId: string;
@@ -80,6 +81,8 @@ export interface Expense {
   date: string;
   time: string;
   splitIds: string[];
+  splitType?: "equal" | "percentage" | "custom";
+  splitAmounts?: Record<string, number>;
   addedByUsername?: string;
   _rawDate?: string;
 }

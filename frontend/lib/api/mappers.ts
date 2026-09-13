@@ -172,9 +172,13 @@ function formatDate(iso?: string): { date: string; time: string } {
 
 export function mapExpense(e: ApiExpense): Expense {
   const { date, time } = formatDate(e.date || e.created_at);
+  const splitAmounts = Object.fromEntries(
+    (e.splits || []).map((s) => [String(s.user_id), Number(s.share_amount)]),
+  );
   return {
     id: String(e.id),
     title: e.description,
+    note: e.note ?? undefined,
     subtitle: "",
     groupId: String(e.group_id),
     paidBy: String(e.payer_id),
@@ -184,6 +188,8 @@ export function mapExpense(e: ApiExpense): Expense {
     date,
     time,
     splitIds: (e.splits || []).map((s) => String(s.user_id)),
+    splitType: e.split_type === "percentage" ? "percentage" : e.split_type === "share" ? "custom" : "equal",
+    splitAmounts,
     addedByUsername: e.added_by_username ?? undefined,
     _rawDate: e.date || e.created_at,
   };

@@ -10,10 +10,10 @@ export type StatTone = "primary" | "success" | "danger" | "warn" | "info" | "neu
 
 const TONE: Record<StatTone, { bg: string; fg: string }> = {
   primary: { bg: "var(--primary-soft)", fg: "var(--primary)" },
-  success: { bg: "var(--success-soft)", fg: "var(--success)" },
-  danger:  { bg: "var(--rose-soft)",    fg: "var(--rose)" },
-  warn:    { bg: "var(--warn-soft)",    fg: "var(--warn)" },
-  info:    { bg: "var(--sky-soft)",     fg: "var(--sky)" },
+  success: { bg: "var(--success-soft)", fg: "var(--success-text)" },
+  danger:  { bg: "var(--rose-soft)",    fg: "var(--rose-text)" },
+  warn:    { bg: "var(--warn-soft)",    fg: "var(--warn-text)" },
+  info:    { bg: "var(--sky-soft)",     fg: "var(--sky-text)" },
   neutral: { bg: "var(--line-2)",       fg: "var(--ink-3)" },
 };
 
@@ -39,7 +39,7 @@ export default function StatCard({
 }: Props) {
   const t = TONE[tone];
   const displayValue =
-    typeof value === "number" ? fmt(value, currency ?? "MAD") : value;
+    typeof value === "number" ? (currency ? fmt(value, currency) : value.toLocaleString()) : value;
 
   const inner = (
     <>
@@ -61,6 +61,7 @@ export default function StatCard({
       <button
         type="button"
         className={"ui-stat-card ui-stat-card--btn" + (active ? " active" : "")}
+        aria-pressed={active}
         onClick={onClick}
         title={title}
       >

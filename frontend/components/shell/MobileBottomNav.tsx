@@ -1,138 +1,33 @@
 "use client";
-
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { Dialog } from "@/components/ui/dialog";
 import Icon from "@/components/Icon";
 
-interface Props {
-  onAddExpense: () => void;
-  onCreateGroup: () => void;
-}
-
-const NAV_ITEMS = [
-  { label: "Home",     icon: "home",    href: "/dashboard" },
-  { label: "Groups",   icon: "groups",  href: "/groups" },
-  { label: "Expenses", icon: "expense",  href: "/expenses" },
-  { label: "Settings", icon: "settings", href: "/settings" },
+const moreLinks = [
+  ["Friends", "friends", "/friends"], ["Settlements", "settle", "/settlements"],
+  ["Balances", "coin", "/balances"], ["Activity", "activity", "/activity"],
+  ["Settings", "settings", "/settings"], ["Support", "info", "/support"],
 ];
-
-export default function MobileBottomNav({ onAddExpense, onCreateGroup }: Props) {
+export default function MobileBottomNav({ onAddExpense, onCreateGroup }: { onAddExpense: () => void; onCreateGroup: () => void }) {
   const pathname = usePathname();
-  const router   = useRouter();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const sheetRef  = useRef<HTMLDivElement>(null);
-
-  const isActive = (href: string) =>
-    href === "/dashboard"
-      ? pathname === "/" || pathname === "/dashboard"
-      : pathname === href || pathname.startsWith(href + "/");
-
-  // close sheet on outside tap
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        setSheetOpen(false);
-      }
-    };
-    const keyHandler = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("keydown", keyHandler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("keydown", keyHandler);
-    };
-  }, [sheetOpen]);
-
-  function trigger(action: () => void) {
-    setSheetOpen(false);
-    // slight delay so sheet closes before modal opens
-    setTimeout(action, 80);
-  }
-
-  return (
-    <>
-      {/* Action sheet backdrop */}
-      {sheetOpen && (
-        <div
-          className="mob-sheet-backdrop"
-          onClick={() => setSheetOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      <nav className="app-mobile-nav" aria-label="Primary navigation" ref={sheetRef as any}>
-        {/* Left two items */}
-        {NAV_ITEMS.slice(0, 2).map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={"mob-nav-item" + (isActive(item.href) ? " active" : "")}
-          >
-            <Icon name={item.icon} size={20} />
-            <span>{item.label}</span>
-          </Link>
-        ))}
-
-        {/* Center FAB */}
-        <div className="mob-fab-wrap">
-          {/* Action sheet */}
-          {sheetOpen && (
-            <div className="mob-action-sheet" role="menu" aria-label="Quick actions">
-              <button
-                role="menuitem"
-                onClick={() => trigger(onAddExpense)}
-              >
-                <span className="mob-action-ic" style={{ background: "#eeecff", color: "#5b4ef0" }}>
-                  <Icon name="expense" size={18} />
-                </span>
-                Add Expense
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => trigger(onCreateGroup)}
-              >
-                <span className="mob-action-ic" style={{ background: "#dcfce7", color: "#10b981" }}>
-                  <Icon name="groups" size={18} />
-                </span>
-                Create Group
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => trigger(() => router.push("/settlements"))}
-              >
-                <span className="mob-action-ic" style={{ background: "#fce7f3", color: "#ec4899" }}>
-                  <Icon name="settle" size={18} />
-                </span>
-                Settle Up
-              </button>
-            </div>
-          )}
-
-          <button
-            className={"mob-fab" + (sheetOpen ? " open" : "")}
-            onClick={() => setSheetOpen((v) => !v)}
-            aria-label="Quick actions"
-            aria-expanded={sheetOpen}
-            aria-haspopup="menu"
-          >
-            <Icon name="plus" size={26} />
-          </button>
-        </div>
-
-        {/* Right two items */}
-        {NAV_ITEMS.slice(2).map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={"mob-nav-item" + (isActive(item.href) ? " active" : "")}
-          >
-            <Icon name={item.icon} size={20} />
-            <span>{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-    </>
-  );
+  const [panel, setPanel] = useState<"actions" | "more" | null>(null);
+  const active = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const navLink = (label: string, icon: string, href: string) => <Link href={href} key={href} className={`mob-nav-item${active(href) ? " active" : ""}`} aria-current={active(href) ? "page" : undefined}><Icon name={icon} size={20} /><span>{label}</span></Link>;
+  return <>
+    <nav className="app-mobile-nav" aria-label="Primary navigation">
+      {navLink("Home", "home", "/dashboard")}{navLink("Groups", "groups", "/groups")}
+      <div className="mob-fab-wrap"><button className="mob-fab" aria-label="Quick actions" aria-haspopup="dialog" onClick={() => setPanel("actions")}><Icon name="plus" size={26} /></button></div>
+      {navLink("Expenses", "expense", "/expenses")}
+      <button className={`mob-nav-item${moreLinks.some(([, , href]) => active(href)) ? " active" : ""}`} aria-haspopup="dialog" onClick={() => setPanel("more")}><Icon name="dots" size={20} /><span>More</span></button>
+    </nav>
+    <Dialog open={panel !== null} onClose={() => setPanel(null)} title={panel === "actions" ? "Quick actions" : "More"}>
+      <div className="mobile-menu-links">{panel === "actions" ? <>
+        <button onClick={() => { setPanel(null); onAddExpense(); }}><Icon name="expense" size={20} />Add expense</button>
+        <button onClick={() => { setPanel(null); onCreateGroup(); }}><Icon name="groups" size={20} />Create group</button>
+        <Link href="/settlements" onClick={() => setPanel(null)}><Icon name="settle" size={20} />Record a payment</Link>
+      </> : moreLinks.map(([label, icon, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setPanel(null)}><Icon name={icon} size={20} />{label}</Link>)}</div>
+    </Dialog>
+  </>;
 }

@@ -305,6 +305,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await refetchEconome();
     } catch {
       showToast("Failed to add expense", "error");
+      throw new Error("Expense was not saved");
     }
   }, [refetchEconome, showToast]);
 
@@ -312,29 +313,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addExpense = useCallback(async (exp: Expense) => {
     try {
-      const splitType = ((exp as any).splitType as "equal" | "percentage" | "share") || "equal";
-      const customAmounts = (exp as any).customAmounts as Record<string, string> | undefined;
+      const splitType = exp.splitType || "equal";
       await expensesApi.create({
         group_id: exp.groupId,
         payer_id: exp.paidBy,
         added_by: user?.id ?? exp.paidBy,
         amount: exp.amount,
-        currency: (exp as any).currency || "USD",
+        currency: exp.currency || "MAD",
         description: exp.title,
+        note: exp.note,
         category: exp.categoryId,
-        created_at: new Date().toISOString(),
-        split_type: splitType,
+        created_at: new Date(`${exp.date}T12:00:00`).toISOString(),
+        split_type: splitType === "custom" ? "share" : splitType,
         splits: exp.splitIds.map((id) => ({
           user_id: id,
-          share_amount: customAmounts?.[id]
-            ? parseFloat(customAmounts[id]) || 0
-            : exp.amount / Math.max(1, exp.splitIds.length),
+          share_amount: exp.splitAmounts?.[id] ?? exp.amount / Math.max(1, exp.splitIds.length),
         })),
       });
       showToast("Expense added · " + fmt(exp.amount), "success");
       await refetchSplitting();
     } catch {
       showToast("Failed to add expense", "error");
+      throw new Error("Expense was not saved");
     }
   }, [refetchSplitting, showToast, user]);
 

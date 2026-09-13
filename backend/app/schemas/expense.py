@@ -86,6 +86,7 @@ class ExpenseUpdate(BaseModel):
     is_from_jar: Optional[bool] = None
     note: Optional[str] = None
     photo: Optional[str] = None
+    created_at: Optional[datetime] = None
     splits: Optional[List[SplitCreate]] = None
 
 

@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
+import PageHeader from "@/components/ui/PageHeader";
+import PageTabs from "@/components/ui/PageTabs";
+import FilterPanel from "@/components/ui/FilterPanel";
 import Icon from "@/components/Icon";
 import { Avatar, AvatarStack } from "@/components/Avatar";
 import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
@@ -43,6 +46,8 @@ export default function GroupDetailPage() {
   const currency = group?.currency ?? "MAD";
 
   // ── Filters ──────────────────────────────────────────────────────────────────
+  const [tab, setTab] = useState<"expenses" | "balances" | "members" | "chat">("expenses");
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("tab") === "balances") setTab("balances"); }, []);
   const [query,          setQuery]          = useState("");
   const [monthFilter,    setMonthFilter]    = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -190,7 +195,7 @@ export default function GroupDetailPage() {
       ({ closeToast }) => (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%" }}>
           <span style={{ fontSize: 14 }}>
-            <strong>"{title}"</strong> will be deleted
+            <strong>&ldquo;{title}&rdquo;</strong> will be deleted
           </span>
           <button
             onClick={() => {
@@ -282,99 +287,24 @@ export default function GroupDetailPage() {
   // ── Main render ───────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Breadcrumb */}
-      <div className="breadcrumb">
-        <Link href="/groups">Groups</Link>
-        <Icon name="chevR" size={12} className="sep" />
-        <span className="cur">{group?.name ?? "..."}</span>
+      <PageHeader title={group?.name || "Group"} subtitle={`${group?.memberIds.length || 0} members · ${currency}`}
+        breadcrumbs={[{label: "Groups", href: "/groups"}, {label: group?.name || "Loading…"}]}
+        actions={<button className="btn btn-primary" onClick={() => setShowAddExpense(true)}><Icon name="plus" size={16} />Add expense</button>} />
+      <div className="ui-stat-grid cols-2">
+        {loading ? <><SkeletonGroupStat /><SkeletonGroupStat /></> : <>
+          <StatCard icon="download" tone="danger" label="You owe" value={totals.youOwe} currency={currency} sub="To the group" />
+          <StatCard icon="upload" tone="success" label="You are owed" value={totals.youAreOwed} currency={currency} sub="From the group" />
+        </>}
       </div>
-
-      {/* Page header */}
-      <div className="page-head">
-        <div>
-          {/* Fix: title reflects actual content (expenses + settlements) */}
-          <h1>Recent Activity</h1>
-          <p>Expenses and settlements for <strong>{group?.name ?? "..."}</strong></p>
-        </div>
-        <div className="page-actions">
-          {/* Desktop-only secondary actions */}
-          <button className="btn btn-secondary gx-hide-mobile" onClick={() => showToast("Export coming next")}>
-            <Icon name="download" size={14} /> Export
-          </button>
-          <button className="btn btn-secondary gx-hide-mobile" onClick={() => showToast("Import coming next")}>
-            <Icon name="upload" size={14} /> Import
-          </button>
-
-          {/* Always visible primary CTA */}
-          <button className="btn btn-primary" onClick={() => setShowAddExpense(true)}>
-            <Icon name="plus" size={14} /> Add Expense
-          </button>
-
-          {/* Desktop-only secondary actions */}
-          <button className="btn btn-secondary gx-hide-mobile" onClick={() => setShowMembers(true)}>
-            <Icon name="groups" size={14} /> Members
-          </button>
-          <button className="btn btn-secondary gx-hide-mobile" onClick={settleUp}>
-            <Icon name="settle" size={14} /> Settle
-          </button>
-
-          {/* Fix: "Settle Up" always visible on mobile — it's the primary financial action */}
-          <button className="btn btn-secondary gx-show-mobile" onClick={settleUp}>
-            <Icon name="settle" size={14} /> Settle
-          </button>
-
-          {/* Mobile ⋯ menu — secondary/utility actions only */}
-          <div className="gx-more-wrap gx-show-mobile">
-            <button className="btn btn-secondary" onClick={() => setShowMoreMenu((v) => !v)}>
-              <Icon name="dots" size={16} />
-            </button>
-            {showMoreMenu && (
-              <>
-                <div className="gx-more-backdrop" onClick={() => setShowMoreMenu(false)} />
-                <div className="gx-more-menu">
-                  <button onClick={() => { showToast("Export coming next"); setShowMoreMenu(false); }}>
-                    <Icon name="download" size={15} /> Export Excel
-                  </button>
-                  <button onClick={() => { showToast("Import coming next"); setShowMoreMenu(false); }}>
-                    <Icon name="upload" size={15} /> Import Excel
-                  </button>
-                  <button onClick={() => { setShowMembers(true); setShowMoreMenu(false); }}>
-                    <Icon name="groups" size={15} /> Members
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── 5 stat cards ── */}
-      <div className="ui-stat-grid cols-5">
-        {loading ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonGroupStat key={i} />)
-        ) : (
-          <>
-            <StatCard icon="receipt" tone="primary" label="Total Expenses"
-              value={totals.total} currency={currency}
-              sub={`Across ${groupExpenses.length} expenses`} />
-            <StatCard icon="download" tone="danger" label="You Owe"
-              value={totals.youOwe} currency={currency}
-              colorValue={totals.youOwe > 0} sub="To the group" />
-            <StatCard icon="upload" tone="success" label="You Are Owed"
-              value={totals.youAreOwed} currency={currency}
-              colorValue={totals.youAreOwed > 0} sub="From the group" />
-            <StatCard icon="activity" tone="warn" label="Unsettled"
-              value={totals.unsettled} currency={currency}
-              colorValue={totals.unsettled > 0} sub="Open balance" />
-            <StatCard icon="check" tone="success" label="Settled"
-              value={totals.settled} currency={currency}
-              sub="Accepted payments" />
-          </>
-        )}
-      </div>
-
+      <p className="field-help">{groupExpenses.length} expenses · {fmt(totals.total, currency)} total · {fmt(totals.settled, currency)} in confirmed payments</p>
+      <PageTabs id="group-tabs" label="Group sections" value={tab} onChange={setTab} items={[
+        {value: "expenses", label: "Expenses"}, {value: "balances", label: "Balances"},
+        {value: "members", label: "Members"}, {value: "chat", label: "Chat"},
+      ]} />
+      <div role="tabpanel" id="group-tabs-panel-expenses" aria-labelledby="group-tabs-expenses" hidden={tab !== "expenses"}>
       {/* ── Filters + table card ── */}
       <div className="card" style={{ padding: 18 }}>
+        <FilterPanel count={[monthFilter, categoryFilter, paidByFilter].filter((v) => v !== "all").length}>
         <div className="filter-row">
           {/* Fix: active filter state — border + background when non-default */}
           <select
@@ -449,6 +379,7 @@ export default function GroupDetailPage() {
           </div>
         </div>
 
+        </FilterPanel>
         {/* ── Desktop table ── */}
         <table className="exp-table">
           <thead>
@@ -860,6 +791,28 @@ export default function GroupDetailPage() {
           summary={`Showing ${filtered.length ? (currentPage - 1) * pageSize + 1 : 0} to ${Math.min(currentPage * pageSize, filtered.length)} of ${filtered.length} items`}
         />
       </div>
+
+      </div>
+      <section role="tabpanel" id="group-tabs-panel-balances" aria-labelledby="group-tabs-balances" hidden={tab !== "balances"}>
+        <div className="section-heading"><h2>Member balances</h2><button className="btn btn-primary" onClick={settleUp}>Record a payment</button></div>
+        <div className="group-balances-list">{balances.map((entry) => {
+          const net = entry.net ?? entry.balance ?? 0;
+          return <div className="group-balance-row" key={entry.user_id}><span>{entry.username || personById(entry.user_id).name}</span>
+            <strong className={net < 0 ? "neg" : net > 0 ? "pos" : ""}>{net < 0 ? "Owes " : net > 0 ? "Is owed " : "Settled "}{fmt(Math.abs(net), currency)}</strong></div>;
+        })}</div>
+        <h3>Payments</h3><p className="field-help">Review a recorded payment to confirm receipt or view its status.</p>
+        {settlementHistory.length ? settlementHistory.map((payment) => <button className="group-balance-row" style={{width: "100%", textAlign: "left"}} key={payment.id} onClick={() => setViewSettlement(payment)}>
+          <span>{payment.from_username || personById(payment.from_user_id).name} → {payment.to_username || personById(payment.to_user_id).name}<small style={{display: "block"}}>{payment.status === "pending" ? "Awaiting confirmation" : payment.status}</small></span>
+          <strong>{fmt(payment.amount, currency)}</strong>
+        </button>) : <p className="field-help">No payments recorded yet.</p>}
+      </section>
+      <section role="tabpanel" id="group-tabs-panel-members" aria-labelledby="group-tabs-members" hidden={tab !== "members"}>
+        <div className="section-heading"><h2>{group?.memberIds.length || 0} members</h2><button className="btn btn-secondary" onClick={() => setShowMembers(true)}>Manage members</button></div>
+        <div className="group-members-grid">{group?.memberIds.map((id) => <div className="group-member-row" key={id}><span>{personById(id).name}</span><span className="field-help">{id === group.ownerId ? "Owner" : "Member"}</span></div>)}</div>
+      </section>
+      <section role="tabpanel" id="group-tabs-panel-chat" aria-labelledby="group-tabs-chat" hidden={tab !== "chat"}>
+        {tab === "chat" && group && <GroupChat groupId={group.id} groupName={group.name} embedded />}
+      </section>
 
       {/* ── Modals ── */}
       {showAddExpense && group && (

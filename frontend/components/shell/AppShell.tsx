@@ -31,7 +31,7 @@ function applyTheme(choice: ThemeChoice) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { toast, celebrate, closeCelebrate, addExpense } = useApp();
+  const { toast, celebrate, closeCelebrate, addExpense, createGroup } = useApp();
   const { settings } = usePublicSettings();
   const pathname = usePathname();
 
@@ -105,13 +105,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <AddExpenseFullModal
           defaultGroupId={currentGroupId}
           onClose={() => setShowAddExpense(false)}
-          onSubmit={(e) => { addExpense(e); setShowAddExpense(false); }}
+          onSubmit={addExpense}
         />
       )}
       {showCreateGroup && (
         <CreateGroupModal
           onClose={() => setShowCreateGroup(false)}
-          onSubmit={() => setShowCreateGroup(false)}
+          onSubmit={async (group) => { await createGroup(group); setShowCreateGroup(false); }}
         />
       )}
 

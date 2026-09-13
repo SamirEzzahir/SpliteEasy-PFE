@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SplitEasy · Wallets design preview</title>
+  <style>
+    :root{--primary:#5b4ef0;--primary-soft:#efedff;--ink:#172036;--muted:#6b7285;--line:#e4e6f0;--surface:#fff;--bg:#f6f7fb;--green:#127443;--green-soft:#e9f8ef;--rose:#b63250;--teal:#147c85;--radius:14px;--shadow:0 10px 35px #1824480a;color-scheme:light}
+    :root[data-theme=dark]{--primary:#a096ff;--primary-soft:#302955;--ink:#f0f1fa;--muted:#a6adc3;--line:#333a50;--surface:#1a2030;--bg:#111625;--green:#7bddaa;--green-soft:#203d30;--rose:#ff99b0;--teal:#75d2d8;color-scheme:dark}
+    *{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}button,a,input,select{ -webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--primary);outline-offset:3px}a{color:var(--primary)}h1,h2,h3,p{margin:0}h1{font-size:28px;letter-spacing:-.7px}h2{font-size:17px}h3{font-size:15px}.muted{color:var(--muted)}.num{font-variant-numeric:tabular-nums}.btn{min-height:44px;padding:10px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--ink);font-weight:650;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--surface)}:root[data-theme=dark] .btn.primary{color:var(--bg)}.btn:hover{filter:brightness(.96)}.preview{background:var(--primary-soft);color:var(--ink);padding:12px 24px;text-align:center;font-size:12px}.preview strong{color:var(--primary)}.topbar{display:flex;align-items:center;gap:24px;padding:18px 32px;border-bottom:1px solid var(--line);background:var(--surface)}.brand{font-size:21px;font-weight:800;letter-spacing:-.6px}.brand span{color:var(--primary)}.appnav{display:flex;align-items:center;gap:24px;flex:1;color:var(--muted)}.appnav strong{color:var(--primary);background:var(--primary-soft);padding:10px 14px;border-radius:var(--radius)}.avatar{width:36px;height:36px;display:grid;place-items:center;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:800}main{max-width:1170px;margin:0 auto;padding:32px 24px 60px}.pagehead{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}.pagehead p{color:var(--muted);margin-top:6px}.actions{display:flex;flex-wrap:wrap;gap:8px}.private{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;margin-bottom:6px}.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow:auto}.tabs button{min-height:48px;padding:12px 18px;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font-weight:650;white-space:nowrap}.tabs button[aria-selected=true]{color:var(--primary);border-color:var(--primary)}.panel[hidden]{display:none}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px}.metric,.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.metric{padding:22px}.metric .value{font-size:28px;font-weight:750;letter-spacing:-.7px;margin:8px 0}.metric p{font-size:12px;color:var(--muted)}.eyebrow{font-size:13px;font-weight:600;color:var(--muted)}.income{color:var(--green)}.spending{color:var(--rose)}.transfer{color:var(--teal)}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px}.card{padding:22px}.cardhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.cardhead p{font-size:12px;color:var(--muted);margin-top:4px}.wallets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wallet{padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg)}.wallet-top{display:flex;gap:12px;align-items:center}.wallet-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:var(--radius);background:var(--primary-soft);color:var(--primary);font-size:18px}.wallet small{color:var(--muted)}.wallet strong.balance{display:block;font-size:23px;margin:22px 0 16px;letter-spacing:-.5px}.linkbtn{border:0;background:transparent;padding:8px 0;min-height:44px;color:var(--primary);font-weight:650}.note{padding:16px;background:var(--primary-soft);border-radius:var(--radius);font-size:13px;margin-top:18px}.note p{margin-top:6px}.aside{display:grid;align-content:start;gap:18px}.receivable{font-size:26px;font-weight:750;color:var(--green);margin:14px 0 8px}.aside .card>p{font-size:13px;color:var(--muted)}.example{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.example>div{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:13px}.feed{display:grid}.entry{display:flex;align-items:center;gap:12px;padding:16px 0;border-top:1px solid var(--line)}.entry:first-child{border-top:0}.entry-icon{width:38px;height:38px;flex-shrink:0;border-radius:999px;background:var(--bg);display:grid;place-items:center;font-size:18px}.entry-text{flex:1;min-width:0}.entry-text b{font-size:13px;display:block;overflow-wrap:anywhere}.entry-text small{display:block;font-size:12px;color:var(--muted);margin-top:3px}.entry-amount{text-align:right;white-space:nowrap;font-weight:700;font-size:13px}.entry-amount small{display:block;font-size:11px;color:var(--muted);font-weight:400}.recent{margin-top:20px}.activity-controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}.activity-controls label{display:flex;align-items:center;gap:8px;font-size:13px}.activity-controls select{min-height:44px}.budgetgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.budget h3{margin-bottom:8px}.budget .value{font-size:22px;font-weight:750;margin:18px 0 4px}.budget small{color:var(--muted)}progress{width:100%;height:8px;border:0;border-radius:999px;accent-color:var(--primary);margin-top:20px}progress::-webkit-progress-bar{background:var(--line);border-radius:999px}progress::-webkit-progress-value{background:var(--primary);border-radius:999px}.budget-summary{margin-bottom:20px}.empty{text-align:center;color:var(--muted);padding:28px}.foot{font-size:12px;color:var(--muted);margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:16px}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);z-index:20;max-width:calc(100vw - 32px)}.toast:empty{display:none}
+    dialog{width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--ink);box-shadow:0 20px 70px #0003}dialog::backdrop{background:#10172980;backdrop-filter:blur(3px)}.dialoghead{padding:22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2}.dialoghead button{width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:24px}.dialogbody{padding:22px;display:grid;gap:18px}.dialogbody label{display:grid;gap:7px;font-size:13px;font-weight:600}.dialogbody .check{display:flex;align-items:center;gap:10px;min-height:44px}.check input{width:20px;height:20px;min-height:0;accent-color:var(--primary)}input,select{width:100%;min-height:46px;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;color:var(--ink);background:var(--surface);font-size:16px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.result{padding:16px;background:var(--bg);border-radius:var(--radius)}.result>div{display:flex;justify-content:space-between;gap:12px;margin:8px 0;font-size:13px}.result>p{font-size:12px;color:var(--muted);margin-top:10px}.error{color:var(--rose);font-size:13px}.error:empty{display:none}.dialogfoot{border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;background:var(--surface);position:sticky;bottom:0}.help{font-size:12px;color:var(--muted)}
+    @media(max-width:850px){.appnav span{display:none}.layout{grid-template-columns:1fr}.aside{grid-template-columns:1fr 1fr}.budgetgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.metrics .value{font-size:23px}.pagehead{align-items:flex-start;flex-direction:column}}
+    @media(max-width:520px){.preview{padding:10px 16px}.topbar{padding:12px 16px;gap:12px}.appnav{display:none}.topbar .brand{flex:1}.topbar .avatar{display:none}main{padding:24px 16px 40px}.pagehead h1{font-size:26px}.metrics{grid-template-columns:1fr;gap:10px}.metric{padding:16px;display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}.metric .value{grid-column:2;grid-row:1/3;margin:0;font-size:22px}.metric p{grid-column:1}.wallets,.aside,.budgetgrid{grid-template-columns:1fr}.card{padding:18px}.actions{width:100%}.actions .btn{flex:1}.tabs button{padding:12px}.foot{align-items:flex-start;flex-direction:column}.entry{gap:8px}.entry-amount{font-size:12px}.entry-icon{width:30px;height:30px}.formgrid{grid-template-columns:1fr}.dialogbody,.dialoghead{padding:18px}.activity-controls label{width:100%;justify-content:space-between}.activity-controls select{width:65%}.cardhead{flex-wrap:wrap}}
+    .pagehead h1{font-size:26px}
+    .type-create{display:grid;gap:12px;padding:16px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius)}.type-create[hidden]{display:none}.type-create .btn{justify-self:start}.type-status{overflow-wrap:anywhere}.type-status:empty{display:none}.dialogbody>*,.dialogbody label,.dialogbody select{min-width:0}.wallet-top>div:last-child{min-width:0;overflow-wrap:anywhere}.wallet-icon{flex-shrink:0}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  </style>
+  <link rel="stylesheet" href="wallet-preview.css">
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M20 8V5a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h14v11H6a3 3 0 0 1-3-3V6"/><path d="M20 12h-5v5h5M17 14.5h.01"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="m3 9 9-6 9 6H3ZM5 12v6m7-6v6m7-6v6M3 21h18"/></symbol>
+    <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 9h.01M19 15h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4v16m-6-6 6 6 6-6M5 4h14"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 20V4m-6 6 6-6 6 6M5 20h14"/></symbol>
+    <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M3 7h18m-5-5 5 5-5 5M21 17H3m5-5-5 5 5 5"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3Z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6m-6 5h6m-6 5h4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10h4v10m4 0V4h4v16m4 0V8h2v12M2 20h21"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="m5 3 3 2 4-2 4 2 3-2v18l-3-2-4 2-4-2-3 2V3Zm4 6h6m-6 4h6"/></symbol>
+  </defs></svg>
+  <div class="preview"><strong>Design preview</strong> · Sample data only. Changes stay in this tab and reset when you reload.</div>
+  <header class="topbar"><div class="brand">Split<span>Easy</span></div><div class="appnav"><span>Dashboard</span><span>Groups</span><span>Expenses</span><strong>My Money</strong></div><button class="btn" id="theme" aria-label="Switch to dark mode">Dark mode</button><div class="avatar" aria-hidden="true">ME</div></header>
+  <main>
+    <div class="pagehead"><div><h1 id="page-title">My wallets</h1><p id="page-subtitle">Every balance, in one place.</p></div><div class="actions"><span class="private"><svg class="icon"><use href="#i-lock"/></svg>Only visible to you</span><button class="btn" data-action="transfer">Transfer</button><button class="btn" data-action="expense">Record spending</button><button class="btn primary" data-action="income">＋ Add income</button></div></div>
+    <div class="tabs" role="tablist" aria-label="My Money sections"><button role="tab" id="tab-overview" aria-controls="overview" aria-selected="true" data-tab="overview">Overview</button><button role="tab" id="tab-wallets" aria-controls="wallets" aria-selected="false" tabindex="-1" data-tab="wallets">Wallets</button><button role="tab" id="tab-activity" aria-controls="activity" aria-selected="false" tabindex="-1" data-tab="activity">Activity</button><button role="tab" id="tab-budgets" aria-controls="budgets" aria-selected="false" tabindex="-1" data-tab="budgets">Budgets</button></div>
+    <section id="overview" class="panel" role="tabpanel" aria-labelledby="tab-overview">
+      <div class="metrics"><div class="metric"><div class="eyebrow">In your wallets</div><div class="value num" id="total-money"></div><p>All wallets · MAD</p></div><div class="metric"><div class="eyebrow">Income this month</div><div class="value num income" id="total-income"></div><p>Excludes transfers and repayments</p></div><div class="metric"><div class="eyebrow">Your spending this month</div><div class="value num spending" id="total-spending"></div><p>Your share of shared bills</p></div></div>
+      <div class="layout"><div><div class="card"><div class="cardhead"><h2>Your wallets</h2><button class="linkbtn" data-action="wallet">＋ Create wallet</button></div><div class="wallets" id="overview-wallets"></div></div><div class="card recent"><div class="cardhead"><h2>Recent activity</h2><button class="linkbtn" data-go="activity">View all</button></div><div class="feed" id="recent-feed"></div></div></div>
+        <aside class="aside"><div class="card"><h2>Owed to you from shared bills</h2><div class="receivable num" id="owed"></div><p>Money you paid for other people. It becomes wallet money when you receive it.</p><button class="linkbtn" id="receive">Record reimbursement</button></div><div class="card"><h2>One bill, three different numbers</h2><p style="margin-top:8px">You pay 300 MAD for dinner with two friends.</p><div class="example"><div><span>Your wallet changes by</span><b class="spending">−300 MAD</b></div><div><span>Your own spending</span><b>100 MAD</b></div><div><span>Your friends owe you</span><b class="income">200 MAD</b></div></div><div class="note">Paying the full bill and covering your own share are different things.</div></div></aside>
+      </div>
+    </section>
+    <section id="wallets" class="panel" role="tabpanel" aria-labelledby="tab-wallets" hidden>
+      <div class="wallet-dashboard">
+        <div class="wallet-main">
+          <section class="wallet-accounts" aria-labelledby="wallet-balance-label">
+            <div class="balance-heading"><div><p id="wallet-balance-label">Total balance <span id="wallet-count"></span></p><div class="portfolio-total num" id="portfolio-total"></div></div><span class="currency-pill">MAD<span class="currency-name"> · Moroccan dirham</span></span></div>
+            <div class="wallet-carousel" id="all-wallets" role="region" aria-label="Your wallets. Scroll horizontally to see more wallets." tabindex="0"></div>
+            <div class="carousel-controls"><p class="help">Balances you record, kept in one place.</p><div><button type="button" class="carousel-arrow" id="wallet-previous" aria-label="Previous wallet"><svg class="icon"><use href="#i-chevron"/></svg></button><button type="button" class="carousel-arrow" id="wallet-next" aria-label="Next wallet"><svg class="icon"><use href="#i-chevron"/></svg></button></div></div>
+            <div class="wallet-quick-actions" aria-label="Wallet actions">
+              <button type="button" data-action="income"><span class="quick-icon income"><svg class="icon"><use href="#i-arrow-down"/></svg></span>Add income</button>
+              <button type="button" data-action="expense"><span class="quick-icon spending"><svg class="icon"><use href="#i-arrow-up"/></svg></span>Add expense</button>
+              <button type="button" data-action="transfer"><span class="quick-icon"><svg class="icon"><use href="#i-transfer"/></svg></span>Transfer</button>
+              <button type="button" data-action="wallet"><span class="quick-icon"><svg class="icon"><use href="#i-plus"/></svg></span>Create wallet</button>
+            </div>
+          </section>
+          <section class="card wallet-feed" aria-labelledby="wallet-feed-heading"><div class="cardhead"><div><h2 id="wallet-feed-heading">Recent activity</h2><p>The little things add up.</p></div><button type="button" class="linkbtn" data-go="activity">View all <span aria-hidden="true">↗</span></button></div><div id="wallet-recent-feed"></div></section>
+        </div>
+        <aside class="wallet-rail" aria-label="Wallet insights">
+          <section class="wallet-month" aria-labelledby="wallet-month-heading"><div class="cardhead"><h2 id="wallet-month-heading">This month</h2><span class="month-label">September 2026</span></div><div class="month-grid"><article class="month-stat month-income"><span class="stat-icon"><svg class="icon"><use href="#i-arrow-down"/></svg></span><p>Income</p><strong class="num" id="wallet-month-income"></strong><small>Money earned</small></article><article class="month-stat month-spending"><span class="stat-icon"><svg class="icon"><use href="#i-arrow-up"/></svg></span><p>Your spending</p><strong class="num" id="wallet-month-spending"></strong><small>Your share only</small></article></div></section>
+          <section class="card wallet-breakdown" aria-labelledby="wallet-breakdown-heading"><div class="cardhead"><div><h2 id="wallet-breakdown-heading">Where your money is</h2><p>Your balance across wallets</p></div><svg class="icon muted"><use href="#i-wallet"/></svg></div><div id="wallet-chart"></div><ul class="wallet-legend" id="wallet-legend"></ul></section>
+          <section class="card wallet-receivable" aria-labelledby="wallet-receivable-heading"><span class="receivable-icon"><svg class="icon"><use href="#i-transfer"/></svg></span><div><h2 id="wallet-receivable-heading">Still coming back to you</h2><strong class="num" id="wallet-owed"></strong><p>From shared bills you paid. Added to your wallet when received.</p><button type="button" class="linkbtn" id="wallet-receive" data-action="receive">Record reimbursement <span aria-hidden="true">↗</span></button></div></section>
+        </aside>
+      </div>
+    </section>
+    <section id="activity" class="panel" role="tabpanel" aria-labelledby="tab-activity" hidden><div class="card"><div class="cardhead"><div><h2>Money activity</h2><p>One history for the money you record.</p></div></div><div class="activity-controls"><label>Wallet<select id="filter-wallet" aria-label="Filter activity by wallet"></select></label><label>Type<select id="filter-type" aria-label="Filter activity by type"><option value="">All types</option><option>Income</option><option>Spending</option><option>Transfer</option><option>Reimbursement</option><option>Opening balance</option></select></label></div><div class="feed" id="all-feed"></div></div></section>
+    <section id="budgets" class="panel" role="tabpanel" aria-labelledby="tab-budgets" hidden><div class="card budget-summary"><h2>Give your money a purpose</h2><p class="muted" style="margin-top:6px">Your six-jar plan · allocated from income you have already recorded.</p><div class="note">Wallets show where your money is. Budgets show what you plan to use it for. Allocating money to a jar does not add to your wallet balance.</div></div><div class="budgetgrid" id="jar-grid"></div></section>
+    <div class="foot"><span>Concept for a private My Money module · Sample amounts in MAD</span><a href="../MY_MONEY_INTEGRATION.md">Read the integration proposal</a></div>
+  </main>
+  <nav class="money-bottom-nav" aria-label="My Money mobile navigation">
+    <button type="button" data-go="overview"><svg class="icon"><use href="#i-home"/></svg><span>Overview</span></button>
+    <button type="button" data-go="wallets" aria-current="page"><svg class="icon"><use href="#i-wallet"/></svg><span>Wallets</span></button>
+    <button type="button" class="mobile-add" id="mobile-add" aria-label="Add money activity"><svg class="icon"><use href="#i-plus"/></svg></button>
+    <button type="button" data-go="activity"><svg class="icon"><use href="#i-list"/></svg><span>Activity</span></button>
+    <button type="button" data-go="budgets"><svg class="icon"><use href="#i-chart"/></svg><span>Budgets</span></button>
+  </nav>
+  <dialog id="quick-dialog" aria-labelledby="quick-title"><div class="dialoghead"><div><h2 id="quick-title">What would you like to add?</h2><p class="help">Keep your money up to date.</p></div><button type="button" id="close-quick-dialog" aria-label="Close actions">×</button></div><div class="quick-dialog-actions"><button type="button" data-action="income"><span class="quick-icon income"><svg class="icon"><use href="#i-arrow-down"/></svg></span><span><b>Income</b><small>Record money you received</small></span><svg class="icon"><use href="#i-chevron"/></svg></button><button type="button" data-action="expense"><span class="quick-icon spending"><svg class="icon"><use href="#i-arrow-up"/></svg></span><span><b>Expense</b><small>Record a wallet payment</small></span><svg class="icon"><use href="#i-chevron"/></svg></button><button type="button" data-action="transfer"><span class="quick-icon"><svg class="icon"><use href="#i-transfer"/></svg></span><span><b>Transfer</b><small>Move money between your wallets</small></span><svg class="icon"><use href="#i-chevron"/></svg></button><button type="button" data-action="wallet"><span class="quick-icon"><svg class="icon"><use href="#i-wallet"/></svg></span><span><b>Wallet</b><small>Add a place you keep money</small></span><svg class="icon"><use href="#i-chevron"/></svg></button></div></dialog>
+  <dialog id="money-dialog" aria-labelledby="dialog-title"><div class="dialoghead"><h2 id="dialog-title"></h2><button type="button" id="close-dialog" aria-label="Close dialog">×</button></div><form id="money-form"><div class="dialogbody" id="form-fields"></div><div class="dialogfoot"><button class="btn" type="button" id="cancel-dialog">Cancel</button><button class="btn primary" type="submit" id="save-dialog">Save</button></div></form></dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <script>
+    const money = cents => new Intl.NumberFormat('en', { style: 'currency', currency: 'MAD' }).format(cents / 100);
+    const esc = text => String(text).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+    const state = {
+      userId:'preview-user', sampleDate:'2026-09-13',
+      walletTypes:[{id:'type-cash',name:'Cash',userId:null},{id:'type-bank',name:'Bank',userId:null}],
+      wallets: [{id:'bank',name:'Main bank',typeId:'type-bank',type:'Bank',balance:370000},{id:'cash',name:'Everyday cash',typeId:'type-cash',type:'Cash',balance:80000}],
+      income:120000, spending:10000, owed:20000, budgetFunding:120000, budgetSpent:{PLAY:10000},
+      entries:[{type:'Transfer',label:'Cash for the week',amount:20000,from:'bank',to:'cash',date:'2026-09-13'},{type:'Spending',label:'Dinner with friends',amount:30000,from:'bank',share:10000,date:'2026-09-13'},{type:'Income',label:'Freelance project',amount:120000,to:'bank',date:'2026-09-12'},{type:'Opening balance',label:'Starting cash balance',amount:60000,to:'cash',date:'2026-09-01'},{type:'Opening balance',label:'Starting bank balance',amount:300000,to:'bank',date:'2026-09-01'}]
+    };
+    const jars = [{id:'NEC',name:'Essentials',pct:55},{id:'FFA',name:'Financial freedom',pct:10},{id:'EDU',name:'Learning',pct:10},{id:'LTSS',name:'Long-term saving',pct:10},{id:'PLAY',name:'Play',pct:10},{id:'GIVE',name:'Giving',pct:5}];
+    const byId = id => state.wallets.find(wallet => wallet.id === id);
+    function budgetAllocations() {
+      const allocations = jars.map((jar,index) => { const exact = state.budgetFunding * jar.pct / 100; return {id:jar.id,index,cents:Math.floor(exact),fraction:exact-Math.floor(exact)}; });
+      const remaining = state.budgetFunding - allocations.reduce((total,jar) => total + jar.cents,0);
+      const order = [...allocations].sort((a,b) => b.fraction-a.fraction || a.index-b.index);
+      for(let i=0;i<remaining;i++) order[i % order.length].cents++;
+      return Object.fromEntries(allocations.map(jar => [jar.id,jar.cents]));
+    }
+    let action = '', toastTimer;
+    const dialog = document.getElementById('money-dialog'), form = document.getElementById('money-form');
+    function announce(message) { const toast = document.getElementById('toast'); toast.textContent = message; clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.textContent = '', 4500); }
+    function walletOptions(selected) { return state.wallets.map(wallet => `<option value="${wallet.id}"${selected === wallet.id ? ' selected' : ''}>${esc(wallet.name)} · ${money(wallet.balance)}</option>`).join(''); }
+    function walletTypes() { return state.walletTypes.filter(type => type.userId === null || type.userId === state.userId); }
+    function walletTypeOptions(selected = 'type-cash') { return walletTypes().map(type => `<option value="${esc(type.id)}"${type.id === selected ? ' selected' : ''}>${esc(type.name)}</option>`).join(''); }
+    function showTypeForm(show) {
+      document.getElementById('type-create').hidden = !show;
+      const button = document.getElementById('add-wallet-type');
+      button.setAttribute('aria-expanded', String(show));
+      button.textContent = show ? 'Cancel new type' : 'Add wallet type';
+      document.getElementById('type-error').textContent = '';
+      if (show) document.getElementById('new-wallet-type').focus();
+      else { document.getElementById('new-wallet-type').value = ''; button.focus(); }
+    }
+    function createWalletType() {
+      const input = document.getElementById('new-wallet-type'), name = input.value.trim();
+      const error = document.getElementById('type-error');
+      if (!name || name.length > 50) { error.textContent = 'Enter a type with 1–50 characters.'; input.focus(); return; }
+      let type = walletTypes().find(type => type.name.toLowerCase() === name.toLowerCase());
+      const existing = Boolean(type);
+      if (!type) { type = {id:`wallet-type-${state.walletTypes.length}`,name,userId:state.userId}; state.walletTypes.push(type); }
+      form.elements.typeId.innerHTML = walletTypeOptions(type.id);
+      document.getElementById('type-status').textContent = existing ? `${type.name} is already available. Selected for this wallet.` : `${type.name} added to your wallet types. Only visible to you.`;
+      showTypeForm(false);
+      form.elements.typeId.focus();
+    }
+    function walletCards() { return state.wallets.map(wallet => `<article class="wallet"><div class="wallet-top"><div class="wallet-icon" aria-hidden="true">${wallet.type === 'Cash' ? '▤' : wallet.type === 'Bank' ? '▥' : '◇'}</div><div><h3>${esc(wallet.name)}</h3><small>${esc(wallet.type)} · MAD</small></div></div><strong class="balance num">${money(wallet.balance)}</strong><button class="linkbtn" data-history="${wallet.id}">View activity <span aria-hidden="true">→</span></button></article>`).join(''); }
+    function entryMarkup(entry) {
+      const typeClass = entry.type === 'Spending' ? 'spending' : entry.type === 'Income' || entry.type === 'Reimbursement' ? 'income' : 'transfer';
+      const symbol = entry.type === 'Spending' ? '−' : entry.type === 'Transfer' ? '↔' : '+';
+      const route = entry.type === 'Transfer' ? `${byId(entry.from).name} → ${byId(entry.to).name}` : byId(entry.from || entry.to).name;
+      return `<div class="entry"><div class="entry-icon ${typeClass}" aria-hidden="true">${symbol}</div><div class="entry-text"><b>${esc(entry.label)}</b><small>${esc(entry.type)} · ${esc(route)}</small></div><div class="entry-amount num ${typeClass}">${symbol} ${money(entry.amount)}${entry.share !== undefined ? `<small>Your share ${money(entry.share)}</small>` : ''}</div></div>`;
+    }
+    function renderActivity() { const wallet = document.getElementById('filter-wallet').value, type = document.getElementById('filter-type').value; const entries = state.entries.filter(entry => (!wallet || entry.from === wallet || entry.to === wallet) && (!type || entry.type === type)); document.getElementById('all-feed').innerHTML = entries.length ? entries.map(entryMarkup).join('') : '<p class="empty">No activity matches these filters.</p>'; }
+    function render() {
+      document.getElementById('total-money').textContent = money(state.wallets.reduce((sum, wallet) => sum + wallet.balance, 0));
+      document.getElementById('total-income').textContent = money(state.income); document.getElementById('total-spending').textContent = money(state.spending); document.getElementById('owed').textContent = money(state.owed); document.getElementById('receive').disabled = state.owed === 0;
+      document.getElementById('overview-wallets').innerHTML = walletCards(); document.getElementById('recent-feed').innerHTML = state.entries.slice(0,4).map(entryMarkup).join('');
+      const filter = document.getElementById('filter-wallet'), selected = filter.value; filter.innerHTML = '<option value="">All wallets</option>' + state.wallets.map(wallet => `<option value="${wallet.id}">${esc(wallet.name)}</option>`).join(''); filter.value = selected;
+      const allocations = budgetAllocations();
+      document.getElementById('jar-grid').innerHTML = jars.map(jar => { const allocated = allocations[jar.id], spent = state.budgetSpent[jar.id] || 0; return `<article class="card budget"><h3>${jar.name}</h3><small>${jar.pct}% of allocated income</small><div class="value num${spent > allocated ? ' spending' : ''}">${money(allocated - spent)}</div><small>Remaining from ${money(allocated)}</small><progress aria-label="${jar.name}: ${money(spent)} spent of ${money(allocated)}" max="${Math.max(allocated,1)}" value="${Math.min(spent,allocated)}"></progress><p class="muted" style="font-size:12px;margin-top:8px">Spent ${money(spent)}</p></article>`; }).join(''); renderActivity();
+      if (typeof renderWalletPage === 'function') renderWalletPage();
+    }
+    function tab(name) { document.querySelectorAll('[role=tab]').forEach(button => { const selected = button.dataset.tab === name; button.setAttribute('aria-selected', selected); button.tabIndex = selected ? 0 : -1; }); document.querySelectorAll('.panel').forEach(panel => panel.hidden = panel.id !== name); if (typeof syncWalletNavigation === 'function') syncWalletNavigation(name); }
+    document.querySelector('.tabs').addEventListener('keydown', event => { const buttons = [...document.querySelectorAll('[role=tab]')], current = buttons.indexOf(document.activeElement); if (current < 0) return; const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0; if (step) { event.preventDefault(); const next = buttons[(current + step + buttons.length) % buttons.length]; tab(next.dataset.tab); next.focus(); } });
+    function openAction(next) {
+      action = next;
+      const titles = {income:'Add income',expense:'Record spending',transfer:'Transfer between wallets',wallet:'Create wallet',receive:'Record reimbursement'};
+      document.getElementById('dialog-title').textContent = titles[action];
+      const amount = `<label>Amount (MAD)<input name="amount" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal" required placeholder="0.00" autofocus></label>`;
+      const wallet = (label, name, selected) => `<label>${label}<select name="${name}">${walletOptions(selected)}</select></label>`;
+      let fields;
+      if (action === 'wallet') fields = `
+        <label>Wallet name<input name="name" required maxlength="40" placeholder="e.g. Upwork earnings" autofocus></label>
+        <div>
+          <label><span id="wallet-type-label">Wallet type</span><select name="typeId" required aria-labelledby="wallet-type-label" aria-describedby="wallet-type-help">${walletTypeOptions()}</select></label>
+          <p class="help" id="wallet-type-help">Cash and Bank are defaults. Custom types belong only to you.</p>
+          <button class="linkbtn" type="button" id="add-wallet-type" aria-expanded="false" aria-controls="type-create">Add wallet type</button>
+          <div class="type-create" id="type-create" hidden>
+            <label>New wallet type<input id="new-wallet-type" maxlength="50" placeholder="e.g. Freelancing, Gift, Prime" aria-describedby="new-wallet-type-help type-error"></label>
+            <p class="help" id="new-wallet-type-help">Only visible to you. Saved to your type list even if you cancel this wallet.</p>
+            <button class="btn" type="button" id="create-wallet-type">Create type</button>
+            <p class="error" id="type-error" role="alert"></p>
+          </div>
+          <p class="help type-status" id="type-status" role="status"></p>
+        </div>
+        <label>Opening balance (MAD)<input name="amount" type="number" min="0" max="1000000" step="0.01" value="0" required></label>
+        <p class="help">Money already in this wallet. This is recorded as an opening balance, not new income.</p>`;
+      else if (action === 'income') fields = `${amount}${wallet('Received into','wallet','bank')}<label>Income source<input name="description" required maxlength="100" placeholder="e.g. Salary"></label><label class="check"><input name="allocate" type="checkbox" checked>Allocate this income using my six-jar plan</label>`;
+      else if (action === 'transfer') fields = `<div class="formgrid">${wallet('From','from','bank')}${wallet('To','to','cash')}</div>${amount}<label>Note (optional)<input name="description" maxlength="100" placeholder="e.g. Cash for the week"></label><p class="help">This moves money between your own wallets. Your income and spending stay the same.</p>`;
+      else if (action === 'receive') fields = `${amount}${wallet('Received into','wallet','bank')}<p class="help">Use after you receive the money. This settles the sample shared-bill amount owed to you, without counting it as new income.</p>`;
+      else fields = `${amount}<label>Description<input name="description" required maxlength="100" placeholder="e.g. Dinner together"></label>${wallet('Paid from','wallet','bank')}<div class="formgrid"><label>Who shares it?<select name="people"><option value="1">Just me</option><option value="2">2 people, including me</option><option value="3" selected>3 people, including me</option><option value="4">4 people, including me</option></select></label><label>Budget (optional)<select name="jar"><option value="">No budget</option>${jars.map(jar => `<option value="${jar.id}"${jar.id === 'PLAY' ? ' selected' : ''}>${jar.name}</option>`).join('')}</select></label></div><p class="help">The shared-bill example previews equal shares. In the app, use Add Expense to choose a group and people.</p>`;
+      document.getElementById('form-fields').innerHTML = fields + '<div class="result" id="money-result" aria-live="polite"></div><p class="error" id="form-error" role="alert"></p>';
+      document.getElementById('save-dialog').textContent = action === 'transfer' ? 'Record transfer' : action === 'wallet' ? 'Create wallet' : 'Save record';
+      preview(); dialog.showModal();
+    }
+    function values() { const data = new FormData(form); return {data, amount:Math.round(Number(data.get('amount')) * 100), wallet:byId(data.get('wallet')), from:byId(data.get('from')), to:byId(data.get('to')), people:Number(data.get('people') || 1)}; }
+    function preview() {
+      const {amount,wallet,from,to,people} = values(); const target = document.getElementById('money-result'); if (!target) return; if (!Number.isFinite(amount) || amount <= 0) { target.hidden = true; return; } target.hidden = false;
+      if (action === 'transfer') target.innerHTML = `<div><span>${esc(from.name)} after transfer</span><b>${money(from.balance - amount)}</b></div><div><span>${esc(to.name)} after transfer</span><b>${money(to.balance + amount)}</b></div><p>Total in your wallets stays the same.</p>`;
+      else if (action === 'expense') { const share = Math.ceil(amount / people); target.innerHTML = `<div><span>Wallet payment</span><b class="spending">−${money(amount)}</b></div><div><span>Your share</span><b>${money(share)}</b></div><div><span>Others owe you</span><b class="income">${money(amount-share)}</b></div><div><span>${esc(wallet.name)} after payment</span><b>${money(wallet.balance-amount)}</b></div>`; }
+      else if (action === 'wallet') target.innerHTML = `<div><span>Opening balance</span><b>${money(amount)}</b></div>`;
+      else target.innerHTML = `<div><span>${esc(wallet.name)} after receipt</span><b>${money(wallet.balance+amount)}</b></div>${action === 'receive' ? '<p>This reimbursement does not increase your income.</p>' : '<p>Record this income once. Budget allocation uses the same money.</p>'}`;
+    }
+    form.addEventListener('input', preview); form.addEventListener('change', preview);
+    form.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (button?.id === 'add-wallet-type') showTypeForm(document.getElementById('type-create').hidden);
+      if (button?.id === 'create-wallet-type') createWalletType();
+    });
+    form.addEventListener('keydown', event => { if (event.target.id === 'new-wallet-type' && event.key === 'Enter') { event.preventDefault(); createWalletType(); } });
+    form.addEventListener('submit', event => {
+      event.preventDefault(); const {data,amount,wallet,from,to,people} = values(); const error = document.getElementById('form-error'); error.textContent = '';
+      if (!Number.isFinite(amount) || amount < 0 || (action !== 'wallet' && amount === 0)) { error.textContent = 'Enter a valid amount.'; return; }
+      if (action === 'transfer' && from.id === to.id) { error.textContent = 'Choose two different wallets.'; return; }
+      if ((action === 'transfer' && from.balance < amount) || (action === 'expense' && wallet.balance < amount)) { error.textContent = 'This wallet does not have enough money for that amount.'; return; }
+      if (action === 'receive' && amount > state.owed) { error.textContent = 'The reimbursement cannot exceed the amount owed to you.'; return; }
+      const label = String(data.get('description') || '').trim();
+      if ((action === 'income' || action === 'expense') && !label) { error.textContent = 'Add a description.'; return; }
+      if (action === 'wallet') {
+        const name = String(data.get('name') || '').trim();
+        if (!name) { error.textContent = 'Enter a wallet name.'; return; }
+        if (!document.getElementById('type-create').hidden && document.getElementById('new-wallet-type').value.trim()) { error.textContent = 'Create your new wallet type first, or cancel the new type.'; return; }
+        const type = walletTypes().find(type => type.id === data.get('typeId'));
+        if (!type) { error.textContent = 'Choose one of your available wallet types.'; return; }
+        const id = `wallet-${state.wallets.length}`;
+        state.wallets.push({id,name,typeId:type.id,type:type.name,balance:amount});
+        state.entries.unshift({type:'Opening balance',label:'Opening balance',amount,to:id});
+      }
+      if (action === 'income') { wallet.balance += amount; state.income += amount; if (data.has('allocate')) state.budgetFunding += amount; state.entries.unshift({type:'Income',label,amount,to:wallet.id}); }
+      if (action === 'transfer') { from.balance -= amount; to.balance += amount; state.entries.unshift({type:'Transfer',label:label || 'Wallet transfer',amount,from:from.id,to:to.id}); }
+      if (action === 'expense') { const share = Math.ceil(amount / people); wallet.balance -= amount; state.spending += share; state.owed += amount-share; if (data.get('jar')) state.budgetSpent[data.get('jar')] = (state.budgetSpent[data.get('jar')] || 0) + share; state.entries.unshift({type:'Spending',label,amount,from:wallet.id,share}); }
+      if (action === 'receive') { wallet.balance += amount; state.owed -= amount; state.entries.unshift({type:'Reimbursement',label:'Shared-bill reimbursement',amount,to:wallet.id}); }
+      state.entries.forEach(entry => { entry.date ||= state.sampleDate; });
+      dialog.close(); render(); announce('Sample updated. Your application data is unchanged.');
+    });
+    document.addEventListener('click', event => { const button = event.target.closest('button'); if (!button) return; if (button.dataset.action) openAction(button.dataset.action); if (button.dataset.tab) tab(button.dataset.tab); if (button.dataset.go) tab(button.dataset.go); if (button.dataset.history) { document.getElementById('filter-wallet').value = button.dataset.history; document.getElementById('filter-type').value = ''; renderActivity(); tab('activity'); } });
+    document.getElementById('filter-wallet').addEventListener('change',renderActivity); document.getElementById('filter-type').addEventListener('change',renderActivity);
+    document.getElementById('receive').onclick = () => openAction('receive'); document.getElementById('close-dialog').onclick = () => dialog.close(); document.getElementById('cancel-dialog').onclick = () => dialog.close();
+    dialog.addEventListener('click', event => { if (event.target !== dialog) return; const rect = dialog.getBoundingClientRect(); if(event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); });
+    document.getElementById('theme').onclick = event => { const dark = document.documentElement.dataset.theme !== 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; event.currentTarget.textContent = dark ? 'Light mode' : 'Dark mode'; event.currentTarget.setAttribute('aria-label',dark ? 'Switch to light mode' : 'Switch to dark mode'); };
+    render();
+  </script>
+  <script src="wallet-preview.js"></script>
+</body>
+</html>

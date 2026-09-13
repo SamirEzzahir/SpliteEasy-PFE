@@ -1,74 +1,46 @@
-// components/ui/dialog.tsx — accessible modal dialog (Tailwind, no Radix).
-// Closes on Esc / backdrop click, locks scroll, traps initial focus, aria-modal.
 "use client";
 import * as React from "react";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+let locks = 0;
+let previousOverflow = "";
 
-export function Dialog({
-  open, onClose, title, description, children, footer, className,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-  className?: string;
-}) {
-  const panelRef = React.useRef<HTMLDivElement>(null);
-
+type FrameProps = { open?: boolean; onClose: () => void; children: React.ReactNode; className?: string;
+  busy?: boolean; label?: string; labelledBy?: string; describedBy?: string };
+/** Native modal semantics contain focus and make background content inert. */
+export function ModalFrame({ open = true, onClose, children, className = "", busy = false, label, labelledBy, describedBy }: FrameProps) {
+  const ref = React.useRef<HTMLDialogElement>(null);
   React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    if (!open || !ref.current) return;
+    const dialog = ref.current;
+    const opener = document.activeElement as HTMLElement | null;
+    if (locks++ === 0) { previousOverflow = document.body.style.overflow; document.body.style.overflow = "hidden"; }
+    dialog.showModal();
     return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      dialog.close();
+      if (--locks === 0) document.body.style.overflow = previousOverflow;
+      if (opener?.isConnected) opener.focus();
     };
-  }, [open, onClose]);
-
+  }, [open]);
   if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-[fadeIn_.15s_ease]"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        className={cn(
-          "relative w-full max-w-md rounded-[20px] border border-[var(--line)] bg-[var(--surface)] shadow-[0_24px_70px_rgba(11,15,26,.28)]",
-          "outline-none animate-[dialogIn_.2s_cubic-bezier(.22,.61,.36,1)]",
-          className,
-        )}
-      >
-        <div className="flex items-start justify-between gap-6 border-b border-[var(--line-2)] p-5">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-[var(--ink)]">{title}</h2>
-            {description && <p className="mt-0.5 text-[13px] text-[var(--ink-3)]">{description}</p>}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-[9px] text-[var(--ink-3)] hover:bg-[var(--line-2)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="p-5">{children}</div>
-        {footer && <div className="flex justify-end gap-2.5 border-t border-[var(--line-2)] p-4">{footer}</div>}
-      </div>
+  return <dialog ref={ref} className={`ui-dialog ${className}`} aria-label={label} aria-labelledby={labelledBy}
+    aria-describedby={describedBy} aria-busy={busy}
+    onCancel={(e) => { e.preventDefault(); if (!busy) onClose(); }}
+    onClick={(e) => {
+      if (e.target !== e.currentTarget || busy) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose();
+    }}>{children}</dialog>;
+}
+export function Dialog({ open, onClose, title, description, children, footer, className, busy = false }: {
+  open: boolean; onClose: () => void; title: React.ReactNode; description?: React.ReactNode;
+  children: React.ReactNode; footer?: React.ReactNode; className?: string; busy?: boolean;
+}) {
+  const id = React.useId();
+  return <ModalFrame open={open} onClose={onClose} busy={busy} className={className} labelledBy={`${id}-title`} describedBy={description ? `${id}-description` : undefined}>
+    <div className="modal-h"><div><h2 id={`${id}-title`}>{title}</h2>{description && <p id={`${id}-description`}>{description}</p>}</div>
+      <button type="button" className="modal-x" aria-label="Close dialog" disabled={busy} onClick={onClose}><X size={20} /></button>
     </div>
-  );
+    <div className="modal-b">{children}</div>
+    {footer && <div className="modal-f">{footer}</div>}
+  </ModalFrame>;
 }

@@ -1,20 +1,13 @@
 "use client";
 // components/shell/Topbar.tsx
 
+import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import Icon from "@/components/Icon";
 import NotificationsBell from "./NotificationsBell";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-const PLACEHOLDERS: Record<string, string> = {
-  "/groups": "Search groups, members...",
-  "/friends": "Search friends by name or email...",
-};
-
 export default function Topbar() {
-  const pathname = usePathname() || "/";
-  const placeholder = PLACEHOLDERS[pathname] || "Search anything...";
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -26,8 +19,10 @@ export default function Topbar() {
         setProfileOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setProfileOpen(false); };
+    document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onKey); };
   }, [profileOpen]);
 
   const displayName = user?.full_name || user?.username || "Account";
@@ -40,28 +35,16 @@ export default function Topbar() {
 
   return (
     <header className="topbar">
-      <button
-        className="icon-btn"
-        style={{ border: 0, background: "transparent" }}
-        aria-label="Menu"
-      >
-        <Icon name="filter" size={18} />
-      </button>
-      <div className="search" style={{ maxWidth: 520 }}>
-        <Icon name="search" size={15} />
-        <input placeholder={placeholder} />
-      </div>
+      <Link href="/dashboard" className="topbar-brand" aria-label="SplitEasy home">Split<span>Easy</span></Link>
       <div className="topbar-spacer" />
 
       <NotificationsBell />
 
-      <button className="icon-btn">
-        <Icon name="chat" size={16} />
-      </button>
-
       <div ref={profileRef} style={{ position: "relative" }}>
         <button
           className="profile"
+          aria-expanded={profileOpen}
+          aria-label="Account menu"
           onClick={() => setProfileOpen((v) => !v)}
           style={{ border: "1px solid var(--line)", cursor: "pointer" }}
         >
@@ -75,6 +58,7 @@ export default function Topbar() {
               <div className="nm">{displayName}</div>
               <div className="sub">{user?.email}</div>
             </div>
+            <Link href="/settings" className="profile-pop-item" onClick={() => setProfileOpen(false)}>Account settings</Link>
             <button className="profile-pop-item" onClick={logout}>
               <Icon name="settle" size={14} /> Sign out
             </button>

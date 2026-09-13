@@ -55,7 +55,8 @@ export interface ApiSplit {
   id: string;
   expense_id: string;
   user_id: string;
-  amount: number;
+  share_amount: number;
+  amount?: number;
 }
 
 export interface ApiExpense {
@@ -65,6 +66,7 @@ export interface ApiExpense {
   amount: number;
   currency?: string | null;
   description: string;
+  note?: string | null;
   category?: string | null;
   date?: string;
   created_at?: string;
