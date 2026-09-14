@@ -2,6 +2,7 @@ import type { Viewport } from "next";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowRight, Check, ChevronDown, CircleCheck, ReceiptText, ShieldCheck, Users, Utensils, Wallet } from "lucide-react";
 import { fmt } from "@/lib/format";
+import BrandIcon from "@/components/BrandIcon";
 import styles from "./landing.module.css";
 
 export const viewport: Viewport = {
@@ -27,7 +28,7 @@ export default function HomePage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <Link href="/" className={styles.brand} aria-label="SplitEasy home">
-          <span className={styles.brandMark} aria-hidden="true">$</span>
+          <BrandIcon />
           <span>Split<em>Easy</em></span>
         </Link>
         <span className={styles.headerNote}>A little less math. A lot more living.</span>

@@ -11,8 +11,15 @@ import { PublicSettingsProvider } from "@/lib/public-settings";
 import ConditionalShell from "@/components/shell/ConditionalShell";
 
 export const metadata: Metadata = {
-  title: "SplitEasy — Econome",
+  title: "SplitEasy",
+  applicationName: "SplitEasy",
   description: "Split bills, track shared spending, settle balances, and organize your money in one simple place.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/branding/app-icon.png", sizes: "1254x1254", type: "image/png" }],
+    apple: [{ url: "/branding/app-icon.png", sizes: "1254x1254", type: "image/png" }],
+  },
+  appleWebApp: { capable: true, title: "SplitEasy", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

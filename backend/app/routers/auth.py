@@ -7,6 +7,7 @@ from app import schemas, crud, auth
 from app.db import get_session
 from app.models import User
 from app.core import settings_store
+from app.repositories.group import ensure_default_personal_group
 
 router = APIRouter(prefix="/auth")
 
@@ -24,14 +25,7 @@ async def register(user: schemas.UserCreate, session: AsyncSession = Depends(get
         raise HTTPException(status_code=400, detail="Email already registered")
     new_user = await crud.create_user(session, user)
 
-    # ✅ Create default "Personal Expenses" group
-    personal_group = schemas.GroupCreate(
-        title="Personal Expenses",
-        type="Personal",
-        currency="USD", 
-        member_ids=[]
-    )
-    await crud.create_group(session, personal_group, new_user)
+    await ensure_default_personal_group(session, new_user)
 
     return schemas.UserRead.model_validate(new_user)
 
@@ -41,18 +35,7 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), session: AsyncSessi
     if not user:
         raise HTTPException(status_code=401, detail="Invalid crsssedentials")
     
-    # ✅ Check and create default "Personal Expenses" group if missing
-    user_groups = await crud.get_groups(session, user)
-    has_personal_group = any(g.type == "Personal" and g.title == "Personal Expenses" for g in user_groups)
-    
-    if not has_personal_group:
-        personal_group = schemas.GroupCreate(
-            title="Personal Expenses",
-            type="Personal",
-            currency="USD", 
-            member_ids=[]
-        )
-        await crud.create_group(session, personal_group, user)
+    await ensure_default_personal_group(session, user)
 
     # Record last login for the admin panel, then mint a token bound to the
     # user's current token_version (see core/auth.create_access_token).

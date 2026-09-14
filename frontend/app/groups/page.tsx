@@ -191,6 +191,7 @@ export default function GroupsPage() {
   };
 
   const deleteGroup = async (group: Group) => {
+    if (group.isDefaultPersonal) return;
     ensureSelected(group);
     if (!isBackendGroup(group)) {
       showToast("Demo group deletion needs a live backend group");
@@ -219,6 +220,7 @@ export default function GroupsPage() {
   };
 
   const leaveGroup = async (group: Group) => {
+    if (group.isDefaultPersonal) return;
     ensureSelected(group);
     if (!isBackendGroup(group)) {
       showToast("Demo group leave needs a live backend group");
@@ -247,6 +249,7 @@ export default function GroupsPage() {
   };
 
   const openMembers = (group: Group) => {
+    if (group.isDefaultPersonal) return;
     ensureSelected(group);
     setMobilePreviewOpen(false);
     setShowMembers(true);
@@ -255,9 +258,11 @@ export default function GroupsPage() {
   const menuButtons = (group: Group) => (
     <>
       <button onClick={() => editGroup(group)}><Icon name="edit" size={14} /> Edit group</button>
+      {!group.isDefaultPersonal && <>
       <button onClick={() => openMembers(group)}><Icon name="groups" size={14} /> Manage members</button>
       <button onClick={() => leaveGroup(group)}><Icon name="settle" size={14} /> Leave group</button>
       <button className="danger" onClick={() => deleteGroup(group)}><Icon name="trash" size={14} /> Delete group</button>
+      </>}
     </>
   );
 
@@ -309,7 +314,7 @@ export default function GroupsPage() {
             <div className="gd-title-block">
               <div>
                 <h2 id={titleId}>{group.name}</h2>
-                <p>{group.memberIds.length} members · Created by {group.ownerId === myId ? "You" : (group.ownerUsername ?? "—")}</p>
+                <p>{group.isDefaultPersonal ? "Your private expenses" : `${group.memberIds.length} members`} · Created by {group.ownerId === myId ? "You" : (group.ownerUsername ?? "—")}</p>
               </div>
               <button onClick={() => editGroup(group)}><Icon name="edit" size={14} /></button>
             </div>
@@ -319,31 +324,31 @@ export default function GroupsPage() {
                 <span>Total Expenses</span>
                 <strong>{fmt(group.total, group.currency)}</strong>
               </div>
-              <div>
+              {!group.isDefaultPersonal && <><div>
                 <span>{group.balance < 0 ? "You owe" : "You're owed"}</span>
                 <strong className={group.balance < 0 ? "neg" : "pos"}>{fmt(Math.abs(group.balance), group.currency)}</strong>
               </div>
               <div>
                 <span>Progress</span>
                 <strong>{settlementPct(group)}%</strong>
-              </div>
+              </div></>}
             </div>
 
             <div className="gd-actions modern">
               <Link href={`/groups/${group.id}`} className="btn btn-primary" onClick={closeMobilePreview}>
                 Open group
               </Link>
-              <button className="btn btn-secondary" onClick={() => router.push(`/groups/${group.id}/settle`)}>
+              {!group.isDefaultPersonal && <><button className="btn btn-secondary" onClick={() => router.push(`/groups/${group.id}/settle`)}>
                 Settle Up
               </button>
               <button className="btn btn-secondary" onClick={() => openMembers(group)}>
                 Members
-              </button>
+              </button></>}
             </div>
           </div>
         </section>
 
-        <section className="rail-card modern">
+        {!group.isDefaultPersonal && <section className="rail-card modern">
           <div className="rail-head">
             <h3>Members</h3>
             <button className="rail-link" onClick={() => openMembers(group)}>Manage members</button>
@@ -363,7 +368,7 @@ export default function GroupsPage() {
               );
             })}
           </div>
-        </section>
+        </section>}
 
         <section className="rail-card modern">
           <div className="rail-head">
@@ -496,7 +501,7 @@ export default function GroupsPage() {
                         onClick={() => openPreview(group)}
                       >
                         <div className="group-visual" style={{ backgroundImage: visual.image }}>
-                          <span className="group-type-pill">{visual.label}</span>
+                          <span className="group-type-pill">{group.isDefaultPersonal ? "Personal" : visual.label}</span>
                           {isSel && <span className="group-selected-pill">Selected</span>}
                           {/* P2.8 — attention dot for groups with unsettled balance */}
                           {group.balance !== 0 && (
@@ -523,11 +528,11 @@ export default function GroupsPage() {
                           <div className="group-title-row">
                             <div>
                               <h2>{group.name}</h2>
-                              <p>{group.memberIds.length} members · Created {group.updated}</p>
+                              <p>{group.isDefaultPersonal ? "Your private expenses" : `${group.memberIds.length} members`} · Created {group.updated}</p>
                             </div>
-                            <span className={"group-balance-pill " + balance.className}>
+                            {!group.isDefaultPersonal && <span className={"group-balance-pill " + balance.className}>
                               {balance.label}{balance.value ? `: ${balance.value}` : ""}
-                            </span>
+                            </span>}
                           </div>
 
                           <div className="group-card-meta">
@@ -535,7 +540,7 @@ export default function GroupsPage() {
                               <span>Total Expenses</span>
                               <strong className="num">{fmt(group.total, group.currency)}</strong>
                             </div>
-                            <AvatarStack ids={group.memberIds} max={5} size="sm" />
+                            {!group.isDefaultPersonal && <AvatarStack ids={group.memberIds} max={5} size="sm" />}
                           </div>
 
                           <p className="group-last-activity">Last expense: {expenses.find((e) => e.groupId === group.id)?.date || "No expenses yet"}</p>
@@ -544,9 +549,9 @@ export default function GroupsPage() {
                             <Link href={`/groups/${group.id}`} className="btn btn-primary" onClick={(event) => event.stopPropagation()}>
                               Open group
                             </Link>
-                            <button className="btn btn-secondary" onClick={(event) => { event.stopPropagation(); openMembers(group); }}>
+                            {!group.isDefaultPersonal && <button className="btn btn-secondary" onClick={(event) => { event.stopPropagation(); openMembers(group); }}>
                               Members
-                            </button>
+                            </button>}
                           </div>
                         </div>
                       </article>
@@ -586,7 +591,7 @@ export default function GroupsPage() {
                   <div className="gd-title-block">
                     <div>
                       <h2>{selected.name}</h2>
-                      <p>{selected.memberIds.length} members · Created by {selected.ownerId === myId ? "You" : (selected.ownerUsername ?? "—")}</p>
+                      <p>{selected.isDefaultPersonal ? "Your private expenses" : `${selected.memberIds.length} members`} · Created by {selected.ownerId === myId ? "You" : (selected.ownerUsername ?? "—")}</p>
                     </div>
                     <button onClick={() => editGroup(selected)}><Icon name="edit" size={14} /></button>
                   </div>
@@ -596,31 +601,31 @@ export default function GroupsPage() {
                       <span>Total Expenses</span>
                       <strong>{fmt(selected.total, selected.currency)}</strong>
                     </div>
-                    <div>
+                    {!selected.isDefaultPersonal && <><div>
                       <span>{selected.balance < 0 ? "You owe" : "You're owed"}</span>
                       <strong className={selected.balance < 0 ? "neg" : "pos"}>{fmt(Math.abs(selected.balance), selected.currency)}</strong>
                     </div>
                     <div>
                       <span>Progress</span>
                       <strong>{settlementPct(selected)}%</strong>
-                    </div>
+                    </div></>}
                   </div>
 
                   <div className="gd-actions modern">
                     <Link href={`/groups/${selected.id}`} className="btn btn-primary">
                       Open group
                     </Link>
-                    <Link href={`/groups/${selected.id}/settle`} className="btn btn-secondary">
+                    {!selected.isDefaultPersonal && <><Link href={`/groups/${selected.id}/settle`} className="btn btn-secondary">
                       Settle Up
                     </Link>
                     <button className="btn btn-secondary" onClick={() => openMembers(selected)}>
                       Members
-                    </button>
+                    </button></>}
                   </div>
                 </div>
               </section>
 
-              <section className="rail-card modern">
+              {!selected.isDefaultPersonal && <section className="rail-card modern">
                 <div className="rail-head">
                   <h3>Members</h3>
                   <button className="rail-link" onClick={() => openMembers(selected)}>Manage members</button>
@@ -640,7 +645,7 @@ export default function GroupsPage() {
                     );
                   })}
                 </div>
-              </section>
+              </section>}
 
               <section className="rail-card modern">
                 <div className="rail-head">
@@ -689,14 +694,14 @@ export default function GroupsPage() {
       {showCreate && (
         <CreateGroupModal
           onClose={() => setShowCreate(false)}
-          onSubmit={(group) => {
-            void createGroup(group);
+          onSubmit={async (group) => {
+            await createGroup(group);
             setShowCreate(false);
           }}
         />
       )}
 
-      {showMembers && selected && (
+      {showMembers && selected && !selected.isDefaultPersonal && (
         <ManageGroupMembersModal
           group={selected}
           onClose={() => setShowMembers(false)}

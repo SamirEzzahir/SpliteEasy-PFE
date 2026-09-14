@@ -112,7 +112,7 @@ export function mapGroup(g: ApiGroup, extras: GroupExtras): Group {
     id: String(g.id),
     name: g.title,
     type,
-    currency: g.currency || "USD",
+    currency: g.currency || "MAD",
     icon: GROUP_ICON_BY_TYPE[type],
     memberIds: extras.memberIds,
     total: extras.total || g.total_amount || 0,
@@ -120,6 +120,7 @@ export function mapGroup(g: ApiGroup, extras: GroupExtras): Group {
     updated: formatRelativeDate(g.created_at),
     ownerUsername: g.owner_username ?? undefined,
     ownerId: g.owner_id,
+    isDefaultPersonal: g.is_default_personal === true,
     ...palette,
   };
 }

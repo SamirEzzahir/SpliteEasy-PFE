@@ -8,6 +8,7 @@ from app import schemas, crud
 from app.models import Group, Membership
 from app.auth import get_current_user
 from app.models import User
+from app.repositories.group import ensure_group_allows_sharing
 
 router = APIRouter(prefix="/groups")
 
@@ -46,9 +47,7 @@ async def join_group_info(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
-    group = await session.get(Group, group_id)
-    if not group:
-        raise HTTPException(status_code=404, detail="Group not found.")
+    group = await ensure_group_allows_sharing(session, group_id)
     existing = await session.execute(
         select(Membership).where(Membership.group_id == group_id, Membership.user_id == current.id)
     )
@@ -73,9 +72,7 @@ async def join_group_via_link(
     session: AsyncSession = Depends(get_session),
     current: User = Depends(get_current_user)
 ):
-    group = await session.get(Group, group_id)
-    if not group:
-        raise HTTPException(status_code=404, detail="Group not found.")
+    group = await ensure_group_allows_sharing(session, group_id)
     existing = await session.execute(
         select(Membership).where(Membership.group_id == group_id, Membership.user_id == current.id)
     )

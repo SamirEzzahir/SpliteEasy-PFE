@@ -173,6 +173,11 @@ async def on_startup():
         print(f"Migration warning: {e}")
         print("   You may need to run migrations manually.")
 
+    # Group identity must be migrated before requests can read the new flag.
+    from app.core.personal_group_migration import migrate_default_personal_groups
+    async with engine.begin() as conn:
+        await conn.run_sync(migrate_default_personal_groups)
+
     # Money migration is atomic and must succeed before money routes become usable.
     from app.core.money_migration import migrate_money
     await migrate_money(engine)

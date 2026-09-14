@@ -3,11 +3,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, func
 from sqlalchemy.orm import selectinload
 
-from app.models import User, Group, Membership, Expense, Settlement, GroupMessage
+from app.models import User, Group, Membership, Expense, Settlement, GroupMessage, Friend, FriendStatus
 from app.schemas import GroupCreate, GroupRead, MembershipRead, GroupMessageRead
 
 
 async def create_group(session: AsyncSession, payload: GroupCreate, current_user: User) -> GroupRead:
+    # Accept UUIDs and require an accepted friendship in either direction.
+    members = set(payload.member_ids) - {current_user.id}
+    if members:
+        friendships = (await session.execute(
+            select(Friend.user_id, Friend.friend_id).where(
+                Friend.status == FriendStatus.accepted,
+                ((Friend.user_id == current_user.id) & Friend.friend_id.in_(members))
+                | ((Friend.friend_id == current_user.id) & Friend.user_id.in_(members)),
+            )
+        )).all()
+        accepted_ids = {
+            friend_id if user_id == current_user.id else user_id
+            for user_id, friend_id in friendships
+        }
+        if members - accepted_ids:
+            raise HTTPException(
+                status_code=400, detail="You can only add accepted friends when creating a group."
+            )
+
     group = Group(
         title=payload.title,
         currency=payload.currency,
@@ -34,6 +53,44 @@ async def create_group(session: AsyncSession, payload: GroupCreate, current_user
     await log_activity(session, user_id=current_user.id, action=f"created group '{group.title}'", target_type="group", target_id=group.id)
     await session.refresh(group)
     return GroupRead.model_validate(group)
+
+
+async def ensure_default_personal_group(session: AsyncSession, user: User) -> Group:
+    """Create once per owner, independently of editable names and membership visibility."""
+    # Serialize simultaneous logins/registration; the partial unique index also
+    # protects the invariant from any other writer.
+    await session.execute(select(User.id).where(User.id == user.id).with_for_update())
+    group = await session.scalar(select(Group).where(
+        Group.owner_id == user.id, Group.is_default_personal.is_(True)
+    ))
+    if group is None:
+        group = Group(
+            title="Personal Expenses", type="Personal", owner_id=user.id,
+            currency=user.preferred_currency or "MAD", is_default_personal=True,
+        )
+        session.add(group)
+        await session.flush()
+
+    membership = await session.scalar(select(Membership).where(
+        Membership.group_id == group.id, Membership.user_id == user.id
+    ))
+    if membership is None:
+        session.add(Membership(group_id=group.id, user_id=user.id, is_admin=True))
+    else:
+        membership.is_admin = True
+    await session.commit()
+    return group
+
+
+async def ensure_group_allows_sharing(session: AsyncSession, group_id) -> Group:
+    group = await session.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if group.is_default_personal:
+        raise HTTPException(
+            status_code=400, detail="Your default Personal Expenses group is private."
+        )
+    return group
 
 
 async def get_group(session: AsyncSession, group_id: int) -> GroupRead:
@@ -80,7 +137,7 @@ async def get_groups(session: AsyncSession, currentuser: User) -> list[GroupRead
                 "members_usernames": members_usernames,
                 "expenses_count": expenses_count,
                 "total_amount": total_amount,
-                "has_unsettled_balance": expenses_count > 0,
+                "has_unsettled_balance": expenses_count > 0 and not group.is_default_personal,
             })
         )
     return output
@@ -100,7 +157,8 @@ async def update_group(session: AsyncSession, group_id: int, data: dict) -> Grou
         raise HTTPException(status_code=404, detail="Group not found")
 
     for key, value in data.items():
-        if hasattr(group, key) and value is not None:
+        # Identity and ownership are never client-editable, including the default flag.
+        if key in {"title", "description", "currency", "type", "photo"} and value is not None:
             setattr(group, key, value)
 
     await session.commit()
@@ -114,7 +172,7 @@ async def delete_group(session: AsyncSession, group_id: int, current: User):
         raise HTTPException(status_code=404, detail="Group not found")
     if group.owner_id != current.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
-    if group.type == "Personal Expenses" and group.title == "Personal Expenses":
+    if group.is_default_personal:
         raise HTTPException(status_code=400, detail="Cannot delete your default Personal Expenses group.")
 
     from app.models import Expense
@@ -128,6 +186,11 @@ async def delete_group(session: AsyncSession, group_id: int, current: User):
 
 
 async def can_leave_group(session: AsyncSession, user_id: int, group_id: int) -> bool:
+    group = await session.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if group.is_default_personal:
+        return False
     result = await session.execute(
         select(Settlement).where(
             ((Settlement.from_user_id == user_id) | (Settlement.to_user_id == user_id))
@@ -139,6 +202,7 @@ async def can_leave_group(session: AsyncSession, user_id: int, group_id: int) ->
 
 
 async def leave_group(session: AsyncSession, user_id: int, group_id: int):
+    await ensure_group_allows_sharing(session, group_id)
     if not await can_leave_group(session, user_id, group_id):
         raise HTTPException(status_code=400, detail="Cannot leave group with unsettled balances")
 
@@ -217,6 +281,7 @@ async def get_group_members(session: AsyncSession, group_id: int) -> list[Member
 
 
 async def add_members_to_group(session: AsyncSession, group_id: int, user_ids: list[int], is_admin: bool = False) -> list[Membership]:
+    await ensure_group_allows_sharing(session, group_id)
     memberships = []
     for uid in user_ids:
         res = await session.execute(
@@ -235,6 +300,7 @@ async def add_members_to_group(session: AsyncSession, group_id: int, user_ids: l
 
 
 async def update_membership(session: AsyncSession, group_id: int, member_id: int, is_admin: bool) -> Membership:
+    await ensure_group_allows_sharing(session, group_id)
     res = await session.execute(
         select(Membership).where(Membership.group_id == group_id, Membership.user_id == member_id)
     )
@@ -255,6 +321,7 @@ async def update_membership(session: AsyncSession, group_id: int, member_id: int
 
 
 async def remove_member(session: AsyncSession, group_id: int, member_id: int):
+    await ensure_group_allows_sharing(session, group_id)
     res = await session.execute(
         select(Membership).where(Membership.group_id == group_id, Membership.user_id == member_id)
     )

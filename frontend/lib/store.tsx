@@ -347,15 +347,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       await groupsApi.create({
         title: g.name,
-        currency: g.currency || "USD",
+        currency: g.currency || "MAD",
         type: g.type,
         photo: g.photo || null,
+        description: g.description || null,
         member_ids: g.memberIds.filter((id) => id !== String(user?.id)),
       });
       showToast("Group created · " + g.name, "success");
       await refetchSplitting();
     } catch {
       showToast("Failed to create group", "error");
+      throw new Error("Group was not saved");
     }
   }, [refetchSplitting, showToast, user?.id]);
 

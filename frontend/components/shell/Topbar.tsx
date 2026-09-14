@@ -4,8 +4,10 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/Icon";
+import BrandIcon from "@/components/BrandIcon";
 import NotificationsBell from "./NotificationsBell";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { isAdminUser } from "@/lib/api/admin";
 
 export default function Topbar() {
   const { user, logout } = useAuth();
@@ -35,7 +37,7 @@ export default function Topbar() {
 
   return (
     <header className="topbar">
-      <Link href="/dashboard" className="topbar-brand" aria-label="SplitEasy home">Split<span>Easy</span></Link>
+      <Link href="/dashboard" className="topbar-brand" aria-label="SplitEasy home"><BrandIcon size={30} /><span className="topbar-brand-name">Split<span>Easy</span></span></Link>
       <div className="topbar-spacer" />
 
       <NotificationsBell />
@@ -59,6 +61,11 @@ export default function Topbar() {
               <div className="sub">{user?.email}</div>
             </div>
             <Link href="/settings" className="profile-pop-item" onClick={() => setProfileOpen(false)}>Account settings</Link>
+            {isAdminUser(user?.role) && (
+              <Link href="/admin" className="profile-pop-item" onClick={() => setProfileOpen(false)}>
+                <Icon name="shield" size={14} /> Admin panel
+              </Link>
+            )}
             <button className="profile-pop-item" onClick={logout}>
               <Icon name="settle" size={14} /> Sign out
             </button>

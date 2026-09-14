@@ -13,3 +13,4 @@
 @media(prefers-reduced-motion:reduce){.mw-loading>div{animation:none}}
 .mw-main,.mw-rail{grid-template-columns:minmax(0,1fr)}.mw-main>section,.mw-rail>section{min-width:0}
 @media(max-width:380px){.mw-month .ui-stat-val{font-size:16px}.mw-month .ui-stat-card{padding:12px}.mw-entry-amount{max-width:45%;overflow-wrap:anywhere}}
+.mw-total-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.money-page .mw-privacy-toggle{min-width:44px;min-height:44px;padding:10px;justify-content:center;flex-shrink:0;color:var(--ink-3)}.money-page .mw-privacy-toggle:hover{color:var(--primary);background:var(--primary-soft)}

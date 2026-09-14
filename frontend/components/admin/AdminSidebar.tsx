@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "@/components/Icon";
+import BrandIcon from "@/components/BrandIcon";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { parsePermissions, hasPermission } from "@/lib/api/admin";
 
@@ -42,7 +43,7 @@ export default function AdminSidebar({ dark, onToggleDark }: Props) {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-mark">$</div>
+        <BrandIcon size={34} />
         <div className="brand-name">
           Split<em>Easy</em>
           <span className="admin-badge">Admin</span>

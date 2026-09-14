@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GroupBase(BaseModel):
@@ -17,7 +17,7 @@ class GroupCreate(BaseModel):
     currency: Optional[str] = "USD"
     type: Optional[str] = "Other"
     photo: Optional[str] = None
-    member_ids: list[int] = []
+    member_ids: list[UUID] = Field(default_factory=list)
 
 
 class GroupRead(BaseModel):
@@ -25,6 +25,7 @@ class GroupRead(BaseModel):
     title: str
     currency: str
     type: str
+    is_default_personal: bool = False
     photo: Optional[str]
     owner_id: UUID
     description: str

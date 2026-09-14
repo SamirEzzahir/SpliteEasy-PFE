@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "@/components/Icon";
+import BrandIcon from "@/components/BrandIcon";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { parsePermissions, hasPermission } from "@/lib/api/admin";
 import AdminSidebar from "./AdminSidebar";
@@ -75,7 +76,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         {/* Mobile-only top nav (the sidebar is hidden under 1024px). */}
         <div className="admin-mtop">
           <div className="admin-mtop-brand">
-            <span className="brand-mark" style={{ width: 26, height: 26, fontSize: 14 }}>$</span>
+            <BrandIcon size={26} />
             <span>Admin</span>
           </div>
           <nav className="admin-mtop-nav">

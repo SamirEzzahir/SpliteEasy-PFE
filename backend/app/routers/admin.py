@@ -337,6 +337,8 @@ async def transfer_group_owner(
     group = await session.get(Group, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
+    if group.is_default_personal:
+        raise HTTPException(status_code=400, detail="Cannot transfer a default Personal Expenses group.")
     new_owner = await session.get(User, payload.new_owner_id)
     if not new_owner:
         raise HTTPException(status_code=404, detail="New owner not found")
@@ -366,6 +368,8 @@ async def delete_group(
     group = await session.get(Group, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
+    if group.is_default_personal:
+        raise HTTPException(status_code=400, detail="Cannot delete a default Personal Expenses group.")
     title = group.title
     await session.delete(group)
     await session.commit()

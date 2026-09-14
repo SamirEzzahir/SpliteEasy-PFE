@@ -2,6 +2,7 @@
 // app/signup/page.tsx
 
 import Link from "next/link";
+import BrandLogo from "@/components/BrandLogo";
 import { useState } from "react";
 import PasswordInput from "@/components/ui/PasswordInput";
 import Icon from "@/components/Icon";
@@ -31,8 +32,7 @@ export default function SignupPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="brand-mark">$</div>
-          <div className="brand-name">Split<em>Easy</em></div>
+          <BrandLogo />
         </div>
         <h1>Create your account</h1>
         <p className="auth-sub">Free to use. No card required.</p>

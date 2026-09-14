@@ -2,14 +2,16 @@
 import Link from "next/link";
 import { ArrowDownLeft, ArrowLeftRight, Receipt, RotateCcw } from "lucide-react";
 import { fmt } from "@/lib/format";
+import { useWalletPrivacy } from "@/hooks/useWalletPrivacy";
 import type { MoneyEvent, Wallet } from "@/lib/api/wallets";
 export const EVENT_LABELS:Record<string,string>={opening:"Opening balance",income:"Income",spending:"Spending",shared_expense:"Shared expense",transfer:"Transfer",reimbursement:"Reimbursement",settlement:"Shared payment",adjustment:"Adjustment",reversal:"Reversal",budget_transfer:"Budget transfer",loan:"Loan",debt:"Borrowing",repayment:"Repayment"};
 export const walletTone=(wallet:Wallet)=>wallet.category.toLowerCase()==="bank"?"bank":wallet.category.toLowerCase()==="cash"?"cash":"custom";
 const color=(wallet:Wallet)=>walletTone(wallet)==="bank"?"var(--primary)":walletTone(wallet)==="cash"?"var(--success)":"var(--amber)";
 export const money=(value:string|number,currency:string|null)=>fmt(Number(value),currency || "MAD");
 export function WalletChart({wallets,currency}:{wallets:Wallet[];currency:string}) {
+  const {balancesHidden,formatBalance}=useWalletPrivacy();
   const total=wallets.reduce((sum,w)=>sum+Number(w.balance),0);let offset=0;
-  return <><div className="mw-chart"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="80" fill="none" stroke="var(--line)" strokeWidth="18" />{wallets.filter(w=>Number(w.balance)>0).map(w=>{const pct=total>0?Number(w.balance)/total*100:0;const start=offset;offset+=pct;const length=Math.max(0,pct-(pct<100?Math.min(1.5,pct/4):0));return <circle key={w.id} cx="100" cy="100" r="80" fill="none" stroke={color(w)} strokeWidth="18" pathLength="100" strokeDasharray={`${length} ${100-length}`} strokeDashoffset={-start}/>;})}</svg><div><span>Total balance</span><strong className="num">{money(total,currency)}</strong></div></div><ul className="mw-legend">{wallets.map(w=><li key={w.id}><i style={{background:color(w)}} aria-hidden="true"/><span>{w.name}<small>{w.category}</small></span><b className="num">{money(w.balance,currency)}<small>{total?(Number(w.balance)/total*100).toFixed(1):"0"}%</small></b></li>)}</ul></>;
+  return <><div className="mw-chart"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="80" fill="none" stroke="var(--line)" strokeWidth="18" />{wallets.filter(w=>Number(w.balance)>0).map(w=>{const pct=total>0?Number(w.balance)/total*100:0;const start=offset;offset+=pct;const length=Math.max(0,pct-(pct<100?Math.min(1.5,pct/4):0));return <circle key={w.id} cx="100" cy="100" r="80" fill="none" stroke={color(w)} strokeWidth="18" pathLength="100" strokeDasharray={`${length} ${100-length}`} strokeDashoffset={-start}/>;})}</svg><div><span>Total balance</span><strong className="num">{formatBalance(total,currency)}</strong></div></div><ul className="mw-legend">{wallets.map(w=><li key={w.id}><i style={{background:color(w)}} aria-hidden="true"/><span>{w.name}<small>{w.category}</small></span><b className="num">{formatBalance(w.balance,currency)}<small>{balancesHidden?"—":`${total?(Number(w.balance)/total*100).toFixed(1):"0"}%`}</small></b></li>)}</ul></>;
 }
 export function EventList({events,onReverse,onAllocate}:{events:MoneyEvent[];onReverse:(event:MoneyEvent)=>void;onAllocate:(event:MoneyEvent)=>void}) {
   let date="";

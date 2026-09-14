@@ -42,12 +42,15 @@ export default function GroupDetailPage() {
 
   const groupId = String(params.id);
   const group = groups.find((g) => g.id === groupId);
+  const isDefaultPersonal = group?.isDefaultPersonal === true;
+  const hasGroup = !!group;
   // Convenience: group currency with MAD fallback
   const currency = group?.currency ?? "MAD";
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState<"expenses" | "balances" | "members" | "chat">("expenses");
   useEffect(() => { if (new URLSearchParams(window.location.search).get("tab") === "balances") setTab("balances"); }, []);
+  useEffect(() => { if (isDefaultPersonal) setTab("expenses"); }, [isDefaultPersonal]);
   const [query,          setQuery]          = useState("");
   const [monthFilter,    setMonthFilter]    = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -77,14 +80,19 @@ export default function GroupDetailPage() {
 
   // ── Side data fetch ──────────────────────────────────────────────────────────
   const fetchSideData = useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || !hasGroup) return;
+    if (isDefaultPersonal) {
+      setBalances([]);
+      setSettlementHistory([]);
+      return;
+    }
     const [bal, hist] = await Promise.allSettled([
       settleApi.groupBalances(groupId),
       settleApi.groupHistory(groupId),
     ]);
     if (bal.status  === "fulfilled") setBalances(bal.value);
     if (hist.status === "fulfilled") setSettlementHistory(hist.value);
-  }, [groupId]);
+  }, [groupId, hasGroup, isDefaultPersonal]);
 
   useEffect(() => { fetchSideData(); }, [fetchSideData]);
 
@@ -104,9 +112,9 @@ export default function GroupDetailPage() {
     const settleRows: UnifiedRow[] = settlementHistory.map((s) => ({
       kind: "settlement", data: s, ts: toTs(s.created_at),
     }));
-    const combined = showSettlements ? [...expRows, ...settleRows] : expRows;
+    const combined = showSettlements && !isDefaultPersonal ? [...expRows, ...settleRows] : expRows;
     return combined.sort((a, b) => b.ts - a.ts);
-  }, [groupExpenses, settlementHistory, showSettlements]);
+  }, [groupExpenses, settlementHistory, showSettlements, isDefaultPersonal]);
 
   // Filter unified rows
   // Fix: date filter now applies to settlements as well as expenses (symmetric behaviour)
@@ -174,7 +182,7 @@ export default function GroupDetailPage() {
   const currentUserId = String(user?.id || "");
   const groupPayers   = Array.from(new Set(groupExpenses.map((e) => e.paidBy)));
 
-  const settleUp = () => { if (group) router.push(`/groups/${group.id}/settle`); };
+  const settleUp = () => { if (group && !isDefaultPersonal) router.push(`/groups/${group.id}/settle`); };
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -287,21 +295,24 @@ export default function GroupDetailPage() {
   // ── Main render ───────────────────────────────────────────────────────────────
   return (
     <>
-      <PageHeader title={group?.name || "Group"} subtitle={`${group?.memberIds.length || 0} members · ${currency}`}
+      <PageHeader title={group?.name || "Group"} subtitle={isDefaultPersonal ? `Your private expenses · ${currency}` : `${group?.memberIds.length || 0} members · ${currency}`}
         breadcrumbs={[{label: "Groups", href: "/groups"}, {label: group?.name || "Loading…"}]}
         actions={<button className="btn btn-primary" onClick={() => setShowAddExpense(true)}><Icon name="plus" size={16} />Add expense</button>} />
       <div className="ui-stat-grid cols-2">
-        {loading ? <><SkeletonGroupStat /><SkeletonGroupStat /></> : <>
+        {loading ? <><SkeletonGroupStat /><SkeletonGroupStat /></> : isDefaultPersonal ? <>
+          <StatCard icon="wallet" tone="neutral" label="Total expenses" value={totals.total} currency={currency} sub="Your personal spending" />
+          <StatCard icon="receipt" tone="primary" label="Expenses" value={groupExpenses.length} sub="Only visible to you" />
+        </> : <>
           <StatCard icon="download" tone="danger" label="You owe" value={totals.youOwe} currency={currency} sub="To the group" />
           <StatCard icon="upload" tone="success" label="You are owed" value={totals.youAreOwed} currency={currency} sub="From the group" />
         </>}
       </div>
-      <p className="field-help">{groupExpenses.length} expenses · {fmt(totals.total, currency)} total · {fmt(totals.settled, currency)} in confirmed payments</p>
-      <PageTabs id="group-tabs" label="Group sections" value={tab} onChange={setTab} items={[
+      <p className="field-help">{groupExpenses.length} expenses · {fmt(totals.total, currency)} total{!isDefaultPersonal && <> · {fmt(totals.settled, currency)} in confirmed payments</>}</p>
+      <PageTabs id="group-tabs" label="Group sections" value={isDefaultPersonal ? "expenses" : tab} onChange={setTab} items={isDefaultPersonal ? [{value: "expenses", label: "Expenses"}] : [
         {value: "expenses", label: "Expenses"}, {value: "balances", label: "Balances"},
         {value: "members", label: "Members"}, {value: "chat", label: "Chat"},
       ]} />
-      <div role="tabpanel" id="group-tabs-panel-expenses" aria-labelledby="group-tabs-expenses" hidden={tab !== "expenses"}>
+      <div role="tabpanel" id="group-tabs-panel-expenses" aria-labelledby="group-tabs-expenses" hidden={!isDefaultPersonal && tab !== "expenses"}>
       {/* ── Filters + table card ── */}
       <div className="card" style={{ padding: 18 }}>
         <FilterPanel count={[monthFilter, categoryFilter, paidByFilter].filter((v) => v !== "all").length}>
@@ -344,7 +355,7 @@ export default function GroupDetailPage() {
           </select>
 
           {/* Settlement toggle */}
-          <button
+          {!isDefaultPersonal && <button
             className="btn btn-secondary"
             onClick={() => setShowSettlements((v) => !v)}
             style={{
@@ -366,7 +377,7 @@ export default function GroupDetailPage() {
                 {settlementHistory.length}
               </span>
             )}
-          </button>
+          </button>}
 
           <div className="filter-grow" />
           <div className="search" style={{ width: 280 }}>
@@ -793,7 +804,7 @@ export default function GroupDetailPage() {
       </div>
 
       </div>
-      <section role="tabpanel" id="group-tabs-panel-balances" aria-labelledby="group-tabs-balances" hidden={tab !== "balances"}>
+      {!isDefaultPersonal && <><section role="tabpanel" id="group-tabs-panel-balances" aria-labelledby="group-tabs-balances" hidden={tab !== "balances"}>
         <div className="section-heading"><h2>Member balances</h2><button className="btn btn-primary" onClick={settleUp}>Record a payment</button></div>
         <div className="group-balances-list">{balances.map((entry) => {
           const net = entry.net ?? entry.balance ?? 0;
@@ -812,7 +823,7 @@ export default function GroupDetailPage() {
       </section>
       <section role="tabpanel" id="group-tabs-panel-chat" aria-labelledby="group-tabs-chat" hidden={tab !== "chat"}>
         {tab === "chat" && group && <GroupChat groupId={group.id} groupName={group.name} embedded />}
-      </section>
+      </section></>}
 
       {/* ── Modals ── */}
       {showAddExpense && group && (
@@ -826,7 +837,7 @@ export default function GroupDetailPage() {
         />
       )}
 
-      {showMembers && group && (
+      {showMembers && group && !isDefaultPersonal && (
         <ManageGroupMembersModal
           group={group}
           onClose={() => setShowMembers(false)}
@@ -876,7 +887,7 @@ export default function GroupDetailPage() {
         ) : null;
       })()}
 
-      {viewSettlement && user && (
+      {viewSettlement && user && !isDefaultPersonal && (
         <SettlementDetailModal
           settlement={viewSettlement}
           myId={user.id}
@@ -908,7 +919,7 @@ export default function GroupDetailPage() {
       )}
 
       {/* Floating group chat */}
-      {group && <GroupChat groupId={groupId} groupName={group.name} />}
+      {group && !isDefaultPersonal && <GroupChat groupId={groupId} groupName={group.name} />}
     </>
   );
 }

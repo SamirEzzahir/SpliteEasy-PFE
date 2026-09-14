@@ -32,6 +32,7 @@ export interface ApiGroup {
   photo?: string | null;
   description?: string | null;
   owner_id: string;
+  is_default_personal?: boolean;
   owner_username?: string | null;
   members_usernames?: string[];
   expenses_count?: number;

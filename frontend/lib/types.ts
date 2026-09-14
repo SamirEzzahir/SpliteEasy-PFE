@@ -66,6 +66,7 @@ export interface Group {
   updated: string;
   ownerUsername?: string;
   ownerId?: string;
+  isDefaultPersonal?: boolean;
 }
 
 export interface Expense {

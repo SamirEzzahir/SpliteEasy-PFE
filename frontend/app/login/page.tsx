@@ -2,6 +2,7 @@
 // app/login/page.tsx
 
 import Link from "next/link";
+import BrandLogo from "@/components/BrandLogo";
 import { useState } from "react";
 import PasswordInput from "@/components/ui/PasswordInput";
 import Icon from "@/components/Icon";
@@ -44,8 +45,7 @@ export default function LoginPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="brand-mark">$</div>
-          <div className="brand-name">Split<em>Easy</em></div>
+          <BrandLogo />
         </div>
         <h1>Welcome back</h1>
         <p className="auth-sub">Sign in to split expenses and settle up with your groups.</p>

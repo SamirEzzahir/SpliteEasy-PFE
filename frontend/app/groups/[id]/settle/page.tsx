@@ -3,10 +3,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import Icon from "@/components/Icon";
+import PageHeader from "@/components/ui/PageHeader";
 import { Avatar } from "@/components/Avatar";
 import { fmt } from "@/lib/format";
 import { settleApi } from "@/lib/api/settle";
@@ -54,11 +55,18 @@ function StatCardSkeleton() {
 
 export default function GroupSettlePage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { user } = useAuth();
-  const { groups } = useApp();
+  const { groups, loading: groupsLoading } = useApp();
 
   const groupId = String(params.id);
   const group = groups.find((g) => g.id === groupId);
+  const isDefaultPersonal = group?.isDefaultPersonal === true;
+  const hasGroup = !!group;
+
+  useEffect(() => {
+    if (isDefaultPersonal) router.replace(`/groups/${groupId}`);
+  }, [groupId, isDefaultPersonal, router]);
 
   const [balances, setBalances] = useState<ApiBalanceEntry[]>([]);
   const [suggested, setSuggested] = useState<SuggestedSettlement[]>([]);
@@ -73,7 +81,7 @@ export default function GroupSettlePage() {
   } | null>(null);
 
   const refetch = useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || !hasGroup || isDefaultPersonal) return;
     setLoading(true);
     // Use allSettled so a single endpoint failure doesn't blank the whole page
     const [balRes, sugRes, histRes] = await Promise.allSettled([
@@ -88,7 +96,7 @@ export default function GroupSettlePage() {
     if (histRes.status === "fulfilled") setHistory(histRes.value);
     else toast.error("Could not load settlement history");
     setLoading(false);
-  }, [groupId]);
+  }, [groupId, hasGroup, isDefaultPersonal]);
 
   useEffect(() => { refetch(); }, [refetch]);
 
@@ -227,7 +235,14 @@ export default function GroupSettlePage() {
   };
 
   // Guard: wait for auth to resolve before showing user-specific data
-  if (!myId) {
+  if (myId && !groupsLoading && !hasGroup) {
+    return <div role="alert">
+      <PageHeader title="Group not found" subtitle="This group is unavailable or you no longer have access." />
+      <Link href="/groups" className="btn btn-primary">Back to groups</Link>
+    </div>;
+  }
+
+  if (!myId || !hasGroup || isDefaultPersonal) {
     return (
       <div style={{ padding: "60px 0", textAlign: "center", color: "var(--ink-3)" }}>
         <div className="sk-block" style={{ width: 200, height: 20, borderRadius: 8, margin: "0 auto" }} />

@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-from sqlalchemy import Uuid, text, String, Integer, ForeignKey, DateTime, Boolean, UniqueConstraint
+from sqlalchemy import Uuid, text, String, Integer, ForeignKey, DateTime, Boolean, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -8,12 +8,20 @@ from .base import Base
 
 class Group(Base):
     __tablename__ = "groups"
+    __table_args__ = (
+        Index(
+            "uq_groups_default_personal_owner", "owner_id", unique=True,
+            postgresql_where=text("is_default_personal = TRUE"),
+            sqlite_where=text("is_default_personal = TRUE"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(String(200), default="")
     owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     type: Mapped[str] = mapped_column(String(50), default="Other")
+    is_default_personal: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     photo: Mapped[str | None] = mapped_column(String(255), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

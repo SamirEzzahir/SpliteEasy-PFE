@@ -1,10 +1,11 @@
 "use client";
 // components/modals/CreateGroupModal.tsx
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import Icon from "@/components/Icon";
 import { PeoplePicker } from "@/components/ui/PeoplePicker";
-import { GROUP_TYPES, PEOPLE, personById } from "@/lib/data";
+import { GROUP_TYPES, personById } from "@/lib/data";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useApp } from "@/lib/store";
 import type { Group, GroupType } from "@/lib/types";
@@ -25,7 +26,7 @@ const CURRENCIES = [
 
 interface Props {
   onClose: () => void;
-  onSubmit: (g: Group) => void;
+  onSubmit: (g: Group) => Promise<void>;
 }
 
 export default function CreateGroupModal({ onClose, onSubmit }: Props) {
@@ -38,15 +39,18 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
   const [photo, setPhoto] = useState("");
   const [personal, setPersonal] = useState(false);
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const submitting = useRef(false);
 
   const friendSource = useMemo(() => {
-    const accepted = friends
-      .filter((friend) => friend.status === "friend")
+    return friends
+      .filter((friend) => friend.status === "friend" && friend.personId !== user?.id)
       .map((friend) => personById(friend.personId));
-    return accepted.length ? accepted : PEOPLE.filter((person) => !person.you);
-  }, [friends]);
+  }, [friends, user?.id]);
+  const selectedMemberIds = memberIds.filter((id) => friendSource.some((friend) => friend.id === id));
 
-  const valid = name.trim().length > 0;
+  const valid = name.trim().length > 0 && !!user?.id;
 
   const clearMembers = () => {
     setMemberIds([]);
@@ -60,28 +64,38 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
     });
   };
 
-  const submit = () => {
-    if (!valid) return;
+  const submit = async () => {
+    if (!valid || !user || submitting.current) return;
+    submitting.current = true;
+    setSaving(true);
+    setError("");
     const typeMeta = GROUP_TYPES.find((item) => item.id === type)!;
     const palette = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    onSubmit({
-      id: "g" + Date.now(),
-      name: name.trim(),
-      type,
-      currency,
-      photo: photo.trim() || null,
-      description: description.trim(),
-      icon: typeMeta.icon,
-      memberIds: [String(user?.id || "samir"), ...(personal ? [] : memberIds)],
-      total: 0,
-      balance: 0,
-      updated: "just now",
-      ...palette,
-    });
+    try {
+      await onSubmit({
+        id: "g" + Date.now(),
+        name: name.trim(),
+        type,
+        currency,
+        photo: photo.trim() || null,
+        description: description.trim(),
+        icon: typeMeta.icon,
+        memberIds: [String(user.id), ...(personal ? [] : selectedMemberIds)],
+        total: 0,
+        balance: 0,
+        updated: "just now",
+        ...palette,
+      });
+    } catch {
+      setError("Could not create this group. Your details are saved here; please try again.");
+    } finally {
+      submitting.current = false;
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={() => { if (!saving) onClose(); }}>
       <div className="modal modal-lg cg-modal" onClick={(event) => event.stopPropagation()}>
         <div className="modal-h with-icon">
           <div className="modal-h-titlewrap">
@@ -91,7 +105,7 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
               <p>Add group details and invite members.</p>
             </div>
           </div>
-          <button className="modal-x" onClick={onClose}><Icon name="x" size={16} /></button>
+          <button className="modal-x" disabled={saving} onClick={onClose} aria-label="Close create group"><Icon name="x" size={16} /></button>
         </div>
 
         <div className="modal-b cg-body">
@@ -169,42 +183,49 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
                   <Icon name="account" size={16} />
                   Personal Group (Solo)
                 </div>
-                <p>A private group for your own expenses. No other members will be added.</p>
+                <p>Start with only your own expenses. You can add friends later.</p>
               </div>
               <button
                 className={"switch switch-light" + (personal ? " on" : "")}
                 onClick={togglePersonal}
+                role="switch"
+                aria-checked={personal}
+                disabled={saving}
                 aria-label="Toggle personal group"
               />
             </div>
 
             {!personal ? (
-              <PeoplePicker title="Invite Friends" people={friendSource} selectedIds={memberIds} onChange={setMemberIds} />
+              <>
+                <PeoplePicker title="Invite Friends" description="Only accepted friends can be added." people={friendSource} selectedIds={selectedMemberIds} onChange={setMemberIds} disabled={saving} />
+                {!friendSource.length && <p className="field-help">Create the group now and add friends later, or <Link href="/friends">find friends</Link>.</p>}
+              </>
             ) : (
               <div className="cg-solo-note">
                 <Icon name="shield" size={18} />
                 <div>
                   <b>Solo mode enabled</b>
-                  <span>This will create a group with only you for your Personel Expenses.</span>
+                  <span>This group starts with only you. You can invite friends whenever you want.</span>
                 </div>
               </div>
             )}
           </section>
+          {error && <p role="alert" style={{ color: "var(--rose)" }}>{error}</p>}
         </div>
 
         <div className="modal-f">
           <div className="cg-footer-note">
-            {personal ? "Creating a personal group" : `${memberIds.length} friend${memberIds.length === 1 ? "" : "s"} selected`}
+            {personal ? "Creating a personal group" : `${selectedMemberIds.length} friend${selectedMemberIds.length === 1 ? "" : "s"} selected`}
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-secondary" disabled={saving} onClick={onClose}>Cancel</button>
             <button
               className="btn btn-primary"
-              disabled={!valid}
+              disabled={!valid || saving}
               onClick={submit}
               style={{ opacity: valid ? 1 : 0.5 }}
             >
-              <Icon name="plus" size={14} /> Create Group
+              <Icon name="plus" size={14} /> {saving ? "Creating..." : "Create Group"}
             </button>
           </div>
         </div>

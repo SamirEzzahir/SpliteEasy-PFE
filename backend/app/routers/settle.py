@@ -13,6 +13,7 @@ from app.crud import compute_group_balances, ensure_user_in_group, log_activity,
 from app.debt import minimize_cash_flow
 from app.routers.notifications import send_notification
 from typing import Optional
+from app.repositories.group import ensure_group_allows_sharing
 
 router = APIRouter(prefix="/settle", tags=["Settle"])
 
@@ -753,6 +754,7 @@ async def record_settlement(
 ):
    
     await ensure_user_in_group(session, current.id, group_id)
+    await ensure_group_allows_sharing(session, group_id)
     await ensure_user_in_group(session, payload.to_user_id, group_id)
 
     if payload.amount <= 0:

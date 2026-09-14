@@ -6,6 +6,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { walletsApi, moneyApi, moneyChanged, MONEY_CURRENCIES, type Wallet, type WalletType, type WalletSettlement, type Budget } from "@/lib/api/wallets";
 import { fmt } from "@/lib/format";
 import {useBudgetPlans} from "./BudgetPlans";
+import { useWalletPrivacy } from "@/hooks/useWalletPrivacy";
 
 export type MoneyAction = "wallet" | "income" | "spending" | "transfer" | "receive" | "edit" | "adjust" | "budget-transfer";
 const TITLES: Record<MoneyAction,string> = {wallet:"Create wallet",income:"Add income",spending:"Record spending",transfer:"Transfer between wallets",receive:"Record a shared payment",edit:"Edit wallet",adjust:"Adjust balance","budget-transfer":"Move budget allocation"};
@@ -15,6 +16,7 @@ export default function MoneyForm({action,wallets,types,currency,settlements,bud
   initial?: Wallet; onClose:()=>void; onSaved:()=>void;
 }) {
   const formId=useId();
+  const {balancesHidden,formatBalance}=useWalletPrivacy();
   const [key]=useState(()=>crypto.randomUUID());
   const [recordedAt]=useState(()=>new Date());
   const active=wallets.filter(w=>!w.archived_at && w.currency===currency);
@@ -27,7 +29,7 @@ export default function MoneyForm({action,wallets,types,currency,settlements,bud
   const [typeMessage,setTypeMessage]=useState("");
   const [typeError,setTypeError]=useState("");
   const [walletCurrency,setWalletCurrency]=useState(initial?.currency || currency);
-  const [amount,setAmount]=useState(action==="wallet" ? "0" : action==="adjust" ? initial?.balance || "0" : "");
+  const [amount,setAmount]=useState(action==="wallet" ? "0" : action==="adjust" ? (balancesHidden ? "" : initial?.balance || "0") : "");
   const [description,setDescription]=useState("");
   const [date,setDate]=useState(()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));
   const [from,setFrom]=useState(initial?.id || active[0]?.id || "");
@@ -72,7 +74,7 @@ export default function MoneyForm({action,wallets,types,currency,settlements,bud
       moneyChanged(); onSaved();
     } catch(error) { setError(apiErrorMessage(error)); } finally { setSaving(false); }
   }
-  const walletOptions=active.map(w=><option key={w.id} value={w.id}>{w.name} · {fmt(Number(w.balance),w.currency)}</option>);
+  const walletOptions=active.map(w=><option key={w.id} value={w.id}>{w.name} · {formatBalance(w.balance,w.currency)}</option>);
   return <Dialog open onClose={onClose} busy={saving || typeBusy} title={TITLES[action]} className="money-dialog"
     description={isWallet?"A place you keep money, visible only to you.":action==="receive"?"Choose a confirmed payment you have actually received or paid.":"Record the money that actually moved."}
     footer={<><button className="btn btn-secondary" type="button" onClick={onClose} disabled={saving || typeBusy}>Cancel</button><button className="btn btn-primary" type="submit" form={formId} disabled={saving || typeBusy || blocked}>{saving?"Saving…":action==="wallet"?"Create wallet":"Save record"}</button></>}>
@@ -96,7 +98,7 @@ export default function MoneyForm({action,wallets,types,currency,settlements,bud
       {action==="budget-transfer" && <label>To budget<select required value={toJar} onChange={e=>setToJar(e.target.value)}>{budgets.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}
       {action==="receive" && <label>Confirmed payment<select required value={settlementId} onChange={e=>setSettlementId(e.target.value)}><option value="">Choose a payment</option>{settlements.map(s=><option key={`${s.scope}/${s.id}`} value={`${s.scope}/${s.id}`}>{s.direction==="received"?"Received from":"Paid to"} {s.person} · {fmt(Number(s.amount),s.currency)}</option>)}</select></label>}
       {['income','spending','transfer','budget-transfer'].includes(action) && <label>Date<input type="date" required value={date} onChange={e=>setDate(e.target.value)} /></label>}
-      {wallet && ['income','spending'].includes(action) && Number(amount)>0 && <p className="money-result">{wallet.name} after this record: <strong>{fmt(Number(wallet.balance)+(action==="income"?1:-1)*Number(amount),currency)}</strong></p>}
+      {wallet && ['income','spending'].includes(action) && Number(amount)>0 && <p className="money-result">{wallet.name} after this record: <strong>{formatBalance(Number(wallet.balance)+(action==="income"?1:-1)*Number(amount),currency)}</strong></p>}
       {action==="transfer" && <p className="field-help">Moving money between your wallets keeps the combined balance the same.</p>}
       {action==="spending" && <p className="field-help">For a shared bill, use <Link href="/expenses" onClick={onClose}>Add Expense</Link> to choose a group and people.</p>}
     </fieldset>{error && <p className="form-error" role="alert">{error}</p>}</form>}
