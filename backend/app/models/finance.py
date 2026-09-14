@@ -20,16 +20,20 @@ class Wallet(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"), index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
-    category: Mapped[str] = mapped_column(String(20), default="cash")
+    category: Mapped[str] = mapped_column(String(50), default="cash")
+    wallet_type_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("wallet_types.id"))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime)
+    ledger_started_at: Mapped[datetime | None] = mapped_column(DateTime)
     balance: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="wallets")
-    incomes: Mapped[list["Income"]] = relationship("Income", back_populates="wallet", cascade="all, delete-orphan")
-    expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="wallet", cascade="all, delete-orphan")
-    transactions_from: Mapped[list["Transaction"]] = relationship("Transaction", foreign_keys="Transaction.from_wallet_id", back_populates="from_wallet", cascade="all, delete-orphan")
-    transactions_to: Mapped[list["Transaction"]] = relationship("Transaction", foreign_keys="Transaction.to_wallet_id", back_populates="to_wallet", cascade="all, delete-orphan")
+    incomes: Mapped[list["Income"]] = relationship("Income", back_populates="wallet")
+    expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="wallet")
+    transactions_from: Mapped[list["Transaction"]] = relationship("Transaction", foreign_keys="Transaction.from_wallet_id", back_populates="from_wallet")
+    transactions_to: Mapped[list["Transaction"]] = relationship("Transaction", foreign_keys="Transaction.to_wallet_id", back_populates="to_wallet")
 
 
 class Transaction(Base):

@@ -6,6 +6,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import Link from "next/link";
+import WalletSelect from "@/components/money/WalletSelect";
+import { apiErrorMessage } from "@/lib/api/client";
+import { MONEY_CURRENCIES } from "@/lib/api/wallets";
+import FilterDropdown from "@/components/ui/FilterDropdown";
 import { toast } from "react-toastify";
 import {
   Plus, ArrowUpRight, ArrowDownLeft, Scale, Receipt, Coins, HandCoins,
@@ -27,13 +32,14 @@ import {
 type Tab = "debts" | "loans";
 
 interface Row {
-  id: string; name: string;
+  id: string; name: string; currency: string | null;
   original_amount: number; remaining_amount: number; total_paid: number;
   status: DebtLoanStatus; due_date?: string | null; note?: string | null;
 }
 
 const toRow = (x: ApiDebt | ApiLoan): Row => ({
   id: x.id,
+  currency: x.currency,
   name: "lender_name" in x ? x.lender_name : x.borrower_name,
   original_amount: x.original_amount,
   remaining_amount: x.remaining_amount,
@@ -119,22 +125,25 @@ function CreateDialog({
 }: {
   open: boolean; tab: Tab; currency: string; saving: boolean;
   onClose: () => void;
-  onSubmit: (name: string, amount: number, dueDate: string | null, note: string | null) => void;
+  onSubmit: (name: string, amount: number, dueDate: string | null, note: string | null, walletId: string, requestId: string) => void;
 }) {
   const isDebt = tab === "debts";
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [note, setNote] = useState("");
+  const [walletId,setWalletId] = useState("");
+  const [requestId,setRequestId] = useState(() => crypto.randomUUID());
   const amt = parseFloat(amount) || 0;
   const valid = name.trim().length > 0 && amt > 0;
 
   // Reset when reopened
-  useEffect(() => { if (open) { setName(""); setAmount(""); setDueDate(""); setNote(""); } }, [open]);
+  useEffect(() => { if (open) { setName(""); setAmount(""); setDueDate(""); setNote(""); setWalletId(""); setRequestId(crypto.randomUUID()); } }, [open]);
 
   return (
     <Dialog
       open={open}
+      busy={saving}
       onClose={onClose}
       title={isDebt ? "Add a Debt" : "Add a Loan"}
       description={isDebt ? "Money you borrowed from someone." : "Money you lent to someone."}
@@ -142,7 +151,7 @@ function CreateDialog({
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button disabled={!valid || saving}
-            onClick={() => onSubmit(name.trim(), amt, dueDate || null, note.trim() || null)}>
+            onClick={() => onSubmit(name.trim(), amt, dueDate || null, note.trim() || null, walletId, requestId)}>
             {saving ? "Saving…" : isDebt ? "Add Debt" : "Add Loan"}
           </Button>
         </>
@@ -156,6 +165,7 @@ function CreateDialog({
           <Input type="number" inputMode="decimal" min="0" step="0.01" value={amount}
             onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
         </Field>
+        <WalletSelect value={walletId} onChange={setWalletId} currency={currency} direction={isDebt?"in":"out"} label={isDebt?"Received into wallet (optional)":"Paid from wallet (optional)"}/>
         <Field label="Due date" hint="(optional)">
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </Field>
@@ -167,9 +177,36 @@ function CreateDialog({
   );
 }
 
+
+function RepaymentDialog({row,tab,onClose,onSaved}:{row:Row;tab:Tab;onClose:()=>void;onSaved:()=>void}) {
+  const [amount,setAmount]=useState(String(row.remaining_amount));
+  const [walletId,setWalletId]=useState("");
+  const [key]=useState(()=>crypto.randomUUID());
+  const [saving,setSaving]=useState(false),[error,setError]=useState("");
+  const outgoing=tab==="debts";
+  async function save(e:React.FormEvent) {
+    e.preventDefault();if(saving)return;setSaving(true);setError("");
+    try {
+      const method=outgoing?debtsLoansApi.repayDebt:debtsLoansApi.repayLoan;
+      await method(row.id,Number(amount),undefined,walletId || undefined,key);
+      toast.success("Payment recorded");onSaved();
+    } catch(error){setError(apiErrorMessage(error));}finally{setSaving(false);}
+  }
+  return <Dialog open onClose={onClose} busy={saving} title={outgoing?"Record debt payment":"Receive loan repayment"} description={row.name}
+    footer={<><Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button><Button type="submit" form="repayment-form" disabled={saving}>Record payment</Button></>}>
+    <form id="repayment-form" className="expense-form" onSubmit={save}>
+      <Field label={row.currency?"Amount ("+row.currency+")":"Amount (original currency unknown)"}><Input type="number" required min="0.01" step="0.01" max={row.remaining_amount} value={amount} onChange={e=>setAmount(e.target.value)}/></Field>
+      {row.currency && <WalletSelect value={walletId} onChange={setWalletId} currency={row.currency} direction={outgoing?"out":"in"} label={outgoing?"Pay from wallet (optional)":"Receive into wallet (optional)"}/>}
+      <p className="field-help">Repayments reduce the outstanding amount and do not count as income or spending.</p>
+      {error && <p role="alert" className="form-error">{error}</p>}
+    </form>
+  </Dialog>;
+}
+
 export default function DebtsLoansPage() {
   const { user } = useAuth();
-  const currency = user?.preferred_currency || "MAD";
+  const [currency,setCurrency] = useState("MAD");
+  const [repaying,setRepaying] = useState<Row|null>(null);
 
   const [tab, setTab] = useState<Tab>("debts");
   const [summary, setSummary] = useState<ApiDebtLoanSummary | null>(null);
@@ -183,19 +220,19 @@ export default function DebtsLoansPage() {
   const refetch = useCallback(async () => {
     setLoading(true);
     const [sumRes, debtRes, loanRes] = await Promise.allSettled([
-      debtsLoansApi.summary(), debtsLoansApi.listDebts(), debtsLoansApi.listLoans(),
+      debtsLoansApi.summary(currency), debtsLoansApi.listDebts(), debtsLoansApi.listLoans(),
     ]);
-    if (sumRes.status === "fulfilled") setSummary(sumRes.value);
+    if (sumRes.status === "fulfilled") setSummary(sumRes.value); else setSummary(null);
     if (debtRes.status === "fulfilled") setDebts(debtRes.value); else toast.error("Could not load debts");
     if (loanRes.status === "fulfilled") setLoans(loanRes.value); else toast.error("Could not load loans");
     setLoading(false);
-  }, []);
+  }, [currency,user?.id]);
 
   useEffect(() => { refetch(); }, [refetch]);
 
   const rows: Row[] = useMemo(
-    () => (tab === "debts" ? debts.map(toRow) : loans.map(toRow)),
-    [tab, debts, loans],
+    () => (tab === "debts" ? debts.filter(r=>!r.currency || r.currency===currency).map(toRow) : loans.filter(r=>!r.currency || r.currency===currency).map(toRow)),
+    [tab, debts, loans, currency],
   );
 
   const isDebt = tab === "debts";
@@ -208,50 +245,25 @@ export default function DebtsLoansPage() {
     setActing((prev) => { const s = new Set(prev); on ? s.add(id) : s.delete(id); return s; });
 
   // ── Actions ─────────────────────────────────────────────────────────────────
-  const handleCreate = async (name: string, amount: number, dueDate: string | null, note: string | null) => {
+  const handleCreate = async (name: string, amount: number, dueDate: string | null, note: string | null, walletId: string, requestId: string) => {
     setSaving(true);
     try {
       const due = dueDate ? new Date(dueDate).toISOString() : null;
-      if (isDebt) await debtsLoansApi.createDebt({ lender_name: name, original_amount: amount, due_date: due, note });
-      else await debtsLoansApi.createLoan({ borrower_name: name, original_amount: amount, due_date: due, note });
+      if (isDebt) await debtsLoansApi.createDebt({ lender_name: name, original_amount: amount, due_date: due, note, currency, wallet_id:walletId || null, idempotency_key:requestId });
+      else await debtsLoansApi.createLoan({ borrower_name: name, original_amount: amount, due_date: due, note, currency, wallet_id:walletId || null, idempotency_key:requestId });
       toast.success(isDebt ? "Debt added" : "Loan added");
       setShowCreate(false);
       await refetch();
-    } catch { toast.error("Could not save"); }
+    } catch (error) { toast.error(apiErrorMessage(error)); }
     finally { setSaving(false); }
   };
 
-  const repay = async (row: Row) => {
-    const result = await Swal.fire({
-      title: isDebt ? "Record a Payment" : "Record a Repayment",
-      html: `Remaining: <b>${fmt(row.remaining_amount, currency)}</b>`,
-      input: "number",
-      inputLabel: `Amount (${currency})`,
-      inputValue: row.remaining_amount,
-      inputAttributes: { min: "0", max: String(row.remaining_amount), step: "0.01" },
-      showCancelButton: true, confirmButtonColor: "#5b4ef0", cancelButtonColor: "#6b7280", confirmButtonText: "Record",
-      inputValidator: (v) => {
-        const n = parseFloat(v);
-        if (!n || n <= 0) return "Enter a valid amount";
-        if (n > row.remaining_amount + 0.001) return "Amount exceeds the remaining balance";
-        return null;
-      },
-    });
-    if (!result.isConfirmed) return;
-    const amount = Number(result.value);
-    setActingId(row.id, true);
-    try {
-      if (isDebt) await debtsLoansApi.repayDebt(row.id, amount); else await debtsLoansApi.repayLoan(row.id, amount);
-      toast.success("Payment recorded");
-      await refetch();
-    } catch { toast.error("Could not record payment"); }
-    finally { setActingId(row.id, false); }
-  };
+  const repay = (row: Row) => setRepaying(row);
 
   const remove = async (row: Row) => {
     const result = await Swal.fire({
       title: `Delete this ${isDebt ? "debt" : "loan"}?`,
-      text: `${row.name} — ${fmt(row.original_amount, currency)}`,
+      text: `${row.name} — ${row.currency?fmt(row.original_amount, row.currency):row.original_amount.toFixed(2)}`,
       icon: "warning", showCancelButton: true,
       confirmButtonColor: "#ef4444", cancelButtonColor: "#6b7280", confirmButtonText: "Delete",
     });
@@ -261,7 +273,7 @@ export default function DebtsLoansPage() {
       if (isDebt) await debtsLoansApi.deleteDebt(row.id); else await debtsLoansApi.deleteLoan(row.id);
       toast.success("Deleted");
       await refetch();
-    } catch { toast.error("Could not delete"); }
+    } catch (error) { toast.error(apiErrorMessage(error)); }
     finally { setActingId(row.id, false); }
   };
 
@@ -301,6 +313,8 @@ export default function DebtsLoansPage() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-3"><FilterDropdown icon="money" label="Currency" value={currency} options={MONEY_CURRENCIES.map(c=>({id:c,label:c}))} onChange={setCurrency}/><Link href="/money">Back to My Money</Link></div>
+      {rows.some(row=>!row.currency) && <p className="field-help">Older records without a currency are excluded from totals. You can record repayments without a wallet.</p>}
       {/* Hero */}
       {loading ? (
         <div className="sk-block h-[200px] rounded-[20px]" />
@@ -374,7 +388,7 @@ export default function DebtsLoansPage() {
                   <div className="mt-2 flex items-baseline gap-1.5">
                     <span className="text-[19px] font-extrabold tabular-nums tracking-tight"
                       style={{ color: paid ? "var(--ink-3)" : accent }}>
-                      {fmt(row.remaining_amount, currency)}
+                      {row.currency?fmt(row.remaining_amount, row.currency):`${row.remaining_amount.toFixed(2)} (currency unknown)`}
                     </span>
                     <span className="text-[12px] font-semibold text-[var(--ink-4)]">of {fmt(row.original_amount, currency)}</span>
                   </div>
@@ -391,7 +405,7 @@ export default function DebtsLoansPage() {
                     {paid ? (
                       <Button size="sm" variant="secondary"
                         className="flex-1 text-[var(--rose)] border-[var(--rose-soft)] hover:bg-[var(--rose-soft)]"
-                        disabled={acting.has(row.id)} onClick={() => remove(row)}>
+                        disabled={acting.has(row.id) || row.total_paid > 0} title={row.total_paid > 0 ? "Payment history is preserved" : undefined} onClick={() => remove(row)}>
                         <Trash2 size={14} /> Delete
                       </Button>
                     ) : (
@@ -409,6 +423,7 @@ export default function DebtsLoansPage() {
         </div>
       )}
 
+      {repaying && <RepaymentDialog row={repaying} tab={tab} onClose={()=>setRepaying(null)} onSaved={()=>{setRepaying(null);void refetch();}}/>}
       <CreateDialog open={showCreate} tab={tab} currency={currency} saving={saving}
         onClose={() => setShowCreate(false)} onSubmit={handleCreate} />
     </div>

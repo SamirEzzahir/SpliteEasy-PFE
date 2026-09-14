@@ -194,6 +194,7 @@ async def record_global_settlement(
     
     # Create global settlement with PENDING status
     settlement = GlobalSettlement(
+        currency=payload.currency,
         from_user_id=current.id,
         to_user_id=payload.to_user_id,
         amount=float(amount),

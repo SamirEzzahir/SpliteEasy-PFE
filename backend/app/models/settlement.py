@@ -39,6 +39,7 @@ class GlobalSettlement(Base):
     from_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     to_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     amount: Mapped[float] = mapped_column(Float)
+    currency: Mapped[str | None] = mapped_column(String(3))
     status: Mapped[SettlementStatus] = mapped_column(Enum(SettlementStatus, native_enum=False), default=SettlementStatus.pending)
     message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     proof_photo: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field
+from decimal import Decimal
 
 
 class TransactionType(str, Enum):
@@ -60,10 +61,10 @@ class IncomeTypeRead(IncomeTypeBase):
 
 
 class IncomeBase(BaseModel):
-    amount: float = Field(..., example=1000.0)
+    amount: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2, allow_inf_nan=False)
     source_type: Optional[str] = Field("bank", example="cash")
     note: Optional[str] = Field(None, example="October salary")
-    date: datetime = datetime.utcnow()
+    date: datetime = Field(default_factory=datetime.utcnow)
 
 
 class IncomeCreate(IncomeBase):
@@ -84,7 +85,7 @@ class IncomeRead(IncomeBase):
 
 
 class IncomeUpdate(BaseModel):
-    amount: Optional[float] = None
+    amount: Optional[Decimal] = Field(default=None, gt=0, max_digits=12, decimal_places=2, allow_inf_nan=False)
     source_type: Optional[str] = None
     note: Optional[str] = None
     date: Optional[datetime] = None

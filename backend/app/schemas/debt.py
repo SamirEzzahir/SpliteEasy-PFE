@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel
+from app.schemas.money import Amount, Currency
 
 
 class DebtLoanStatus(str, Enum):
@@ -20,7 +21,9 @@ class DebtBase(BaseModel):
 
 
 class DebtCreate(DebtBase):
-    pass
+    original_amount: Amount
+    currency: Currency = "MAD"
+    idempotency_key: Optional[UUID] = None
 
 
 class DebtUpdate(BaseModel):
@@ -30,6 +33,7 @@ class DebtUpdate(BaseModel):
 
 
 class DebtRead(DebtBase):
+    currency: Optional[str] = None
     id: UUID
     user_id: UUID
     remaining_amount: float
@@ -51,7 +55,9 @@ class LoanBase(BaseModel):
 
 
 class LoanCreate(LoanBase):
-    pass
+    original_amount: Amount
+    currency: Currency = "MAD"
+    idempotency_key: Optional[UUID] = None
 
 
 class LoanUpdate(BaseModel):
@@ -61,6 +67,7 @@ class LoanUpdate(BaseModel):
 
 
 class LoanRead(LoanBase):
+    currency: Optional[str] = None
     id: UUID
     user_id: UUID
     remaining_amount: float
@@ -74,7 +81,8 @@ class LoanRead(LoanBase):
 
 
 class DebtRepaymentCreate(BaseModel):
-    amount: float
+    amount: Amount
+    idempotency_key: Optional[UUID] = None
     wallet_id: Optional[UUID] = None
     note: Optional[str] = None
 
@@ -93,7 +101,8 @@ class DebtRepaymentRead(BaseModel):
 
 
 class LoanRepaymentCreate(BaseModel):
-    amount: float
+    amount: Amount
+    idempotency_key: Optional[UUID] = None
     wallet_id: Optional[UUID] = None
     note: Optional[str] = None
 

@@ -74,6 +74,8 @@ export interface ApiExpense {
   added_by_username?: string | null;
   split_type?: "equal" | "percentage" | "share" | null;
   wallet_id?: string | null;
+  jar_type?: string | null;
+  is_from_jar?: boolean;
   splits?: ApiSplit[];
   payer?: ApiUser;
 }

@@ -1,12 +1,13 @@
 from uuid import UUID
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Annotated
 
 
 class SplitBase(BaseModel):
     user_id: UUID
-    share_amount: float
+    share_amount: Annotated[float, Field(ge=0, allow_inf_nan=False)]
     username: Optional[str] = None
 
 
@@ -42,6 +43,8 @@ class ExpenseBase(BaseModel):
 
 
 class ExpenseCreate(ExpenseBase):
+    idempotency_key: UUID | None = None
+    amount: Annotated[float, Field(gt=0, allow_inf_nan=False)]
     splits: List[SplitCreate] = []
     created_at: datetime
 
@@ -76,7 +79,7 @@ class ExpenseRead(BaseModel):
 
 class ExpenseUpdate(BaseModel):
     description: Optional[str] = None
-    amount: Optional[float] = None
+    amount: Annotated[float, Field(gt=0, allow_inf_nan=False)] | None = None
     currency: Optional[str] = None
     category: Optional[str] = None
     payer_id: Optional[UUID] = None

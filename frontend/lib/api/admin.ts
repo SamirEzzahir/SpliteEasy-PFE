@@ -141,6 +141,7 @@ export interface PlatformSettings {
   feature_budget: boolean;
   feature_reports: boolean;
   feature_support: boolean;
+  feature_personal_finance: boolean;
 }
 
 export interface ModerationReport {

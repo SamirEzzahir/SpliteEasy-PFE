@@ -9,16 +9,16 @@ import { isAdminUser } from "@/lib/api/admin";
 import { usePublicSettings } from "@/lib/public-settings";
 
 // Nav items gated by a feature flag are hidden when that flag is off.
-const NAV_FEATURE: Record<string, "support"> = { support: "support" };
+const NAV_FEATURE: Record<string, "support" | "personal_finance"> = { support: "support", money: "personal_finance" };
 
 interface NavItem { id: string; label: string; icon: string; href: string; }
 
-// SplitEasy is an expense-sharing app: nav is groups / expenses / settlements /
-// balances / members(friends) / activity. No wallet, savings, or reports.
+// Shared expenses remain central; My Money adds optional private wallet tracking.
 const NAV: NavItem[] = [
   { id: "dashboard",   label: "Dashboard",      icon: "dashboard", href: "/dashboard" },
   { id: "groups",      label: "Groups",         icon: "groups",    href: "/groups" },
   { id: "expenses",    label: "Expenses",       icon: "expense",   href: "/expenses" },
+  { id: "money",       label: "My Money",       icon: "wallet",    href: "/money" },
   { id: "settlements", label: "Settlements",    icon: "settle",    href: "/settlements" },
   { id: "balances",    label: "Balances",       icon: "money",     href: "/balances" },
   { id: "debts",       label: "Debts & Loans",  icon: "debt",      href: "/debts-loans" },

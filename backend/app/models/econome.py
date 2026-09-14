@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 import uuid
-from sqlalchemy import Uuid, text, Float, String, Integer, ForeignKey, DateTime
+from sqlalchemy import Uuid, text, Float, String, Integer, ForeignKey, DateTime, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -32,7 +32,10 @@ class JarTransaction(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
     income_log_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("income_logs.id", ondelete="CASCADE"), nullable=True)
     jar_type: Mapped[str] = mapped_column(String(10))
-    amount: Mapped[float] = mapped_column(Float)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    money_event_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("money_events.id"), index=True)
+    entry_type: Mapped[str] = mapped_column(String(20), default="legacy")
+    currency: Mapped[str] = mapped_column(String(3), default="MAD")
     description: Mapped[str] = mapped_column(String(255))
     date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

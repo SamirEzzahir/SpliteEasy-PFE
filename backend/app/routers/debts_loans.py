@@ -15,6 +15,7 @@ from app.schemas import (
     LoanRepaymentCreate, LoanRepaymentRead
 )
 from app.db import get_session
+from app.services import money
 from app.auth import get_current_user
 
 router = APIRouter(prefix="/debts-loans", tags=["Debts & Loans"])
@@ -31,35 +32,44 @@ async def create_debt(
     user = Depends(get_current_user)
 ):
     """Create a new debt (money you borrowed)"""
+    await money.lock_owner(session, user.id)
+    previous = await money.retry_event(session, user.id, debt_data.idempotency_key, debt_data)
+    if previous:
+        return await get_debt(previous.source_id, session, user)
     if debt_data.original_amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than 0")
     
     # If wallet_id is provided, verify ownership and increase balance
     wallet = None
     if debt_data.wallet_id:
-        wallet = await session.get(Wallet, debt_data.wallet_id)
-        if not wallet or wallet.user_id != user.id:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        # Increase wallet balance (money received)
-        wallet.balance += Decimal(str(debt_data.original_amount))
+        wallet = await money.get_wallet(session, user.id, debt_data.wallet_id)
+        if wallet.currency != debt_data.currency:
+            raise HTTPException(422, "Wallet and debt currencies must match")
     
     # Create debt record
     debt = Debt(
         user_id=user.id,
+        currency=debt_data.currency,
         lender_name=debt_data.lender_name,
-        original_amount=float(debt_data.original_amount),
-        remaining_amount=float(debt_data.original_amount),
+        original_amount=debt_data.original_amount,
+        remaining_amount=debt_data.original_amount,
         status=DebtLoanStatus.active,
         wallet_id=debt_data.wallet_id,
-        due_date=debt_data.due_date,
+        due_date=money.utc(debt_data.due_date) if debt_data.due_date else None,
         note=debt_data.note
     )
     session.add(debt)
+    await session.flush()
+    await money.post_event(session, user.id, "debt", "Borrowed from " + debt.lender_name, debt.currency,
+        [(wallet.id, money.amount(debt.original_amount) * 1)] if wallet else [],
+        event_amount=debt.original_amount, source_type="debt", source_id=debt.id,
+        key=debt_data.idempotency_key, request=debt_data)
     await session.commit()
     await session.refresh(debt)
     
     return DebtRead(
         id=debt.id,
+        currency=debt.currency,
         user_id=debt.user_id,
         lender_name=debt.lender_name,
         original_amount=float(debt.original_amount),
@@ -104,6 +114,7 @@ async def list_debts(
         
         debt_list.append(DebtRead(
             id=debt.id,
+            currency=debt.currency,
             user_id=debt.user_id,
             lender_name=debt.lender_name,
             original_amount=float(debt.original_amount),
@@ -144,6 +155,7 @@ async def get_debt(
     
     return DebtRead(
         id=debt.id,
+        currency=debt.currency,
         user_id=debt.user_id,
         lender_name=debt.lender_name,
         original_amount=float(debt.original_amount),
@@ -195,6 +207,7 @@ async def update_debt(
     
     return DebtRead(
         id=debt.id,
+        currency=debt.currency,
         user_id=debt.user_id,
         lender_name=debt.lender_name,
         original_amount=float(debt.original_amount),
@@ -216,6 +229,7 @@ async def delete_debt(
     user = Depends(get_current_user)
 ):
     """Delete a debt"""
+    await money.lock_owner(session, user.id)
     result = await session.execute(
         select(Debt).where(Debt.id == debt_id, Debt.user_id == user.id)
     )
@@ -224,11 +238,16 @@ async def delete_debt(
     if not debt:
         raise HTTPException(status_code=404, detail="Debt not found")
     
-    # If wallet was used, decrease balance (reverse the original transaction)
-    if debt.wallet_id:
-        wallet = await session.get(Wallet, debt.wallet_id)
-        if wallet and wallet.user_id == user.id:
-            wallet.balance -= Decimal(str(debt.original_amount))
+    payments = await session.scalar(select(DebtRepayment.id).where(DebtRepayment.debt_id == debt.id).limit(1))
+    if payments:
+        raise HTTPException(409, "Records with repayments cannot be deleted. Payment history must be preserved.")
+    event = await money.active_source_event(session, user.id, "debt", debt.id)
+    if event:
+        await money.reverse_event(session, user.id, event.id, internal=True)
+    elif debt.wallet_id:
+        wallet = await money.get_wallet(session, user.id, debt.wallet_id, archived=True)
+        await money.post_event(session, user.id, "reversal", "Debt cancelled", wallet.currency,
+            [(wallet.id, money.amount(debt.original_amount) * -1)], source_type="debt", source_id=debt.id, allow_archived=True)
     
     await session.delete(debt)
     await session.commit()
@@ -244,6 +263,12 @@ async def repay_debt(
     user = Depends(get_current_user)
 ):
     """Record a repayment for a debt"""
+    await money.lock_owner(session, user.id)
+    request = {**repayment_data.model_dump(mode="json"), "debt_id": str(debt_id)}
+    previous = await money.retry_event(session, user.id, repayment_data.idempotency_key, request)
+    if previous:
+        record = await session.get(DebtRepayment, previous.source_id)
+        return DebtRepaymentRead.model_validate(record)
     if repayment_data.amount <= 0:
         raise HTTPException(status_code=400, detail="Repayment amount must be greater than 0")
     
@@ -267,26 +292,26 @@ async def repay_debt(
     # If wallet_id is provided, verify ownership and decrease balance
     wallet = None
     if repayment_data.wallet_id:
-        wallet = await session.get(Wallet, repayment_data.wallet_id)
-        if not wallet or wallet.user_id != user.id:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        if wallet.balance < repayment_amount:
-            raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {float(wallet.balance):.2f}")
-        # Decrease wallet balance (money paid)
-        wallet.balance -= repayment_amount
+        wallet = await money.get_wallet(session, user.id, repayment_data.wallet_id)
+        if wallet.currency != debt.currency:
+            raise HTTPException(422, "The wallet must match the recorded debt currency")
     
     # Create repayment record
     repayment = DebtRepayment(
         debt_id=debt_id,
-        amount=float(repayment_amount),
+        amount=repayment_amount,
         wallet_id=repayment_data.wallet_id,
         note=repayment_data.note
     )
     session.add(repayment)
+    await session.flush()
+    await money.post_event(session, user.id, "repayment", "Debt repayment", debt.currency or "UNK",
+        [(wallet.id, repayment_amount * -1)] if wallet else [], event_amount=repayment_amount,
+        source_type="debt_repayment", source_id=repayment.id, key=repayment_data.idempotency_key, request=request)
     
     # Update debt
     debt.remaining_amount -= repayment_amount  # Both are Decimal, so this works
-    if debt.remaining_amount <= Decimal('0.01'):  # Consider fully paid if less than 1 cent
+    if debt.remaining_amount <= Decimal('0.00'):  # Consider fully paid if less than 1 cent
         debt.remaining_amount = Decimal('0.0')
         debt.status = DebtLoanStatus.fully_paid
     elif debt.remaining_amount < debt.original_amount:
@@ -370,38 +395,44 @@ async def create_loan(
     user = Depends(get_current_user)
 ):
     """Create a new loan (money you lent)"""
+    await money.lock_owner(session, user.id)
+    previous = await money.retry_event(session, user.id, loan_data.idempotency_key, loan_data)
+    if previous:
+        return await get_loan(previous.source_id, session, user)
     if loan_data.original_amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than 0")
     
     # If wallet_id is provided, verify ownership and decrease balance
     wallet = None
     if loan_data.wallet_id:
-        wallet = await session.get(Wallet, loan_data.wallet_id)
-        if not wallet or wallet.user_id != user.id:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        loan_amount = Decimal(str(loan_data.original_amount))
-        if wallet.balance < loan_amount:
-            raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {float(wallet.balance):.2f}")
-        # Decrease wallet balance (money given)
-        wallet.balance -= loan_amount
+        wallet = await money.get_wallet(session, user.id, loan_data.wallet_id)
+        if wallet.currency != loan_data.currency:
+            raise HTTPException(422, "Wallet and loan currencies must match")
     
     # Create loan record
     loan = Loan(
         user_id=user.id,
+        currency=loan_data.currency,
         borrower_name=loan_data.borrower_name,
-        original_amount=float(loan_data.original_amount),
-        remaining_amount=float(loan_data.original_amount),
+        original_amount=loan_data.original_amount,
+        remaining_amount=loan_data.original_amount,
         status=DebtLoanStatus.active,
         wallet_id=loan_data.wallet_id,
-        due_date=loan_data.due_date,
+        due_date=money.utc(loan_data.due_date) if loan_data.due_date else None,
         note=loan_data.note
     )
     session.add(loan)
+    await session.flush()
+    await money.post_event(session, user.id, "loan", "Lent to " + loan.borrower_name, loan.currency,
+        [(wallet.id, money.amount(loan.original_amount) * -1)] if wallet else [],
+        event_amount=loan.original_amount, source_type="loan", source_id=loan.id,
+        key=loan_data.idempotency_key, request=loan_data)
     await session.commit()
     await session.refresh(loan)
     
     return LoanRead(
         id=loan.id,
+        currency=loan.currency,
         user_id=loan.user_id,
         borrower_name=loan.borrower_name,
         original_amount=float(loan.original_amount),
@@ -446,6 +477,7 @@ async def list_loans(
         
         loan_list.append(LoanRead(
             id=loan.id,
+            currency=loan.currency,
             user_id=loan.user_id,
             borrower_name=loan.borrower_name,
             original_amount=float(loan.original_amount),
@@ -486,6 +518,7 @@ async def get_loan(
     
     return LoanRead(
         id=loan.id,
+        currency=loan.currency,
         user_id=loan.user_id,
         borrower_name=loan.borrower_name,
         original_amount=float(loan.original_amount),
@@ -537,6 +570,7 @@ async def update_loan(
     
     return LoanRead(
         id=loan.id,
+        currency=loan.currency,
         user_id=loan.user_id,
         borrower_name=loan.borrower_name,
         original_amount=float(loan.original_amount),
@@ -558,6 +592,7 @@ async def delete_loan(
     user = Depends(get_current_user)
 ):
     """Delete a loan"""
+    await money.lock_owner(session, user.id)
     result = await session.execute(
         select(Loan).where(Loan.id == loan_id, Loan.user_id == user.id)
     )
@@ -566,11 +601,16 @@ async def delete_loan(
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
     
-    # If wallet was used, increase balance (reverse the original transaction)
-    if loan.wallet_id:
-        wallet = await session.get(Wallet, loan.wallet_id)
-        if wallet and wallet.user_id == user.id:
-            wallet.balance += Decimal(str(loan.original_amount))
+    payments = await session.scalar(select(LoanRepayment.id).where(LoanRepayment.loan_id == loan.id).limit(1))
+    if payments:
+        raise HTTPException(409, "Records with repayments cannot be deleted. Payment history must be preserved.")
+    event = await money.active_source_event(session, user.id, "loan", loan.id)
+    if event:
+        await money.reverse_event(session, user.id, event.id, internal=True)
+    elif loan.wallet_id:
+        wallet = await money.get_wallet(session, user.id, loan.wallet_id, archived=True)
+        await money.post_event(session, user.id, "reversal", "Loan cancelled", wallet.currency,
+            [(wallet.id, money.amount(loan.original_amount) * 1)], source_type="loan", source_id=loan.id, allow_archived=True)
     
     await session.delete(loan)
     await session.commit()
@@ -586,6 +626,12 @@ async def receive_loan_repayment(
     user = Depends(get_current_user)
 ):
     """Record a repayment received for a loan"""
+    await money.lock_owner(session, user.id)
+    request = {**repayment_data.model_dump(mode="json"), "loan_id": str(loan_id)}
+    previous = await money.retry_event(session, user.id, repayment_data.idempotency_key, request)
+    if previous:
+        record = await session.get(LoanRepayment, previous.source_id)
+        return LoanRepaymentRead.model_validate(record)
     if repayment_data.amount <= 0:
         raise HTTPException(status_code=400, detail="Repayment amount must be greater than 0")
     
@@ -609,24 +655,26 @@ async def receive_loan_repayment(
     # If wallet_id is provided, verify ownership and increase balance
     wallet = None
     if repayment_data.wallet_id:
-        wallet = await session.get(Wallet, repayment_data.wallet_id)
-        if not wallet or wallet.user_id != user.id:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        # Increase wallet balance (money received)
-        wallet.balance += repayment_amount
+        wallet = await money.get_wallet(session, user.id, repayment_data.wallet_id)
+        if wallet.currency != loan.currency:
+            raise HTTPException(422, "The wallet must match the recorded loan currency")
     
     # Create repayment record
     repayment = LoanRepayment(
         loan_id=loan_id,
-        amount=float(repayment_amount),
+        amount=repayment_amount,
         wallet_id=repayment_data.wallet_id,
         note=repayment_data.note
     )
     session.add(repayment)
+    await session.flush()
+    await money.post_event(session, user.id, "repayment", "Loan repayment", loan.currency or "UNK",
+        [(wallet.id, repayment_amount * 1)] if wallet else [], event_amount=repayment_amount,
+        source_type="loan_repayment", source_id=repayment.id, key=repayment_data.idempotency_key, request=request)
     
     # Update loan
     loan.remaining_amount -= repayment_amount  # Both are Decimal, so this works
-    if loan.remaining_amount <= Decimal('0.01'):  # Consider fully paid if less than 1 cent
+    if loan.remaining_amount <= Decimal('0.00'):  # Consider fully paid if less than 1 cent
         loan.remaining_amount = Decimal('0.0')
         loan.status = DebtLoanStatus.fully_paid
     elif loan.remaining_amount < loan.original_amount:
@@ -705,19 +753,20 @@ async def get_loan_repayments(
 
 @router.get("/summary")
 async def get_summary(
+    currency: str = "MAD",
     session: AsyncSession = Depends(get_session),
     user = Depends(get_current_user)
 ):
     """Get summary of all debts and loans"""
     # Get all debts
     debts_result = await session.execute(
-        select(Debt).where(Debt.user_id == user.id)
+        select(Debt).where(Debt.user_id == user.id, Debt.currency == currency)
     )
     debts = debts_result.scalars().all()
     
     # Get all loans
     loans_result = await session.execute(
-        select(Loan).where(Loan.user_id == user.id)
+        select(Loan).where(Loan.user_id == user.id, Loan.currency == currency)
     )
     loans = loans_result.scalars().all()
     
@@ -739,4 +788,3 @@ async def get_summary(
         "total_debts_count": len(debts),
         "total_loans_count": len(loans)
     }
-

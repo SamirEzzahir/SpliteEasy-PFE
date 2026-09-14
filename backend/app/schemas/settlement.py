@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel
+from app.schemas.money import Currency
 
 
 class SettlementStatus(str, Enum):
@@ -46,6 +47,7 @@ class SettlementOut(BaseModel):
 
 
 class GlobalSettlementCreate(BaseModel):
+    currency: Optional[Currency] = None
     to_user_id: UUID
     amount: float
     message: Optional[str] = None

@@ -69,6 +69,10 @@ export interface Group {
 }
 
 export interface Expense {
+  requestId?: string;
+  walletId?: string | null;
+  jarType?: string | null;
+  isFromJar?: boolean;
   id: string;
   title: string;
   subtitle: string;

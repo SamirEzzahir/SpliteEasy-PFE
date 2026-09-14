@@ -126,7 +126,7 @@ export default function GlobalSettlementsPage() {
 
   const handleConfirmSettle = async (toUserId: string, amount: number, message?: string) => {
     try {
-      await settleApi.recordGlobal({ to_user_id: toUserId, amount, message });
+      await settleApi.recordGlobal({ to_user_id: toUserId, amount, message, currency });
       toast.success("Settlement recorded! Waiting for confirmation.");
       setSettleModal(null);
       await refetch();

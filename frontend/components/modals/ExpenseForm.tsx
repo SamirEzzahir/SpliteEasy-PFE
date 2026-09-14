@@ -1,5 +1,5 @@
 "use client";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Dialog } from "@/components/ui/dialog";
@@ -10,12 +10,14 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { fmt } from "@/lib/format";
 import { allocateShares } from "@/lib/expense-split";
 import type { Expense } from "@/lib/types";
+import WalletSelect from "@/components/money/WalletSelect";
+import { apiErrorMessage } from "@/lib/api/client";
 
 export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit }: {
   initial?: Expense; defaultGroupId?: string; onClose: () => void;
   onSubmit: (expense: Expense) => Promise<void> | void;
 }) {
-  const { groups } = useApp();
+  const { groups, loading } = useApp();
   const { user } = useAuth();
   const formId = useId();
   const [groupId, setGroupId] = useState(initial?.groupId || defaultGroupId || groups[0]?.id || "");
@@ -24,12 +26,23 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
   const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
   const [paidBy, setPaidBy] = useState(initial?.paidBy || (group?.memberIds.includes(user?.id || "") ? user!.id : group?.memberIds[0]) || "");
   const [splitIds, setSplitIds] = useState(initial?.splitIds || group?.memberIds || []);
+  useEffect(() => {
+    const available=group || (!groupId?groups[0]:undefined);
+    if(available && !paidBy) {
+      setGroupId(available.id);
+      setPaidBy(available.memberIds.includes(user?.id || "")?user!.id:available.memberIds[0] || "");
+      setSplitIds(available.memberIds);
+    }
+  }, [group,groupId,groups,paidBy,user?.id]);
   const [splitType, setSplitType] = useState<NonNullable<Expense["splitType"]>>(initial?.splitType || "equal");
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(
     Object.entries(initial?.splitAmounts || {}).map(([id, share]) => [id, String(initial?.splitType === "percentage" ? share / initial.amount * 100 : share)])));
   const [categoryId, setCategoryId] = useState(initial?.categoryId || "food");
   const [date, setDate] = useState(() => initial?._rawDate?.slice(0, 10) || (initial?.date.match(/^\d{4}-\d{2}-\d{2}$/) ? initial.date : new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)));
   const [note, setNote] = useState(initial?.note || "");
+  const [walletId,setWalletId] = useState(initial?.walletId || "");
+  const [requestId] = useState(() => crypto.randomUUID());
+  const [jarType,setJarType] = useState(initial?.isFromJar ? initial.jarType || "" : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const currency = initial?.currency || group?.currency || "MAD";
@@ -49,17 +62,20 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
     try {
       await onSubmit({ ...initial, id: initial?.id || `draft-${Date.now()}`, title: title.trim(), subtitle: initial?.subtitle || "",
         amount: num, currency, groupId, paidBy, categoryId, date, time: initial?.time || "Just now", note,
-        splitIds, splitType, splitAmounts: shares });
+        splitIds, splitType, splitAmounts: shares, requestId,
+        walletId: paidBy===user?.id ? walletId || null : initial?.paidBy===user?.id ? null : undefined,
+        jarType: paidBy===user?.id ? jarType || null : initial?.paidBy===user?.id ? null : undefined,
+        isFromJar: paidBy===user?.id ? !!jarType : initial?.paidBy===user?.id ? false : undefined });
       onClose();
-    } catch {
-      setError("Could not save this expense. Your entries are still here. Check your connection and try again.");
+    } catch (error) {
+      setError(apiErrorMessage(error));
     } finally { setSaving(false); }
   }
   return <Dialog open onClose={onClose} busy={saving} className="expense-dialog" title={initial ? "Edit expense" : "Add expense"}
     description="Enter what was paid, then review everyone's share."
     footer={group ? <><button className="btn btn-secondary" type="button" disabled={saving} onClick={onClose}>Cancel</button>
       <button className="btn btn-primary" type="submit" form={formId} disabled={!valid || saving}>{saving ? "Saving…" : initial ? "Save changes" : "Add expense"}</button></> : undefined}>
-    {!group ? <div className="empty-state"><p>Create a group to start sharing expenses.</p><Link href="/groups" className="btn btn-primary" onClick={onClose}>Go to groups</Link></div> :
+    {!group ? loading ? <div className="sk-block" style={{height:180}} role="status" aria-label="Loading groups"/> : <div className="empty-state"><p>Create a group to start sharing expenses.</p><Link href="/groups" className="btn btn-primary" onClick={onClose}>Go to groups</Link></div> :
     <form id={formId} onSubmit={submit} className="expense-form">
       <fieldset disabled={saving}>
         <div className="expense-core-fields">
@@ -73,6 +89,7 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
           }}>{groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></label>
           <label>Paid by<select value={paidBy} required onChange={(e) => setPaidBy(e.target.value)}>{group.memberIds.map((id) => <option key={id} value={id}>{id === user?.id ? "You" : personById(id).name}</option>)}</select></label>
         </div>
+        {paidBy===user?.id && <><WalletSelect value={walletId} onChange={setWalletId} currency={currency}/><label>Your budget (optional)<select value={jarType} onChange={e=>setJarType(e.target.value)}><option value="">No budget</option>{[["NEC","Essentials"],["FFA","Financial freedom"],["EDU","Learning"],["LTSS","Long-term saving"],["PLAY","Play"],["GIVE","Giving"]].map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>{jarType && <p className="field-help">Only your own share counts against this budget.</p>}</>}
         <section className="expense-split-section" aria-labelledby={`${formId}-split`}>
           <PeoplePicker
             key={groupId}

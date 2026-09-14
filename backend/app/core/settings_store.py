@@ -38,6 +38,7 @@ DEFAULTS: dict[str, Any] = {
     "feature_budget": True,
     "feature_reports": True,
     "feature_support": True,
+    "feature_personal_finance": True,
 }
 
 # Keys safe to expose without privileged auth (drives the frontend).
@@ -46,7 +47,7 @@ PUBLIC_KEYS = [
     "default_language", "default_timezone",
     "maintenance_mode", "maintenance_message",
     "registration_enabled", "email_verification_enabled",
-    "feature_chat", "feature_notifications", "feature_budget", "feature_reports", "feature_support",
+    "feature_chat", "feature_notifications", "feature_budget", "feature_reports", "feature_support", "feature_personal_finance",
 ]
 
 _cache: dict[str, Any] = dict(DEFAULTS)

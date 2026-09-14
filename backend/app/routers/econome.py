@@ -5,6 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import List
 from datetime import datetime
+from decimal import Decimal
+from app.schemas.money import Amount, Currency, BudgetTransfer
+from app.services import money
 from .. import models, schemas
 from ..dependencies import get_db, get_current_user
 from ..config import JAR_CONFIG
@@ -56,6 +59,8 @@ async def create_strategy(
     Create a new custom strategy for the current user.
     """
     # Validate percentages sum to 1.0 (allow small float error)
+    if any(not Decimal(str(getattr(strategy, key))).is_finite() or getattr(strategy, key) < 0 for key in ("nec", "ffa", "edu", "ltss", "play", "give")):
+        raise HTTPException(422, "Budget percentages must be finite and nonnegative")
     total = strategy.nec + strategy.ffa + strategy.edu + strategy.ltss + strategy.play + strategy.give
     if not (0.99 <= total <= 1.01):
         raise HTTPException(status_code=400, detail="Percentages must sum to 100%")
@@ -89,6 +94,8 @@ async def update_strategy(
         raise HTTPException(status_code=404, detail="Strategy not found or not owned by user")
 
     # Validate percentages
+    if any(not Decimal(str(getattr(strategy_update, key))).is_finite() or getattr(strategy_update, key) < 0 for key in ("nec", "ffa", "edu", "ltss", "play", "give")):
+        raise HTTPException(422, "Budget percentages must be finite and nonnegative")
     total = strategy_update.nec + strategy_update.ffa + strategy_update.edu + strategy_update.ltss + strategy_update.play + strategy_update.give
     if not (0.99 <= total <= 1.01):
         raise HTTPException(status_code=400, detail="Percentages must sum to 100%")
@@ -128,6 +135,7 @@ async def delete_strategy(
 
 @router.get("/ledger", response_model=List[schemas.LedgerItem])
 async def get_ledger(
+    currency: Currency = "MAD",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -149,7 +157,9 @@ async def get_ledger(
         select(models.JarTransaction)
         .where(
             models.JarTransaction.user_id == current_user.id,
-            models.JarTransaction.amount < 0
+            models.JarTransaction.currency == currency,
+            models.JarTransaction.amount < 0,
+            models.JarTransaction.entry_type == "spending"
         )
         .order_by(models.JarTransaction.date.desc())
     )
@@ -186,6 +196,7 @@ async def get_ledger(
 
 @router.get("/balances")
 async def get_balances(
+    currency: Currency = "MAD",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -198,7 +209,7 @@ async def get_balances(
     
     result = await db.execute(
         select(models.JarTransaction)
-        .where(models.JarTransaction.user_id == current_user.id)
+        .where(models.JarTransaction.user_id == current_user.id, models.JarTransaction.currency == currency)
     )
     transactions = result.scalars().all()
     
@@ -206,14 +217,14 @@ async def get_balances(
         if txn.jar_type in balances:
             # We identify transfers by checking the description format we just implemented
             # Or by using the transaction logic. To be robust, if it's a transfer, we track it differently.
-            is_transfer = txn.description and ("Transfer to " in txn.description or "Transfer from " in txn.description)
+            is_transfer = txn.entry_type == "transfer"
             
             if is_transfer:
-                balances[txn.jar_type]["net_transfers"] += txn.amount
+                balances[txn.jar_type]["net_transfers"] += float(txn.amount)
             else:
-                balances[txn.jar_type]["allocated"] += txn.amount
+                balances[txn.jar_type]["allocated"] += float(txn.amount)
             
-            balances[txn.jar_type]["current"] += txn.amount
+            balances[txn.jar_type]["current"] += float(txn.amount)
             
     # Format response
     response = []
@@ -233,18 +244,21 @@ async def get_balances(
 
 @router.post("/distribute")
 async def distribute_income(
-    amount: float,
+    amount: Amount,
     strategy_id: uuid.UUID,
     income_source: str,
     description: str = "Income Distribution",
+    currency: Currency = "MAD",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """
     Distribute income according to the selected strategy.
     """
-    # 1. Get Strategy
-    result = await db.execute(select(models.JarStrategy).where(models.JarStrategy.id == strategy_id))
+    await money.lock_owner(db, current_user.id)
+    # This legacy endpoint allocates budgets only; it does not credit a wallet.
+    result = await db.execute(select(models.JarStrategy).where(models.JarStrategy.id == strategy_id,
+        (models.JarStrategy.user_id == current_user.id) | models.JarStrategy.user_id.is_(None)))
     strategy = result.scalar_one_or_none()
     
     if not strategy:
@@ -268,16 +282,24 @@ async def distribute_income(
         "LTSS": strategy.ltss, "PLAY": strategy.play, "GIVE": strategy.give
     }
     
+    weights = {key: Decimal(str(value)) for key, value in jars.items()}
+    if any(not v.is_finite() or v < 0 for v in weights.values()) or sum(weights.values()) <= 0:
+        raise HTTPException(422, "Invalid budget percentages")
+    cents = int(amount * 100)
+    exact = {key: Decimal(cents) * value / sum(weights.values()) for key, value in weights.items()}
+    portions = {key: int(value) for key, value in exact.items()}
+    for key in sorted(exact, key=lambda k: exact[k] - portions[k], reverse=True)[:cents - sum(portions.values())]:
+        portions[key] += 1
     for jar_type, percentage in jars.items():
         if percentage > 0:
-            jar_amount = amount * percentage
+            jar_amount = Decimal(portions[jar_type]) / 100
             txn = models.JarTransaction(
                 user_id=current_user.id,
                 jar_type=jar_type,
                 amount=jar_amount,
                 description=f"Income Distribution ({strategy.name})",
                 date=datetime.utcnow(),
-                income_log_id=income_log.id
+                income_log_id=income_log.id, currency=currency, entry_type="allocation"
             )
             db.add(txn)
             
@@ -286,15 +308,17 @@ async def distribute_income(
 
 @router.post("/spend")
 async def spend_money(
-    amount: float,
+    amount: Amount,
     jar_type: str,
     description: str,
+    currency: Currency = "MAD",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """
     Log an expense (spend money) from a specific jar.
     """
+    await money.lock_owner(db, current_user.id)
     # Validate Jar Type
     valid_jars = ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"]
     if jar_type not in valid_jars:
@@ -304,7 +328,7 @@ async def spend_money(
     txn = models.JarTransaction(
         user_id=current_user.id,
         jar_type=jar_type,
-        amount=-abs(amount), # Ensure negative
+        amount=-amount, currency=currency, entry_type="spending",
         description=description,
         date=datetime.utcnow()
     )
@@ -359,6 +383,7 @@ async def delete_income_source(
 
 @router.get("/monthly-summary")
 async def get_monthly_summary(
+    currency: Currency = "MAD",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -371,7 +396,9 @@ async def get_monthly_summary(
         select(models.JarTransaction)
         .where(
             models.JarTransaction.user_id == current_user.id,
-            models.JarTransaction.amount > 0
+            models.JarTransaction.currency == currency,
+            models.JarTransaction.amount > 0,
+            models.JarTransaction.entry_type == "allocation"
         )
         .order_by(models.JarTransaction.date.desc())
     )
@@ -390,14 +417,15 @@ async def get_monthly_summary(
             }
         
         if txn.jar_type in summary[month_key]:
-            summary[month_key][txn.jar_type] += txn.amount
-            summary[month_key]["total"] += txn.amount
+            summary[month_key][txn.jar_type] += float(txn.amount)
+            summary[month_key]["total"] += float(txn.amount)
             
     return list(summary.values())
 
 @router.get("/jar/{jar_type}", response_model=List[schemas.JarTransactionRead])
 async def get_jar_history(
     jar_type: str,
+    currency: Currency = "MAD",
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -408,6 +436,7 @@ async def get_jar_history(
         select(models.JarTransaction)
         .where(
             models.JarTransaction.user_id == current_user.id,
+            models.JarTransaction.currency == currency,
             models.JarTransaction.jar_type == jar_type
         )
         .order_by(models.JarTransaction.date.desc())
@@ -447,6 +476,8 @@ async def delete_transaction(
     if not record:
         raise HTTPException(status_code=404, detail="Transaction not found")
         
+    if getattr(record, "money_event_id", None):
+        raise HTTPException(409, "Correct this linked record from My Money or its shared expense")
     await db.delete(record)
     await db.commit()
     return None
@@ -477,7 +508,7 @@ async def update_transaction(
             if "description" in data:
                 record.description = data["description"]
             if "date" in data:
-                record.date = datetime.fromisoformat(data["date"].replace("Z", "+00:00"))
+                record.date = money.utc(datetime.fromisoformat(data["date"].replace("Z", "+00:00")))
             if "income_source" in data:
                 record.income_source = data["income_source"]
                 
@@ -488,12 +519,16 @@ async def update_transaction(
         )
         record = result.scalar_one_or_none()
         if record:
+            if record.money_event_id:
+                raise HTTPException(409, "Correct this linked record from My Money or its shared expense")
             if "amount" in data:
-                record.amount = -abs(float(data["amount"])) # Ensure negative
+                if money.amount(data["amount"]) <= 0:
+                    raise HTTPException(422, "Enter a positive amount")
+                record.amount = -money.amount(data["amount"])
             if "description" in data:
                 record.description = data["description"]
             if "date" in data:
-                record.date = datetime.fromisoformat(data["date"].replace("Z", "+00:00"))
+                record.date = money.utc(datetime.fromisoformat(data["date"].replace("Z", "+00:00")))
                 
     else:
         raise HTTPException(status_code=400, detail="Invalid transaction type")
@@ -507,47 +542,13 @@ async def update_transaction(
 
 @router.post("/transfer")
 async def transfer_funds(
-    from_jar: str,
-    to_jar: str,
-    amount: float,
-    description: str = "Jar Transfer",
-    db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    from_jar: str, to_jar: str, amount: Amount,
+    description: str = "Jar Transfer", currency: Currency = "MAD",
+    idempotency_key: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Transfer funds between two Économé jars.
-    """
-    valid_jars = ["NEC", "FFA", "EDU", "LTSS", "PLAY", "GIVE"]
-    if from_jar not in valid_jars or to_jar not in valid_jars:
-        raise HTTPException(status_code=400, detail="Invalid jar type")
-    
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Transfer amount must be positive")
-        
-    if from_jar == to_jar:
-        raise HTTPException(status_code=400, detail="Cannot transfer to the same jar")
-
-    timestamp = datetime.utcnow()
-
-    # Create withdrawal transaction
-    txn_out = models.JarTransaction(
-        user_id=current_user.id,
-        jar_type=from_jar,
-        amount=-amount,
-        description=f"Transfer to {to_jar}: {description}",
-        date=timestamp
-    )
-    db.add(txn_out)
-
-    # Create deposit transaction
-    txn_in = models.JarTransaction(
-        user_id=current_user.id,
-        jar_type=to_jar,
-        amount=amount,
-        description=f"Transfer from {from_jar}: {description}",
-        date=timestamp
-    )
-    db.add(txn_in)
-
-    await db.commit()
-    return {"message": f"Successfully transferred {amount} from {from_jar} to {to_jar}"}
+    from app.routers.money import budget_transfer
+    data = BudgetTransfer(from_jar=from_jar, to_jar=to_jar, amount=amount,
+        description=description, currency=currency, idempotency_key=idempotency_key or uuid.uuid4())
+    await budget_transfer(data, db, current_user)
+    return {"message": "Budget transfer recorded"}

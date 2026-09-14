@@ -1,9 +1,11 @@
 // lib/api/expenses.ts
 
 import { api } from "./client";
+import { moneyChanged } from "./wallets";
 import type { ApiExpense } from "./types";
 
 export interface CreateExpensePayload {
+  idempotency_key?: string;
   group_id: string;
   payer_id: string;
   added_by?: string;
@@ -14,7 +16,9 @@ export interface CreateExpensePayload {
   category?: string;
   created_at: string;          // required by backend — ISO datetime string
   split_type?: "equal" | "percentage" | "share";
-  wallet_id?: string;
+  wallet_id?: string | null;
+  jar_type?: string | null;
+  is_from_jar?: boolean;
   splits?: { user_id: string; share_amount: number }[];
 }
 
@@ -36,13 +40,16 @@ export const expensesApi = {
   },
   async create(payload: CreateExpensePayload): Promise<ApiExpense> {
     const r = await api.post<ApiExpense>("/expenses", payload);
+    moneyChanged();
     return r.data;
   },
   async update(id: string, payload: Partial<CreateExpensePayload>): Promise<ApiExpense> {
     const r = await api.put<ApiExpense>(`/expenses/${id}`, payload);
+    moneyChanged();
     return r.data;
   },
   async remove(id: string): Promise<void> {
     await api.delete(`/expenses/${id}`);
+    moneyChanged();
   },
 };

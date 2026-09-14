@@ -39,6 +39,7 @@ export const settleApi = {
     return r.data;
   },
   async recordGlobal(payload: {
+    currency?: string;
     to_user_id: string;
     amount: number;
     message?: string;

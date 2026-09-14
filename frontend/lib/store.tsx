@@ -87,9 +87,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   // ── jar state ────────────────────────────────────────────────────────────
-  const [jars, setJars] = useState<Jar[]>(INITIAL_JARS);
-  const [tx, setTx] = useState<Tx[]>(INITIAL_TX);
-  const [income, setIncome] = useState<number>(INITIAL_INCOME);
+  const [jars, setJars] = useState<Jar[]>(() => INITIAL_JARS.map(jar => ({...jar,spent:0,saved:0})));
+  const [tx, setTx] = useState<Tx[]>([]);
+  const [income, setIncome] = useState<number>(0);
   const [strategyId, setStrategyId] = useState<string | null>(null);
   const [strategyName, setStrategyName] = useState<string>("default");
   const [empty, setEmpty] = useState<boolean>(false);
@@ -126,7 +126,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setStrategyId(def?.id ?? null);
       setStrategyName(def?.name ?? "default");
       setJars(buildJarsFromBackend(def, balances));
-      const totalIncome = logs.reduce((s, l) => s + l.amount, 0);
+      const totalIncome = logs.filter(l => !("type" in l) || l.type === "income").reduce((s, l) => s + l.amount, 0);
       setIncome(totalIncome);
       setEmpty(totalIncome === 0 && balances.every((b) => b.balance === 0));
 
@@ -151,7 +151,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // (ids are now opaque UUID strings, so we no longer sort numerically by id.)
       setTx([...incomeTx, ...ledgerTx].slice(0, 20));
     } catch {
-      // Leave the seed data in place if the API call fails (e.g. no jars yet).
+      setJars(INITIAL_JARS.map(jar => ({...jar,spent:0,saved:0})));
+      setTx([]); setIncome(0); setEmpty(true);
     }
   }, []);
 
@@ -315,6 +316,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const splitType = exp.splitType || "equal";
       await expensesApi.create({
+        idempotency_key: exp.requestId,
         group_id: exp.groupId,
         payer_id: exp.paidBy,
         added_by: user?.id ?? exp.paidBy,
@@ -325,6 +327,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         category: exp.categoryId,
         created_at: new Date(`${exp.date}T12:00:00`).toISOString(),
         split_type: splitType === "custom" ? "share" : splitType,
+        wallet_id: exp.walletId,
+        jar_type: exp.jarType,
+        is_from_jar: exp.isFromJar,
         splits: exp.splitIds.map((id) => ({
           user_id: id,
           share_amount: exp.splitAmounts?.[id] ?? exp.amount / Math.max(1, exp.splitIds.length),
@@ -406,6 +411,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         to_user_id: personId,
         amount: Math.abs(friend.balance),
         message: "Settle up",
+        currency: user.preferred_currency || "MAD",
       });
       const p = personById(personId);
       showToast("Settled up with " + p.name, "success");

@@ -2,7 +2,7 @@
 
 > **Read this before building or editing any page or component.**
 > Goal: every screen feels like **one product**, scoring **7–8/10 UX/UI**.
-> Product is an **expense-sharing app** (Splitwise-style). Never personal-finance / wallet / budgeting.
+> Product combines expense sharing with the user-requested optional **My Money** area for private wallets and budgets. Keep private money details separate from shared group balances.
 
 ---
 
@@ -211,7 +211,7 @@ Never hand-roll page-number loops again.
 [ ] Loading shows skeletons
 [ ] Empty state has icon + message + CTA
 [ ] Touch targets ≥44px, focus rings, ARIA on menus/alerts
-[ ] No personal-finance language or fake data
+[ ] Finance language stays within My Money and its explicit wallet links; no fake balances or seeded transactions in live screens
 [ ] Answers "who owes what & what next" in 5 seconds
 ```
 

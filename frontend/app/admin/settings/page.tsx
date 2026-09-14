@@ -167,6 +167,7 @@ export default function AdminSettingsPage() {
         <Toggle label="Budget module (Économé)" checked={settings.feature_budget} onChange={(v) => set("feature_budget", v)} disabled={ro} />
         <Toggle label="Reports" checked={settings.feature_reports} onChange={(v) => set("feature_reports", v)} disabled={ro} />
         <Toggle label="Support center" checked={settings.feature_support} onChange={(v) => set("feature_support", v)} disabled={ro} />
+        <Toggle label="My Money (private wallets)" checked={settings.feature_personal_finance} onChange={(v) => set("feature_personal_finance", v)} disabled={ro} />
       </Section>
     </div>
   );

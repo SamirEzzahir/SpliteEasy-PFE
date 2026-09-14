@@ -5,6 +5,7 @@ from .expense import Expense, Split
 from .friend import FriendStatus, Friend
 from .settlement import SettlementStatus, Settlement, GlobalSettlement
 from .finance import TransactionType, Wallet, Transaction, IncomeType, Income, IncomeSource, IncomeLog
+from .money import WalletType, MoneyEvent, WalletEntry
 from .debt import DebtLoanStatus, Debt, Loan, DebtRepayment, LoanRepayment
 from .econome import JarStrategy, JarTransaction
 from .activity import ActivityLog
@@ -22,6 +23,7 @@ __all__ = [
     "FriendStatus", "Friend",
     "SettlementStatus", "Settlement", "GlobalSettlement",
     "TransactionType", "Wallet", "Transaction", "IncomeType", "Income", "IncomeSource", "IncomeLog",
+    "WalletType", "MoneyEvent", "WalletEntry",
     "DebtLoanStatus", "Debt", "Loan", "DebtRepayment", "LoanRepayment",
     "JarStrategy", "JarTransaction",
     "ActivityLog",

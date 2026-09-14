@@ -22,6 +22,7 @@ export interface PublicSettings {
   feature_budget: boolean;
   feature_reports: boolean;
   feature_support: boolean;
+  feature_personal_finance: boolean;
 }
 
 const DEFAULTS: PublicSettings = {
@@ -40,9 +41,10 @@ const DEFAULTS: PublicSettings = {
   feature_budget: true,
   feature_reports: true,
   feature_support: true,
+  feature_personal_finance: true,
 };
 
-type FeatureKey = "chat" | "notifications" | "budget" | "reports" | "support";
+type FeatureKey = "chat" | "notifications" | "budget" | "reports" | "support" | "personal_finance";
 
 interface Ctx {
   settings: PublicSettings;

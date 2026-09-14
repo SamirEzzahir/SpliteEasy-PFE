@@ -46,6 +46,8 @@ class JarTransactionUpdate(BaseModel):
 
 
 class JarTransactionRead(JarTransactionBase):
+    currency: str = "MAD"
+    entry_type: str = "legacy"
     id: UUID
     user_id: UUID
     created_at: datetime

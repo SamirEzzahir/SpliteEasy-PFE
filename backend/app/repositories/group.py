@@ -109,13 +109,19 @@ async def update_group(session: AsyncSession, group_id: int, data: dict) -> Grou
 
 
 async def delete_group(session: AsyncSession, group_id: int, current: User):
-    group = await session.get(Group, group_id)
+    group = await session.scalar(select(Group).where(Group.id == group_id).with_for_update())
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     if group.owner_id != current.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
     if group.type == "Personal Expenses" and group.title == "Personal Expenses":
         raise HTTPException(status_code=400, detail="Cannot delete your default Personal Expenses group.")
+
+    from app.models import Expense
+    linked = await session.scalar(select(Expense.id).where(Expense.group_id == group_id,
+        Expense.wallet_id.is_not(None) | Expense.is_from_jar.is_(True)).limit(1))
+    if linked:
+        raise HTTPException(409, "Ask each payer to remove wallet-linked expenses before deleting this group so their money records stay consistent.")
 
     await session.delete(group)
     await session.commit()

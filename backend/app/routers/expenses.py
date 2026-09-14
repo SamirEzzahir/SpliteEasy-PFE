@@ -97,6 +97,11 @@ async def get_all_user_expenses(
         expense_data.group_name = expense.group.title if expense.group else "Unknown Group"
         expense_data.payer_name = expense.payer.username if expense.payer else "Unknown"
         expense_data.added_by_username = expense.added_by_user.username if expense.added_by_user else "Unknown"
+        if expense.payer_id != current.id:
+            expense_data.wallet_id = None
+            expense_data.wallet_name = None
+            expense_data.jar_type = None
+            expense_data.is_from_jar = False
         expense_list.append(expense_data)
 
     return expense_list
@@ -161,62 +166,8 @@ async def delete_expense(
     session: AsyncSession = Depends(get_session), 
     current: User = Depends(get_current_user)
 ):
-    # Fetch the expense with the group and splits eagerly loaded
-    result = await session.execute(
-        select(Expense)
-        .where(Expense.id == expense_id)
-        .options(
-            selectinload(Expense.group),
-            selectinload(Expense.splits)
-        )
-    )
-    expense = result.scalars().first()
-
-    if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
-    
-    # Check if user is the payer OR the group owner (admin)
-    is_payer = expense.payer_id == current.id
-    is_group_owner = expense.group and expense.group.owner_id == current.id
-    
-    if not is_payer and not is_group_owner:
-        raise HTTPException(status_code=403, detail="Not allowed to delete. Only the payer or group owner can delete expenses.")
-
-    # ✅ REFUND WALLET: Before deleting, refund the TOTAL expense amount to the wallet
-    # Only refund if the payer is deleting (group owner deleting doesn't affect wallet)
-    if expense.wallet_id and expense.payer_id == current.id:
-        # Refund the TOTAL expense amount (not just payer's share)
-        total_amount = round_amount(Decimal(str(expense.amount)))
-        
-        # Refund the amount back to the wallet (positive amount = refund)
-        try:
-            await update_wallet_balance(
-                session,
-                expense.wallet_id,
-                total_amount,  # Positive amount = refund/add back the TOTAL
-                current.id
-            )
-        except HTTPException as e:
-            # If wallet refund fails, we should still log the attempt
-            # But we'll let the error propagate so the deletion doesn't happen
-            raise HTTPException(
-                status_code=e.status_code,
-                detail=f"Failed to refund wallet: {e.detail}"
-            )
-
-    # Log the deletion
-    await log_activity(
-    session,
-    user_id=current.id,
-    action=f"deleted '{expense.description}' in '{expense.group.title}'",
-    target_type="expense",
-    target_id=expense.id
-)
-
-    # Delete the expense (splits will be deleted via cascade)
-    await session.delete(expense)
-    await session.commit()
-
+    from app.repositories.expense import delete_expense_record
+    await delete_expense_record(session, expense_id, current)
 
 
 #--------------------------------
@@ -551,5 +502,4 @@ async def download_expenses(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-
 

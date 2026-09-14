@@ -1,4 +1,38 @@
-# My Money: UX and engineering proposal
+# My Money: implementation and original design
+
+## Live app
+
+Implemented on `feat/my-money-integration`. Open **My Money** in the desktop sidebar or mobile **More** menu, or visit `http://localhost:3100/money` during local development.
+
+- Responsive overview, swipeable wallet cards, balance chart, monthly income and personal spending, activity filters and pagination.
+- Cash and Bank defaults plus private, reusable custom wallet types. Wallet names remain separate. Types can be renamed or archived.
+- Wallet creation, income, personal spending, transfers, confirmed shared payments, balance adjustments, archive/restore, and traceable reversals.
+- Optional wallet and budget selection in shared expenses. A 300 MAD payment split between three people deducts 300 MAD from the selected wallet and counts 100 MAD as your spending/budget usage. Without a wallet selection, wallet cash stays unchanged.
+- Six-jar budgets with exact cent allocation, editable private plans, budget transfers, and history. `/jars` now opens `/money/budgets`.
+- Wallet selection in borrowing, lending, and repayment forms. Repayments never count as earned income. Records with repayments cannot be deleted.
+- Owner-scoped API reads and writes; transaction locks; duplicate-request protection for money operations; failed payments roll back balances and their linked records together.
+- The `feature_personal_finance` admin setting controls navigation and access to the new money/wallet APIs.
+
+Each currency has separate totals. Transfers require matching currencies. Older wallets with ambiguous currency require confirmation before use. Existing balances become a dated opening entry; the app does not invent historical cash movements. Accepted shared payments must be recorded into a wallet explicitly, once per person. Old global payments without a recorded currency are excluded from wallet posting.
+
+The local pre-change source and database are saved. See [restore instructions](RESTORE_PRE_MY_MONEY.md) for tag `restore/pre-my-money-2026-09-13`, checkpoint `e5965b6`, and the verified database dump. No remote push or production deployment is part of this implementation.
+
+Validation scripts: [`check_money_migration.py`](../backend/tests/check_money_migration.py), [`check_money_integration.py`](../backend/tests/check_money_integration.py), and [`check-money-ui.cjs`](../scripts/check-money-ui.cjs). Financial integration checks use a separate `spliteasy_money_check_20260913` database restored from the backup; they never write test payments to `spliteasy_dev`.
+
+Verified on 2026-09-14:
+
+- Production `next build` passes with `NODE_ENV=production`, in a temporary directory separate from the running development server.
+- TypeScript check, backend imports, existing smoke checks, and `git diff --check` pass.
+- 78 API checks cover ownership, duplicate submissions, insufficient funds, concurrent withdrawals, shared-expense edits/unlink/refund, income corrections, budget allocation/reversal, repayments, currency filters, and journal-to-wallet reconciliation.
+- Migration runs twice without changing balances or duplicating opening entries, including a seeded legacy wallet with an unknown currency and custom type.
+- Browser checks cover widths 320, 390, 768 and 1440, dark mode, mobile actions, account privacy, persistence, wallet/type creation, income, spending, balance adjustments, shared-expense payment, borrowing/repayment, budget plans and budget history.
+- Main development database has no `moneycheck_*` test users. Its real wallet activity is preserved. The original backup checksum still matches the restore guide.
+
+To rerun the financial suite, start the isolated `spliteasy-money-check` container and run `docker exec spliteasy-money-check python -m tests.check_money_integration`. It verifies that its database name contains `money_check` before writing fixtures. Browser checks require Playwright Core and Chrome; set `PLAYWRIGHT_MODULE` to the installed module path and pass a local copy of the isolated container's `/tmp/money-browser.json` to `node scripts/check-money-ui.cjs`. Add `--forms` for the mobile expense/repayment checks. Keep these fixtures in the separate test database.
+
+## Original review and design notes
+
+The following records the pre-implementation assessment and rationale. Statements about missing capabilities refer to that baseline.
 
 Reviewed against the current working tree on 2026-09-13. This is an integration proposal, with a [clickable design preview](previews/my-money.html). The preview uses clearly labelled sample data and never calls the application API.
 
@@ -6,7 +40,7 @@ Reviewed against the current working tree on 2026-09-13. This is an integration 
 
 The requested scope now includes personal money management. When implementing this proposal, update the older expense-sharing-only wording in `CLAUDE.md`, the design contract, and navigation comments to describe this optional module. Keep the existing visual primitives and the shared-expense workflow.
 
-## What exists today
+## Baseline before integration
 
 | Capability | Backend evidence | Frontend status |
 |---|---|---|

@@ -176,6 +176,9 @@ export function mapExpense(e: ApiExpense): Expense {
     (e.splits || []).map((s) => [String(s.user_id), Number(s.share_amount)]),
   );
   return {
+    walletId: e.wallet_id,
+    jarType: e.jar_type,
+    isFromJar: e.is_from_jar,
     id: String(e.id),
     title: e.description,
     note: e.note ?? undefined,

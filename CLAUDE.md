@@ -8,11 +8,10 @@
 SplitEasy is an **expense-sharing app** (Splitwise / Tricount style). The core is:
 **Groups · Expenses · Balances · Settlements · Members · Group Chat.**
 
-It is **NOT** a personal-finance / wallet / budgeting / savings app. Never add
-"net worth", "savings", "wallet balance", "budget", or income-tracking concepts
-to the product surface. (The API *does* expose backend-only modules — wallets,
-incomes, debts/loans, jars — but they are not the product's identity; don't
-surface new ones unless asked.)
+The user has explicitly requested the optional **My Money** module: private
+wallets, income, spending, transfers, six-jar budgets and debt/loan wallet links.
+Keep it under `/money`; preserve the shared-expense workflow and never expose
+another member's wallet or budget choices. See `docs/MY_MONEY_INTEGRATION.md`.
 
 Every screen must answer in 5 seconds: **"Who owes what, and what do I do next?"**
 
@@ -132,7 +131,7 @@ Default branch `main`. Branch for changes; scoped, conventional commits
 ## ⛔ Claude must NEVER
 - Change API contracts, DB schema, models, or business logic when asked only to
   refactor/organize/style.
-- Add personal-finance concepts (net worth, budgets, savings) to the product.
+- Add finance concepts outside the explicitly requested My Money scope.
 - Hardcode hex colors or `"USD"`; use native `confirm()`; invent per-page UI variants.
 - Hand-edit applied Alembic migrations in `backend/alembic/versions/`, or the Postgres
   data in `database/data/`.

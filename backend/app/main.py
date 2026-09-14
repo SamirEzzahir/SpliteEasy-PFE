@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import dashboard, econome, income_types, incomes, wallets, transactions
+from app.routers import dashboard, econome, income_types, incomes, wallets, transactions, money, wallet_types
 from app.db import engine, Base, get_session
 from app.core.db import ensure_database_exists
 from app.routers import memberships, notifications
@@ -173,6 +173,10 @@ async def on_startup():
         print(f"Migration warning: {e}")
         print("   You may need to run migrations manually.")
 
+    # Money migration is atomic and must succeed before money routes become usable.
+    from app.core.money_migration import migrate_money
+    await migrate_money(engine)
+
     # Load platform settings into the in-process cache (after migrations so the
     # app_settings table exists).
     await settings_store.load_settings()
@@ -215,6 +219,8 @@ app.include_router(transactions.router, tags=["Transactions"])
 app.include_router(dashboard.router, tags=["Dashboard"])
 app.include_router(income_types.router, tags=["incomeType"])
 app.include_router(wallets.router, tags=["Wallets"])
+app.include_router(wallet_types.router)
+app.include_router(money.router)
 app.include_router(debts_loans.router, tags=["Debts & Loans"])
 app.include_router(econome.router, tags=["Econome"])
 app.include_router(admin.router, tags=["Admin"])
