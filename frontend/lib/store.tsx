@@ -17,6 +17,7 @@ import type { Expense, FriendRow, Group, Jar, Tx } from "./types";
 import { INITIAL_JARS, INITIAL_TX, INITIAL_INCOME } from "./jars";
 import { EXPENSES, GROUPS, FRIENDS_INIT, personById } from "./data";
 import { fmt, todayStr } from "./format";
+import { expenseTimestamp } from "./expense-date";
 import { useAuth } from "./auth/AuthContext";
 import { economeApi } from "./api/econome";
 import { groupsApi } from "./api/groups";
@@ -325,7 +326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         description: exp.title,
         note: exp.note,
         category: exp.categoryId,
-        created_at: new Date(`${exp.date}T12:00:00`).toISOString(),
+        created_at: expenseTimestamp(exp.date, exp._rawDate),
         split_type: splitType === "custom" ? "share" : splitType,
         wallet_id: exp.walletId,
         jar_type: exp.jarType,

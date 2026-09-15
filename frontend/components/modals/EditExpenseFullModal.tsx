@@ -1,6 +1,7 @@
 "use client";
 import ExpenseForm from "./ExpenseForm";
 import { expensesApi } from "@/lib/api/expenses";
+import { expenseTimestamp } from "@/lib/expense-date";
 import type { Expense } from "@/lib/types";
 export default function EditExpenseFullModal({ expense, onClose, onSaved, showToast }: {
   expense: Expense; onClose: () => void; onSaved: () => Promise<void>;
@@ -9,7 +10,7 @@ export default function EditExpenseFullModal({ expense, onClose, onSaved, showTo
   return <ExpenseForm initial={expense} onClose={onClose} onSubmit={async (updated) => {
     await expensesApi.update(expense.id, {
       description: updated.title, amount: updated.amount, category: updated.categoryId,
-      note: updated.note, created_at: new Date(`${updated.date}T12:00:00`).toISOString(),
+      note: updated.note, created_at: expenseTimestamp(updated.date, updated._rawDate),
       payer_id: updated.paidBy, group_id: updated.groupId,
       split_type: updated.splitType === "custom" ? "share" : updated.splitType,
       wallet_id: updated.walletId,

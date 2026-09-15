@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Dialog } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fmt } from "@/lib/format";
 import { allocateShares } from "@/lib/expense-split";
+import { expenseDateInput, expenseTimestamp } from "@/lib/expense-date";
 import type { Expense } from "@/lib/types";
 import WalletSelect from "@/components/money/WalletSelect";
 import { apiErrorMessage } from "@/lib/api/client";
@@ -33,12 +34,16 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
       setPaidBy(available.memberIds.includes(user?.id || "")?user!.id:available.memberIds[0] || "");
       setSplitIds(available.memberIds);
     }
-  }, [group,groupId,groups,paidBy,user?.id]);
+  }, [group,groupId,groups,paidBy,user]);
   const [splitType, setSplitType] = useState<NonNullable<Expense["splitType"]>>(initial?.splitType || "equal");
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(
     Object.entries(initial?.splitAmounts || {}).map(([id, share]) => [id, String(initial?.splitType === "percentage" ? share / initial.amount * 100 : share)])));
   const [categoryId, setCategoryId] = useState(initial?.categoryId || "food");
-  const [date, setDate] = useState(() => initial?._rawDate?.slice(0, 10) || (initial?.date.match(/^\d{4}-\d{2}-\d{2}$/) ? initial.date : new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)));
+  const [date, setDate] = useState(() => {
+    if (initial?._rawDate) return expenseDateInput(initial._rawDate);
+    return initial?.date.match(/^\d{4}-\d{2}-\d{2}$/) ? initial.date : expenseDateInput();
+  });
+  const timestampRef = useRef(initial?._rawDate);
   const [note, setNote] = useState(initial?.note || "");
   const [walletId,setWalletId] = useState(initial?.walletId || "");
   const [requestId] = useState(() => crypto.randomUUID());
@@ -60,8 +65,11 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
     if (!valid || !group || saving) return;
     setSaving(true); setError("");
     try {
+      // Capture the save time once so retries keep the same request payload.
+      timestampRef.current ??= new Date().toISOString();
       await onSubmit({ ...initial, id: initial?.id || `draft-${Date.now()}`, title: title.trim(), subtitle: initial?.subtitle || "",
         amount: num, currency, groupId, paidBy, categoryId, date, time: initial?.time || "Just now", note,
+        _rawDate: expenseTimestamp(date, timestampRef.current),
         splitIds, splitType, splitAmounts: shares, requestId,
         walletId: paidBy===user?.id ? walletId || null : initial?.paidBy===user?.id ? null : undefined,
         jarType: paidBy===user?.id ? jarType || null : initial?.paidBy===user?.id ? null : undefined,
@@ -103,7 +111,7 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
             disabled={saving}
           />
           <div className="expense-shares">
-            <div className="section-heading"><h4>Each person's share</h4>
+            <div className="section-heading"><h4>Each person&apos;s share</h4>
               <select aria-label="Split method" value={splitType} onChange={(e) => { setSplitType(e.target.value as typeof splitType); setValues({}); }}>
                 <option value="equal">Equally</option><option value="percentage">By percentage</option><option value="custom">Exact amounts</option>
               </select></div>
