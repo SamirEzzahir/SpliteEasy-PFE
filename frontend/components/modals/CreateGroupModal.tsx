@@ -8,6 +8,7 @@ import { PeoplePicker } from "@/components/ui/PeoplePicker";
 import { GROUP_TYPES, personById } from "@/lib/data";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useApp } from "@/lib/store";
+import { usePreferences } from "@/hooks/usePreferences";
 import type { Group, GroupType } from "@/lib/types";
 
 const PALETTE = [
@@ -22,6 +23,7 @@ const CURRENCIES = [
   { id: "USD", label: "USD - US Dollar" },
   { id: "EUR", label: "EUR - Euro" },
   { id: "GBP", label: "GBP - British Pound" },
+  ...["SAR", "AED", "DZD", "TND", "EGP", "CAD", "AUD", "JPY", "CHF", "INR", "BRL", "TRY"].map(id => ({ id, label: id })),
 ];
 
 interface Props {
@@ -35,7 +37,9 @@ export default function CreateGroupModal({ onClose, onSubmit }: Props) {
   const [name, setName] = useState("");
   const [type, setType] = useState<GroupType>("home");
   const [description, setDescription] = useState("");
-  const [currency, setCurrency] = useState("MAD");
+  const { currency: preferredCurrency } = usePreferences();
+  const [currencyChoice, setCurrency] = useState<string | null>(null);
+  const currency = currencyChoice || preferredCurrency;
   const [photo, setPhoto] = useState("");
   const [personal, setPersonal] = useState(false);
   const [memberIds, setMemberIds] = useState<string[]>([]);

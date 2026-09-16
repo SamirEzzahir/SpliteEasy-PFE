@@ -1,4 +1,6 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
+import { fmtDate } from "@/lib/format";
 // components/chat/GroupChat.tsx — floating group chat bubble
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -43,7 +45,7 @@ function msgTime(iso: string) {
   if (diff < 60) return "Just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return fmtDate(d);
 }
 
 function dayLabel(iso: string) {
@@ -53,7 +55,7 @@ function dayLabel(iso: string) {
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === today.toDateString()) return "Today";
   if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  return fmtDate(d);
 }
 
 function sameDay(a: string, b: string) {
@@ -64,6 +66,7 @@ function sameDay(a: string, b: string) {
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function GroupChat({ groupId, groupName, embedded = false }: Props) {
+  usePreferences();
   const { user } = useAuth();
   const { subscribe } = useWS();
   const [open, setOpen] = useState(embedded);

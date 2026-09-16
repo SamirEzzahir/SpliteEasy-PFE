@@ -29,19 +29,7 @@ export function UserAvatar({ name, size = 32 }: { name: string; size?: number })
   );
 }
 
-export function fmtDate(s?: string | null): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-export function fmtDateTime(s?: string | null): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
+export { fmtDate, fmtDateTime } from "@/lib/format";
 
 export function StatusBadge({ status }: { status: string }) {
   const cls =

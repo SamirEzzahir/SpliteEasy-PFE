@@ -1,4 +1,5 @@
 "use client";
+import { fmtNumber } from "@/lib/format";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,7 @@ import BudgetPlans from "./BudgetPlans";
 import BudgetHistory from "./BudgetHistory";
 import { EventList, WalletChart, EVENT_LABELS, walletTone, money } from "./MoneyActivity";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { usePreferences } from "@/hooks/usePreferences";
 import { usePublicSettings } from "@/lib/public-settings";
 import { apiErrorMessage } from "@/lib/api/client";
 import { walletsApi, moneyApi, moneyChanged, MONEY_CURRENCIES, type Wallet, type WalletType, type MoneyEvent, type MoneySummary, type MoneyActivity, type Budget, type WalletSettlement } from "@/lib/api/wallets";
@@ -32,7 +34,9 @@ export default function MoneyPage({view}:{view:string[]}) {
   const {balancesHidden, formatBalance}=useWalletPrivacy();
   const section=(SECTIONS.some(s=>s.value===view[0])?view[0]:"overview") as Section;
   const detailId=section==="wallets"?view[1]:undefined;
-  const [currency,setCurrency]=useState("MAD");
+  const {currency:preferredCurrency}=usePreferences();
+  const [currencyChoice,setCurrency]=useState<string|null>(null);
+  const currency=currencyChoice || preferredCurrency;
   const [month,setMonth]=useState(()=>new Date().toISOString().slice(0,7));
   const [page,setPage]=useState(1), [walletFilter,setWalletFilter]=useState(""), [kind,setKind]=useState("");
   const [data,setData]=useState<Data|null>(null), [loading,setLoading]=useState(true), [error,setError]=useState("");
@@ -88,7 +92,7 @@ export default function MoneyPage({view}:{view:string[]}) {
     {current && <section id={`money-panel-${section}`} role="tabpanel" aria-labelledby={`money-${section}`} aria-busy={loading}>
       {(section==="wallets" || section==="overview") && !detailId && <div className="mw-dashboard"><div className="mw-main">
         <section className="mw-accounts"><div className="mw-balance-head"><div><p>Total balance <span>{known.length} wallets</span></p><div className="mw-total-line"><strong className="mw-total num" data-testid="wallet-total" aria-label={balancesHidden?"Balance hidden":undefined}>{formatBalance(current.summary.balance,currency)}</strong><WalletVisibilityButton/></div></div><button className="btn btn-ghost" onClick={()=>{setTypesOpen(true);setTypeError("");}}>Wallet types</button></div>
-          {wallets.length?<><div className="mw-carousel" ref={carousel} onScroll={syncScroll} tabIndex={0} role="region" aria-label="Your wallets">{wallets.map(w=><article key={w.id} className={`mw-wallet ${walletTone(w)}`}><div className="mw-wallet-top">{walletTone(w)==="bank"?<Landmark size={24}/>:walletTone(w)==="cash"?<Banknote size={24}/>:<WalletIcon size={24}/>}<span title={w.category}>{w.category}</span></div><h2>{w.name}</h2><strong className="num">{balancesHidden?MASKED_BALANCE:w.needs_currency?Number(w.balance).toLocaleString():formatBalance(w.balance,w.currency)}</strong><div className="mw-wallet-bottom"><small>{w.needs_currency?"Confirm currency":w.archived_at?"Archived wallet":`Personal wallet · ${w.currency}`}</small><Link href={`/money/wallets/${w.id}`} aria-label={`View ${w.name}`}><ChevronRight size={18}/></Link></div></article>)}</div><div className="mw-carousel-controls"><span>Balances you record, kept in one place.</span><div><button disabled={scrollPosition.first} aria-label="Previous wallet" onClick={()=>carousel.current?.scrollBy({left:-320,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}><ChevronLeft size={16}/></button><button disabled={scrollPosition.last} aria-label="Next wallet" onClick={()=>carousel.current?.scrollBy({left:320,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}><ChevronRight size={16}/></button></div></div></>:empty}
+          {wallets.length?<><div className="mw-carousel" ref={carousel} onScroll={syncScroll} tabIndex={0} role="region" aria-label="Your wallets">{wallets.map(w=><article key={w.id} className={`mw-wallet ${walletTone(w)}`}><div className="mw-wallet-top">{walletTone(w)==="bank"?<Landmark size={24}/>:walletTone(w)==="cash"?<Banknote size={24}/>:<WalletIcon size={24}/>}<span title={w.category}>{w.category}</span></div><h2>{w.name}</h2><strong className="num">{balancesHidden?MASKED_BALANCE:w.needs_currency?fmtNumber(Number(w.balance)):formatBalance(w.balance,w.currency)}</strong><div className="mw-wallet-bottom"><small>{w.needs_currency?"Confirm currency":w.archived_at?"Archived wallet":`Personal wallet · ${w.currency}`}</small><Link href={`/money/wallets/${w.id}`} aria-label={`View ${w.name}`}><ChevronRight size={18}/></Link></div></article>)}</div><div className="mw-carousel-controls"><span>Balances you record, kept in one place.</span><div><button disabled={scrollPosition.first} aria-label="Previous wallet" onClick={()=>carousel.current?.scrollBy({left:-320,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}><ChevronLeft size={16}/></button><button disabled={scrollPosition.last} aria-label="Next wallet" onClick={()=>carousel.current?.scrollBy({left:320,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}><ChevronRight size={16}/></button></div></div></>:empty}
           {wallets.some(w=>w.needs_currency) && <p className="field-help">Confirm older wallets&apos; currencies in their details to include them in totals.</p>}
           {current.wallets.some(w=>w.archived_at) && <label className="mw-show-archived"><input type="checkbox" checked={showArchived} onChange={e=>setShowArchived(e.target.checked)}/>Show archived wallets</label>}
           <div className="mw-quick-actions">{ACTIONS.slice(0,4).map(([value,label,Icon])=><button key={value} onClick={()=>setAction(value)}><span className={value}><Icon size={18}/></span>{label}</button>)}</div>

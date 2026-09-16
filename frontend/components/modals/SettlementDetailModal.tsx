@@ -1,10 +1,11 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/modals/SettlementDetailModal.tsx
 
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import type { ApiSettlement } from "@/lib/api/types";
 
 interface Props {
@@ -25,10 +26,11 @@ const STATUS_STYLE: Record<string, { bg: string; label: string; pillClass: strin
 function fmtFull(iso?: string) {
   if (!iso) return "—";
   const d = new Date(iso.endsWith("Z") ? iso : iso + "Z");
-  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return fmtDate(d);
 }
 
 export default function SettlementDetailModal({ settlement: s, myId, currency, onClose, onAccept, onReject }: Props) {
+  usePreferences();
   const [acting, setActing] = useState(false);
   const style = STATUS_STYLE[s.status] ?? STATUS_STYLE.pending;
 

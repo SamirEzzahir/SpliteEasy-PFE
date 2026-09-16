@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 import { useId, useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { fmt } from "@/lib/format";
@@ -23,6 +24,7 @@ interface Props {
 
 
 export default function RecordSettlementModal({ currency = "MAD", myUsername = "You", recipients, defaultRecipientId, defaultAmount, onClose, onConfirm }: Props) {
+  usePreferences();
   const formId = useId();
   const [selectedId, setSelectedId] = useState(defaultRecipientId || "");
   const [amount, setAmount] = useState(defaultAmount != null ? String(defaultAmount) : String(recipients.find((r) => r.id === defaultRecipientId)?.amount || ""));

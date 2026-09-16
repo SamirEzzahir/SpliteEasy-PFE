@@ -1,9 +1,10 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/modals/LogIncomeModal.tsx
 
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
-import { fmt } from "@/lib/format";
+import { fmt, fmt0 } from "@/lib/format";
 import type { Jar } from "@/lib/types";
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function LogIncomeModal({ jars, onClose, onLog }: Props) {
+  usePreferences();
   const [amount, setAmount] = useState("");
   const [label, setLabel] = useState(
     "Salary " + new Date().toLocaleString("en-US", { month: "long", year: "numeric" }),
@@ -55,7 +57,7 @@ export default function LogIncomeModal({ jars, onClose, onLog }: Props) {
           <div className="li-quick">
             {[1000, 2500, 5000, 7500].map((v) => (
               <button key={v} onClick={() => setAmount(String(v))}>
-                ${v.toLocaleString()}
+                {fmt0(v)}
               </button>
             ))}
           </div>

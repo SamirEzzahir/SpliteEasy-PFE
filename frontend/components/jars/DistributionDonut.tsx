@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/DistributionDonut.tsx
 
 import { arc, fmt0 } from "@/lib/format";
@@ -8,6 +9,7 @@ import type { Jar } from "@/lib/types";
 interface Props { jars: Jar[]; total: number; }
 
 export default function DistributionDonut({ jars, total }: Props) {
+  usePreferences();
   const segments = buildDonutSegments(jars);
   return (
     <div className="card donut-card">

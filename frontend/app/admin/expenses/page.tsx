@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/expenses/page.tsx — every expense on the platform: search and delete.
 
 import { useCallback, useEffect, useState } from "react";
@@ -13,6 +14,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 export default function AdminExpensesPage() {
+  usePreferences();
   const { has } = usePerms();
   const canManage = has("manage_expenses");
 

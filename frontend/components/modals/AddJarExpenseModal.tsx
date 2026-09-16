@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/modals/AddJarExpenseModal.tsx — small jar-source expense modal
 
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function AddJarExpenseModal({ jars, onClose, onAdd }: Props) {
+  usePreferences();
   const [amount, setAmount] = useState("");
   const [label, setLabel] = useState("");
   const [jarId, setJarId] = useState(jars[0].id);

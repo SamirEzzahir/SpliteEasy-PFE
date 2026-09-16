@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
@@ -7,7 +8,7 @@ import { PeoplePicker } from "@/components/ui/PeoplePicker";
 import { CATEGORIES, personById } from "@/lib/data";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { fmt } from "@/lib/format";
+import { fmt, fmtNumber } from "@/lib/format";
 import { allocateShares } from "@/lib/expense-split";
 import { expenseDateInput, expenseTimestamp } from "@/lib/expense-date";
 import type { Expense } from "@/lib/types";
@@ -18,6 +19,7 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
   initial?: Expense; defaultGroupId?: string; onClose: () => void;
   onSubmit: (expense: Expense) => Promise<void> | void;
 }) {
+  usePreferences();
   const { groups, loading } = useApp();
   const { user } = useAuth();
   const formId = useId();
@@ -126,7 +128,7 @@ export default function ExpenseForm({ initial, defaultGroupId, onClose, onSubmit
             </div>)}
           </div>
           <p className={`split-feedback${splitValid && splitIds.length ? " is-valid" : ""}`} role="status">
-            {!splitIds.length ? "Select at least one person." : splitType === "equal" ? "Shared equally. Any remaining cent is included in the shares above." : splitValid ? "Fully allocated — the shares match the total." : splitType === "percentage" ? `${Number(remaining.toFixed(2))}% remaining to allocate` : `${fmt(remaining, currency)} remaining to allocate`}
+            {!splitIds.length ? "Select at least one person." : splitType === "equal" ? "Shared equally. Any remaining cent is included in the shares above." : splitValid ? "Fully allocated — the shares match the total." : splitType === "percentage" ? `${fmtNumber(remaining, { maximumFractionDigits: 2 })}% remaining to allocate` : `${fmt(remaining, currency)} remaining to allocate`}
           </p>
         </section>
         <details className="optional-details"><summary>Date, category & note</summary><div className="form-grid-2">

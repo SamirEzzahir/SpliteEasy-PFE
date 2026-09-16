@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/groups/[id]/page.tsx — Group Activity (expenses + settlements)
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ import StatCard from "@/components/ui/StatCard";
 import Pagination from "@/components/ui/Pagination";
 import SharePill from "@/components/ui/SharePill";
 import { CATEGORIES, categoryById, personById } from "@/lib/data";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { expensesApi } from "@/lib/api/expenses";
 import { settleApi } from "@/lib/api/settle";
@@ -35,6 +36,7 @@ type UnifiedRow =
   | { kind: "settlement"; data: ApiSettlement; ts: number };
 
 export default function GroupDetailPage() {
+  usePreferences();
   const params  = useParams<{ id: string }>();
   const router  = useRouter();
   const { user } = useAuth();
@@ -455,7 +457,7 @@ export default function GroupDetailPage() {
                   const d       = s.created_at
                     ? new Date(s.created_at.endsWith("Z") ? s.created_at : s.created_at + "Z")
                     : null;
-                  const dateStr = d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                  const dateStr = d ? fmtDate(d) : "—";
                   const timeStr = d ? d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
                   const isActing = actingSettlementId === s.id;
 
@@ -598,7 +600,7 @@ export default function GroupDetailPage() {
                       )}
                     </td>
                     <td>
-                      <div className="exp-date">{e.date || "No date"}</div>
+                      <div className="exp-date">{fmtDate(e._rawDate || e.date) || "No date"}</div>
                       <div className="exp-time">{e.time || ""}</div>
                     </td>
                     <td style={{ textAlign: "right" }}>
@@ -659,7 +661,7 @@ export default function GroupDetailPage() {
                       </div>
                       <div className="gx-exp-card-title">
                         <div className="nm" style={{ color: "var(--teal)", fontWeight: 700 }}>Settlement</div>
-                        <div className="ds">{d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</div>
+                        <div className="ds">{d ? fmtDate(d) : "—"}</div>
                       </div>
                       <div className="gx-exp-card-amount" style={{ color: "var(--teal)" }}>
                         {fmt(s.amount, currency)}
@@ -739,7 +741,7 @@ export default function GroupDetailPage() {
                     </div>
                     <div className="gx-exp-card-title">
                       <div className="nm">{e.title}</div>
-                      <div className="ds">{e.date || "No date"} · {e.time}</div>
+                      <div className="ds">{fmtDate(e._rawDate || e.date) || "No date"} · {e.time}</div>
                     </div>
                     <div className="gx-exp-card-amount">{fmt(e.amount, currency)}</div>
                   </div>

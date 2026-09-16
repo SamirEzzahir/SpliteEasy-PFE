@@ -1,6 +1,6 @@
 import { api } from "./client";
 
-export const MONEY_CURRENCIES = ["MAD", "EUR", "USD", "GBP", "CAD", "CHF", "AED", "SAR", "TND", "DZD"];
+export const MONEY_CURRENCIES = ["MAD", "EUR", "USD", "GBP", "CAD", "CHF", "AED", "SAR", "TND", "DZD", "EGP", "AUD", "JPY", "INR", "BRL", "TRY"];
 export interface WalletType { id: string; name: string; user_id: string | null; archived_at: string | null; }
 export interface Wallet { id: string; name: string; category: string; wallet_type_id: string; user_id: string; balance: string; currency: string | null; archived_at: string | null; needs_currency: boolean; }
 export interface MoneyEvent { id: string; kind: string; description: string; amount: string; currency: string; personal_share: string | null; date: string; created_at: string; source_type: string | null; source_id: string | null; reversed_at: string | null; reversal_of: string | null; entries: {wallet_id: string; wallet_name: string; amount: string; balance_after: string}[]; }

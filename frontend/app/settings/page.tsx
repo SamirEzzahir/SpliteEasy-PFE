@@ -8,6 +8,9 @@ import Icon from "@/components/Icon";
 import { apiErrorMessage } from "@/lib/api/client";
 import { usersApi } from "@/lib/api/users";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { usePreferences } from "@/hooks/usePreferences";
+import { setDisplayPreference, setPreferredCurrency } from "@/lib/preferences";
+import { fmt, fmtDate } from "@/lib/format";
 
 type ThemeChoice = "system" | "light" | "dark";
 type LangId = "en" | "fr" | "ar" | "es" | "de";
@@ -63,9 +66,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeChoice>("light");
   const [lang, setLang] = useState<LangId>("en");
-  const [currency, setCurrency] = useState("MAD");
-  const [dateFormat, setDateFormat] = useState("dmy");
-  const [numberFormat, setNumberFormat] = useState("dot");
+  const { currency, dateFormat, numberFormat } = usePreferences();
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -87,7 +88,6 @@ export default function SettingsPage() {
     setUsername(user.username || "");
     setEmail(user.email || "");
     setPhone(user.phone || "");
-    if (user.preferred_currency) setCurrency(user.preferred_currency);
   }, [user]);
 
   useEffect(() => {
@@ -95,9 +95,6 @@ export default function SettingsPage() {
     const storedTheme = (localStorage.getItem("spliteasy.theme") as ThemeChoice | null) || "light";
     setTheme(storedTheme);
     setLang((localStorage.getItem("spliteasy.lang") as LangId | null) || "en");
-    setCurrency(localStorage.getItem("spliteasy.currency") || "MAD");
-    setDateFormat(localStorage.getItem("spliteasy.dateFormat") || "dmy");
-    setNumberFormat(localStorage.getItem("spliteasy.numberFormat") || "dot");
     setPreferencesReady(true);
 
     const onThemeChange = (event: Event) => {
@@ -134,20 +131,10 @@ export default function SettingsPage() {
 
   const saveCurrency = async (next: string) => {
     setCurrencySaving(true); setPreferenceError("");
-    try { await usersApi.updatePreferredCurrency(next); setCurrency(next); localStorage.setItem("spliteasy.currency", next); await refresh(); }
+    try { await usersApi.updatePreferredCurrency(next); setPreferredCurrency(next); await refresh(); }
     catch { setPreferenceError("Could not save your currency preference. Please try again."); }
     finally { setCurrencySaving(false); }
   };
-
-  useEffect(() => {
-    if (!preferencesReady || typeof window === "undefined") return;
-    localStorage.setItem("spliteasy.dateFormat", dateFormat);
-  }, [dateFormat, preferencesReady]);
-
-  useEffect(() => {
-    if (!preferencesReady || typeof window === "undefined") return;
-    localStorage.setItem("spliteasy.numberFormat", numberFormat);
-  }, [numberFormat, preferencesReady]);
 
   const flashSaved = () => {
     setSavedFlash(true);
@@ -339,7 +326,7 @@ export default function SettingsPage() {
           <div className="pref-tile">
             <div className="ic"><Icon name="calendar" size={18} /></div>
             <div className="lbl">Date format</div>
-            <select value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
+            <select aria-label="Date format" value={dateFormat} onChange={(e) => setDisplayPreference("dateFormat", e.target.value)}>
               <option value="dmy">DD / MM / YYYY</option>
               <option value="mdy">MM / DD / YYYY</option>
               <option value="iso">YYYY-MM-DD</option>
@@ -348,7 +335,7 @@ export default function SettingsPage() {
           <div className="pref-tile">
             <div className="ic"><Icon name="hash" size={18} /></div>
             <div className="lbl">Number format</div>
-            <select value={numberFormat} onChange={(e) => setNumberFormat(e.target.value)}>
+            <select aria-label="Number format" value={numberFormat} onChange={(e) => setDisplayPreference("numberFormat", e.target.value)}>
               <option value="dot">1,234.56</option>
               <option value="comma">1.234,56</option>
               <option value="space">1 234,56</option>
@@ -356,6 +343,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      <p className="field-help" aria-live="polite">Preview: {fmt(1234.56)} · {fmtDate("2026-09-17")}. Currency sets defaults for new records; existing records keep their own currency.</p>
 
       <div className="settings-eyebrow">Display</div>
 

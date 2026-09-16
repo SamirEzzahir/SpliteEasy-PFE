@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/modals/ManageStrategyModal.tsx
 
 import { useMemo, useState } from "react";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function ManageStrategyModal({ jars, income, currentStrategy, onClose, onSave }: Props) {
+  usePreferences();
   const [pcts, setPcts] = useState<Record<string, number>>(() =>
     Object.fromEntries(jars.map((j) => [j.id, j.pct])),
   );

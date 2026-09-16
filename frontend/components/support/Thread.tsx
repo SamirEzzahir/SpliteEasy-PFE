@@ -1,4 +1,6 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
+import { fmtDateTime } from "@/lib/format";
 // components/support/Thread.tsx — ticket conversation: the original message as the
 // first bubble, then the reply thread, then a composer. Shared by the user portal
 // and the admin panel; own messages align right.
@@ -30,14 +32,14 @@ interface Props {
 }
 
 function time(s: string): string {
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return fmtDateTime(s);
 }
 
 export default function Thread({
   requesterId, requesterName, description, descriptionDate, replies, meId,
   onSend, disabled, disabledNote, placeholder = "Write a reply…",
 }: Props) {
+  usePreferences();
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 

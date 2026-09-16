@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/groups/page.tsx — every group on the platform: search, delete, transfer ownership.
 
 import { useCallback, useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 export default function AdminGroupsPage() {
+  usePreferences();
   const { has } = usePerms();
   const canManage = has("manage_groups");
 

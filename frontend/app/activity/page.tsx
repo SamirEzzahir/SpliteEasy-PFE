@@ -1,4 +1,6 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
+import { fmtDate } from "@/lib/format";
 // app/activity/page.tsx
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -29,7 +31,7 @@ function timeAgo(value: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return fmtDate(date);
 }
 
 interface Meta { kind: Exclude<Kind, "all">; icon: string; color: string; soft: string; label: string }
@@ -64,6 +66,7 @@ function bucketLabel(value: string): string {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function ActivityPage() {
+  usePreferences();
   const [items, setItems] = useState<ApiActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

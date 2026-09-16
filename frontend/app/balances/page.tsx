@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/balances/page.tsx — Read-focused overview of who owes what.
 // Complements /settlements (the action flow) by breaking balances down two ways:
 // By Friend (netted across all groups, from the store) and By Group (per-group
@@ -25,6 +26,7 @@ function status(net: number): { label: string; color: string; soft: string; amou
 }
 
 export default function BalancesPage() {
+  usePreferences();
   const router = useRouter();
   const { user } = useAuth();
   const { friends, groups, loading } = useApp();

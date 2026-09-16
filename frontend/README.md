@@ -178,6 +178,22 @@ The **user** has a `preferred_currency` field (set in Settings → Preferences) 
 
 **Currency → symbol mapping** lives in `lib/format.ts` (`currencySymbol(code)`). Supported: USD, EUR, GBP, MAD, SAR, AED, DZD, TND, EGP, JPY, CAD, AUD, CHF, INR, BRL, MXN, TRY, KWD, QAR, CNY.
 
+### Display preferences
+
+Settings → Preferences applies the saved profile currency to new-group defaults,
+My Money and debt/loan currency filters, and amounts without an explicit currency.
+Existing expenses, groups, and wallets retain their recorded currency; this does not convert amounts.
+
+Date format (`dmy`, `mdy`, `iso`) and number format (`dot`, `comma`, `space`) are
+saved in this browser and update open screens and other tabs immediately.
+`PreferencesProvider` loads these settings on startup; components calling the shared
+`fmt`, `fmt0`, `fmtNumber`, `fmtDate`, or `fmtDateTime` helpers subscribe with
+`usePreferences()` so they render again when a preference changes. Format dates
+from the raw timestamp at render time, rather than caching a formatted label.
+Native date and number inputs keep their browser input behavior and canonical API values.
+
+Regression checks: `node scripts/check-preferences.cjs` from the repository root.
+
 ---
 
 ## Theme System

@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fmt } from "@/lib/format";
+import { usePreferences } from "@/hooks/usePreferences";
 
 const CHANGE_EVENT = "spliteasy:wallet-privacy";
 const memory = new Map<string, boolean>();
@@ -31,6 +32,7 @@ function readHidden(key: string | null) {
 const serverSnapshot = () => true;
 
 export function useWalletPrivacy() {
+  usePreferences();
   const { user } = useAuth();
   const key = user ? `spliteasy.wallet-privacy.${user.id}` : null;
   const snapshot = useCallback(() => readHidden(key), [key]);

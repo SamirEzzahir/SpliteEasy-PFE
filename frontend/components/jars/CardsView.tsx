@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/CardsView.tsx — default jar grid
 
 import Icon from "@/components/Icon";
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function CardsView({ jars, totals, onJarClick }: Props) {
+  usePreferences();
   return (
     <div className="jar-grid">
       {jars.map((j) => {

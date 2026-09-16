@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/dashboard/page.tsx — debt & settlement focused home (Splitwise-style)
 
 import { useState } from "react";
@@ -10,7 +11,7 @@ import Icon from "@/components/Icon";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useApp } from "@/lib/store";
 import { categoryById, personById } from "@/lib/data";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import StatCard from "@/components/ui/StatCard";
 import OnboardingGuide from "@/components/onboarding/OnboardingGuide";
 import OnboardingHelpButton from "@/components/onboarding/OnboardingHelpButton";
@@ -20,6 +21,7 @@ function safeCategory(id: string) {
 }
 
 export default function DashboardPage() {
+  usePreferences();
   const { user } = useAuth();
   const { expenses, groups, friends, addExpense, loading } = useApp();
   const [showAdd, setShowAdd] = useState(false);
@@ -140,7 +142,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="amount">
                       <b>{fmt(expense.amount, expense.currency || grp?.currency || "MAD")}</b>
-                      <span>{expense.date}</span>
+                      <span>{fmtDate(expense._rawDate || expense.date)}</span>
                     </div>
                   </Link>
                 );

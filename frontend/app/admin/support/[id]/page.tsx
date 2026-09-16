@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/support/[id]/page.tsx — admin ticket workspace: conversation + manage
 // (reply, status, priority, assign, resolve/close/reopen).
 
@@ -21,6 +22,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 export default function AdminTicketPage() {
+  usePreferences();
   const params = useParams<{ id: string }>();
   const ticketId = String(params.id);
   const { has } = usePerms();

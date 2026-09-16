@@ -1,4 +1,6 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
+import { fmtNumber } from "@/lib/format";
 import {useEffect,useState} from "react";
 import {Dialog} from "@/components/ui/dialog";
 import {api,apiErrorMessage} from "@/lib/api/client";
@@ -12,6 +14,7 @@ export function useBudgetPlans() {
 }
 
 export default function BudgetPlans({onClose}:{onClose:()=>void}) {
+  usePreferences();
   const {plans,error:loadError}=useBudgetPlans();
   const [name,setName]=useState('My budget plan'),[selected,setSelected]=useState('');
   const [percent,setPercent]=useState<Record<string,string>>(()=>Object.fromEntries(jars.map(([key,,pct])=>[key,String(pct)])));
@@ -33,7 +36,7 @@ export default function BudgetPlans({onClose}:{onClose:()=>void}) {
       <label>Plan<select value={selected} onChange={e=>choose(e.target.value)}><option value="">Create a plan</option>{plans.map(p=><option key={p.id} value={p.id}>{p.name}{p.user_id?'':' (copy shared plan)'}</option>)}</select></label>
       <label>Plan name<input required maxLength={100} value={name} onChange={e=>setName(e.target.value)}/></label>
       {jars.map(([key,label])=><label key={key}>{label} (%)<input required type="number" min="0" max="100" step="0.01" value={percent[key]} onChange={e=>setPercent({...percent,[key]:e.target.value})}/></label>)}
-      <p className="field-help">Total: {total.toFixed(2)}% of each income allocation. Choose this plan when you add income.</p>
+      <p className="field-help">Total: {fmtNumber(total, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% of each income allocation. Choose this plan when you add income.</p>
     </fieldset>{(error || loadError) && <p role="alert" className="form-error">{error || loadError}</p>}</form>
   </Dialog>;
 }

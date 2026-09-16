@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/friends/page.tsx
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +11,7 @@ import { personById } from "@/lib/data";
 import { activityApi, type ApiActivityLog } from "@/lib/api/activity";
 import { friendsApi, type ApiFriendSuggestion } from "@/lib/api/friends";
 import { registerUsers } from "@/lib/people-cache";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import type { FriendStatus } from "@/lib/types";
 
@@ -25,7 +26,7 @@ function timeAgo(value: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return fmtDate(date);
 }
 
 function activityIcon(activity: ApiActivityLog): { icon: string; color: string; soft: string } {
@@ -37,6 +38,7 @@ function activityIcon(activity: ApiActivityLog): { icon: string; color: string; 
 }
 
 export default function FriendsPage() {
+  usePreferences();
   const {
     friends,
     settleFriend,

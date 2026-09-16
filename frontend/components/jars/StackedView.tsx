@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/StackedView.tsx
 
 import Icon from "@/components/Icon";
@@ -8,6 +9,7 @@ import type { Jar } from "@/lib/types";
 interface Props { jars: Jar[]; totals: { income: number }; }
 
 export default function StackedView({ jars, totals }: Props) {
+  usePreferences();
   const totalIncome = totals.income || 0;
   return (
     <div className="card stacked-viz">

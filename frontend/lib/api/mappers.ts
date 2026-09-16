@@ -118,6 +118,7 @@ export function mapGroup(g: ApiGroup, extras: GroupExtras): Group {
     total: extras.total || g.total_amount || 0,
     balance: extras.balance,
     updated: formatRelativeDate(g.created_at),
+    _rawDate: g.created_at,
     ownerUsername: g.owner_username ?? undefined,
     ownerId: g.owner_id,
     isDefaultPersonal: g.is_default_personal === true,
@@ -340,6 +341,7 @@ export function mapJarTxToTx(t: ApiJarTransaction, jarUiIdByCode: Record<JarCode
   return {
     id: t.id,
     date,
+    _rawDate: t.created_at,
     desc: t.description || (isIncome ? "Income" : "Expense"),
     jarId: jarUiIdByCode[t.jar_type] || null,
     type: isIncome ? "income" : "expense",

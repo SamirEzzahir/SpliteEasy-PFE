@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/settlements/page.tsx — platform settlements: filter by status, cancel.
 
 import { useCallback, useEffect, useState } from "react";
@@ -21,6 +22,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AdminSettlementsPage() {
+  usePreferences();
   const { has } = usePerms();
   const canManage = has("manage_settlements");
 

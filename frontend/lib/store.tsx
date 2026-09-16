@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // lib/store.tsx — global app state, backed by the SplitEasy FastAPI backend.
 //
 // On mount (once a user is authenticated) the provider fetches:
@@ -85,6 +86,7 @@ interface AppState {
 const AppCtx = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  usePreferences();
   const { user } = useAuth();
 
   // ── jar state ────────────────────────────────────────────────────────────
@@ -138,6 +140,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .map((t) => mapJarTxToTx(t, JAR_UI_ID_BY_CODE));
       const incomeTx: Tx[] = logs.slice(0, 10).map((l) => ({
         id: `inc-${l.id}`,
+        _rawDate: l.distributed_at,
         date: l.distributed_at
           ? new Date(l.distributed_at).toLocaleDateString("en-US", {
               month: "short", day: "numeric", year: "numeric",
@@ -336,7 +339,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           share_amount: exp.splitAmounts?.[id] ?? exp.amount / Math.max(1, exp.splitIds.length),
         })),
       });
-      showToast("Expense added · " + fmt(exp.amount), "success");
+      showToast("Expense added · " + fmt(exp.amount, exp.currency), "success");
       await refetchSplitting();
     } catch {
       showToast("Failed to add expense", "error");

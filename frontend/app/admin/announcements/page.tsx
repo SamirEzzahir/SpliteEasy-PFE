@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/announcements/page.tsx — create, publish, and manage announcements.
 
 import { useCallback, useEffect, useState } from "react";
@@ -29,6 +30,7 @@ interface EditorState {
 const blankEditor = (): EditorState => ({ title: "", body: "", type: "feature", visibility: "everyone", delivery: "banner", publish_now: true, expires_at: "" });
 
 export default function AdminAnnouncementsPage() {
+  usePreferences();
   const { has } = usePerms();
   const canManage = has("manage_announcements");
 

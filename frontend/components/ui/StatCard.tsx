@@ -1,10 +1,11 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/ui/StatCard.tsx — the single canonical stat card for the whole app.
 // Replaces .dash-stat-card / .groups-summary / .gx-stat / ad-hoc .stat-c usages.
 
 import type { ReactNode } from "react";
 import Icon from "@/components/Icon";
-import { fmt } from "@/lib/format";
+import { fmt, fmtNumber } from "@/lib/format";
 
 export type StatTone = "primary" | "success" | "danger" | "warn" | "info" | "neutral";
 
@@ -37,9 +38,10 @@ export default function StatCard({
   icon, label, value, currency, sub,
   tone = "neutral", colorValue = true, onClick, active, title,
 }: Props) {
+  usePreferences();
   const t = TONE[tone];
   const displayValue =
-    typeof value === "number" ? (currency ? fmt(value, currency) : value.toLocaleString()) : value;
+    typeof value === "number" ? (currency ? fmt(value, currency) : fmtNumber(value)) : value;
 
   const inner = (
     <>

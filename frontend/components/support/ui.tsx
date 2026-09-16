@@ -1,4 +1,5 @@
 "use client";
+import { fmtDateTime } from "@/lib/format";
 // components/support/ui.tsx — shared ticket vocabulary + badges used by BOTH the
 // user portal (/support) and the admin panel (/admin/support). Badges are
 // self-styled (inline) so they don't depend on admin-only CSS.
@@ -26,11 +27,7 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 export function fmtWhen(s?: string | null): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  return Number.isNaN(d.getTime())
-    ? "—"
-    : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return fmtDateTime(s);
 }
 
 export const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([id, label]) => ({ id, label }));

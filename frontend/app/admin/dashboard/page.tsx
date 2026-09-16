@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/dashboard/page.tsx — platform overview: KPI cards, trend charts, recent admin activity.
 
 import { useEffect, useState } from "react";
@@ -25,6 +26,7 @@ function prettyAction(a: string): string {
 }
 
 export default function AdminDashboardPage() {
+  usePreferences();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activity, setActivity] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);

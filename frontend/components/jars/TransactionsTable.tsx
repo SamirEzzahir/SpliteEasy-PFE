@@ -1,9 +1,10 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/TransactionsTable.tsx
 
 import { useMemo } from "react";
 import Icon from "@/components/Icon";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import type { Jar, Tx } from "@/lib/types";
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function TransactionsTable({ tx, jars, onAddExpense }: Props) {
+  usePreferences();
   const jarById = useMemo(() => Object.fromEntries(jars.map((j) => [j.id, j])), [jars]);
   return (
     <div className="card tx-card">
@@ -50,7 +52,7 @@ export default function TransactionsTable({ tx, jars, onAddExpense }: Props) {
               const j = t.jarId ? jarById[t.jarId] : null;
               return (
                 <tr key={t.id}>
-                  <td style={{ color: "var(--ink-3)" }}>{t.date}</td>
+                  <td style={{ color: "var(--ink-3)" }}>{fmtDate(t._rawDate || t.date)}</td>
                   <td style={{ color: "var(--ink)", fontWeight: 500 }}>{t.desc}</td>
                   <td>
                     {j ? (

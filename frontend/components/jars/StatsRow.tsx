@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/StatsRow.tsx
 
 import { useMemo } from "react";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function StatsRow({ income, hasIncome, totalInJars, jars, onOpenStrategy }: Props) {
+  usePreferences();
   const health = useMemo(() => {
     if (!hasIncome) return 0;
     let score = 0;

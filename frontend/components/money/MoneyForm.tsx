@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 import { useId, useState } from "react";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/dialog";
@@ -15,6 +16,7 @@ export default function MoneyForm({action,wallets,types,currency,settlements,bud
   action: MoneyAction; wallets: Wallet[]; types: WalletType[]; currency: string; settlements: WalletSettlement[]; budgets: Budget[];
   initial?: Wallet; onClose:()=>void; onSaved:()=>void;
 }) {
+  usePreferences();
   const formId=useId();
   const {balancesHidden,formatBalance}=useWalletPrivacy();
   const [key]=useState(()=>crypto.randomUUID());

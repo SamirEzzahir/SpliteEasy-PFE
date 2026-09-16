@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/support/[id]/page.tsx — a user's own ticket: details, conversation, close.
 
 import { useCallback, useEffect, useState } from "react";
@@ -15,6 +16,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 export default function SupportTicketPage() {
+  usePreferences();
   const params = useParams<{ id: string }>();
   const ticketId = String(params.id);
   const { user } = useAuth();

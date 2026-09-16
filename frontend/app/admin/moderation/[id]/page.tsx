@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/moderation/[id]/page.tsx — review a report: status, notes, warn, and a
 // jump to the reported user (where suspend/ban already live — no duplicated logic).
 
@@ -15,6 +16,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 export default function AdminReportPage() {
+  usePreferences();
   const params = useParams<{ id: string }>();
   const reportId = String(params.id);
   const { has } = usePerms();

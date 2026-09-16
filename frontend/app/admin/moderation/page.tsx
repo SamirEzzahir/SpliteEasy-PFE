@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/moderation/page.tsx — moderation queue: filter reports, drill into one.
 
 import { useCallback, useEffect, useState } from "react";
@@ -29,6 +30,7 @@ const REASON_FILTER = [
 ];
 
 export default function AdminModerationPage() {
+  usePreferences();
   const [rows, setRows] = useState<ModerationReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);

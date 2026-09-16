@@ -1,10 +1,11 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/modals/ExpenseDetailModal.tsx — read-only expense preview
 
 import Icon from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { categoryById, personById } from "@/lib/data";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import type { Expense, Group } from "@/lib/types";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit }: Props) {
+  usePreferences();
   const cat = categoryById(e.categoryId);
   const payer = personById(e.paidBy);
   const currency = group.currency || e.currency || "USD";
@@ -59,7 +61,7 @@ export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit 
             </div>
             <div className="detail-block">
               <span className="detail-lbl"><Icon name="receipt" size={14} /> Date</span>
-              <span className="detail-val">{e.date || "—"}</span>
+              <span className="detail-val">{fmtDate(e._rawDate || e.date) || "—"}</span>
               {e.time && <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{e.time}</span>}
             </div>
           </div>
@@ -109,7 +111,7 @@ export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit 
           <div className="detail-block" style={{ background: "var(--surface-2, #f8f9fa)", borderRadius: 10, padding: "10px 14px" }}>
             <span className="detail-lbl"><Icon name="receipt" size={14} /> Note</span>
             <span style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 4, display: "block" }}>
-              Added by <strong style={{ color: "var(--ink)" }}>{e.addedByUsername ?? "—"}</strong> on {e.date} {e.time}
+              Added by <strong style={{ color: "var(--ink)" }}>{e.addedByUsername ?? "—"}</strong> on {fmtDate(e._rawDate || e.date)} {e.time}
             </span>
           </div>
         </div>

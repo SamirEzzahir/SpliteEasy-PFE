@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/users/[id]/page.tsx — single user: profile, related counts, and the
 // full set of admin actions (role, status, reset password, force logout, delete).
 
@@ -17,6 +18,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "react-toastify";
 
 export default function AdminUserDetailPage() {
+  usePreferences();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const userId = String(params.id);

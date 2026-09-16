@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/support/page.tsx — user Support Center: list my tickets + create new ones.
 
 import { useCallback, useEffect, useState } from "react";
@@ -21,6 +22,7 @@ const STATUS_FILTER = [{ id: "", label: "All statuses" }, ...STATUS_OPTIONS];
 const CATEGORY_FILTER = [{ id: "", label: "All categories" }, ...CATEGORY_OPTIONS];
 
 export default function SupportPage() {
+  usePreferences();
   const [rows, setRows] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);

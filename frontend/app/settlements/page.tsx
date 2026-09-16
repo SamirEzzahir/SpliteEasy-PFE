@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/settlements/page.tsx — Global (cross-group) settlements.
 // Nets what you owe / are owed across ALL shared groups with each friend, using
 // the backend /settle/global/* endpoints, and lets you record → accept → reject
@@ -12,7 +13,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import PageTabs from "@/components/ui/PageTabs";
 import Icon from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import { settleApi } from "@/lib/api/settle";
 import { useAuth } from "@/lib/auth/AuthContext";
 import RecordSettlementModal from "@/components/modals/RecordSettlementModal";
@@ -48,6 +49,7 @@ function StatCardSkeleton() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function GlobalSettlementsPage() {
+  usePreferences();
   const { user } = useAuth();
 
   const [balances, setBalances] = useState<ApiGlobalBalance[]>([]);
@@ -218,7 +220,7 @@ export default function GlobalSettlementsPage() {
     if (diff < 3600) return `${Math.floor(diff / 60)}min ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     if (diff < 172800) return "Yesterday";
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return fmtDate(d);
   };
 
   // Guard: wait for auth to resolve before showing user-specific data.

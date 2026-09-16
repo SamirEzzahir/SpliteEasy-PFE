@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/users/page.tsx — user directory: search, filter, sort, paginate.
 // Heavy per-user actions live on the detail page (/admin/users/[id]).
 
@@ -29,6 +30,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function AdminUsersPage() {
+  usePreferences();
   const { has } = usePerms();
   const canManage = has("manage_users");
 

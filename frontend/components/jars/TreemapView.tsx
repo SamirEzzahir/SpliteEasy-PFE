@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/TreemapView.tsx
 
 import { fmt0 } from "@/lib/format";
@@ -9,6 +10,7 @@ const AREAS = ["a", "b", "c", "d", "e", "f"];
 interface Props { jars: Jar[]; totals: { income: number }; }
 
 export default function TreemapView({ jars, totals }: Props) {
+  usePreferences();
   const income = totals.income || 0;
   const sorted = [...jars].sort((a, b) => b.pct - a.pct);
   return (

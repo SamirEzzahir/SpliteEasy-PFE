@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/groups/[id]/settle/page.tsx — Group Settlement Page
 
 import { useCallback, useEffect, useState } from "react";
@@ -9,7 +10,7 @@ import { toast } from "react-toastify";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/ui/PageHeader";
 import { Avatar } from "@/components/Avatar";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import { settleApi } from "@/lib/api/settle";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useApp } from "@/lib/store";
@@ -54,6 +55,7 @@ function StatCardSkeleton() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function GroupSettlePage() {
+  usePreferences();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
@@ -231,7 +233,7 @@ export default function GroupSettlePage() {
     if (diff < 3600) return `${Math.floor(diff / 60)}min ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     if (diff < 172800) return "Yesterday";
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return fmtDate(d);
   };
 
   // Guard: wait for auth to resolve before showing user-specific data

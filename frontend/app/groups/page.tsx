@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/groups/page.tsx
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +13,7 @@ import CreateGroupModal from "@/components/modals/CreateGroupModal";
 import EditGroupModal from "@/components/modals/EditGroupModal";
 import ManageGroupMembersModal from "@/components/modals/ManageGroupMembersModal";
 import { categoryById, personById } from "@/lib/data";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate } from "@/lib/format";
 import { groupsApi } from "@/lib/api/groups";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -72,6 +73,7 @@ function settlementPct(group: Group) {
 }
 
 export default function GroupsPage() {
+  usePreferences();
   const { groups, createGroup, expenses, refetchSplitting, showToast, loading } = useApp();
   const { user } = useAuth();
   const router = useRouter();
@@ -387,7 +389,7 @@ export default function GroupsPage() {
                   </div>
                   <div className="body">
                     <div className="nm">{expense.title}</div>
-                    <div className="ds">{expense.date}</div>
+                    <div className="ds">{fmtDate(expense._rawDate || expense.date)}</div>
                   </div>
                   <div className="amt num">{fmt(expense.amount, group.currency)}</div>
                 </div>
@@ -490,6 +492,7 @@ export default function GroupsPage() {
               <>
                 <div className={view === "grid" ? "group-grid group-grid-modern" : "group-list-modern"}>
                   {pagedGroups.map((group) => {
+                    const lastExpense = expenses.find((expense) => expense.groupId === group.id);
                     const isSel = selected ? group.id === selected.id : false;
                     const balance = balanceMeta(group.balance, group.currency);
                     const visual = groupVisuals[group.type] || groupVisuals.social;
@@ -528,7 +531,7 @@ export default function GroupsPage() {
                           <div className="group-title-row">
                             <div>
                               <h2>{group.name}</h2>
-                              <p>{group.isDefaultPersonal ? "Your private expenses" : `${group.memberIds.length} members`} · Created {group.updated}</p>
+                              <p>{group.isDefaultPersonal ? "Your private expenses" : `${group.memberIds.length} members`} · Created {group._rawDate ? fmtDate(group._rawDate) : group.updated}</p>
                             </div>
                             {!group.isDefaultPersonal && <span className={"group-balance-pill " + balance.className}>
                               {balance.label}{balance.value ? `: ${balance.value}` : ""}
@@ -543,7 +546,7 @@ export default function GroupsPage() {
                             {!group.isDefaultPersonal && <AvatarStack ids={group.memberIds} max={5} size="sm" />}
                           </div>
 
-                          <p className="group-last-activity">Last expense: {expenses.find((e) => e.groupId === group.id)?.date || "No expenses yet"}</p>
+                          <p className="group-last-activity">Last expense: {lastExpense ? fmtDate(lastExpense._rawDate || lastExpense.date) : "No expenses yet"}</p>
 
                           <div className="group-card-actions">
                             <Link href={`/groups/${group.id}`} className="btn btn-primary" onClick={(event) => event.stopPropagation()}>
@@ -664,7 +667,7 @@ export default function GroupsPage() {
                         </div>
                         <div className="body">
                           <div className="nm">{expense.title}</div>
-                          <div className="ds">{expense.date}</div>
+                          <div className="ds">{fmtDate(expense._rawDate || expense.date)}</div>
                         </div>
                         <div className="amt num">{fmt(expense.amount, selected?.currency)}</div>
                       </div>

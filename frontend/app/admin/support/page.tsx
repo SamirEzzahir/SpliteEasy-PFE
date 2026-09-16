@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/support/page.tsx — admin ticket queue: search, filter, drill into a ticket.
 
 import { useCallback, useEffect, useState } from "react";
@@ -20,6 +21,7 @@ const STATUS_FILTER = [{ id: "", label: "All statuses" }, ...STATUS_OPTIONS];
 const PRIORITY_FILTER = [{ id: "", label: "All priorities" }, ...PRIORITY_OPTIONS];
 
 export default function AdminSupportPage() {
+  usePreferences();
   const [rows, setRows] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);

@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/expenses/page.tsx
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +14,7 @@ import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
 import EditExpenseFullModal from "@/components/modals/EditExpenseFullModal";
 import ExpenseDetailModal from "@/components/modals/ExpenseDetailModal";
 import { CATEGORIES, categoryById, personById } from "@/lib/data";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate, fmtNumber } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { expensesApi } from "@/lib/api/expenses";
@@ -112,6 +113,7 @@ function SortTh({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
+  usePreferences();
   const { expenses, addExpense, groups, showToast, loading, refetchSplitting } = useApp();
   const { user } = useAuth();
 
@@ -263,7 +265,7 @@ export default function ExpensesPage() {
     const pos = delta >= 0;
     return (
       <>
-        <span className={`delta ${pos ? "neg" : "pos"}`}>{pos ? "↑" : "↓"} {Math.abs(delta).toFixed(1)}%</span>
+        <span className={`delta ${pos ? "neg" : "pos"}`}>{pos ? "↑" : "↓"} {fmtNumber(Math.abs(delta), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
         {" "}vs last month
       </>
     );
@@ -335,7 +337,7 @@ export default function ExpensesPage() {
         e.amount.toFixed(2),
         e.currency ?? userCurrency,
         share ? `"${share.label}"` : "",
-        e.date,
+        fmtDate(e._rawDate || e.date),
       ].join(",");
     });
     const csv = [headers.join(","), ...rows].join("\n");
@@ -394,7 +396,7 @@ export default function ExpensesPage() {
           )}
         </td>
         <td style={{ whiteSpace: "nowrap" }}>
-          <div className="exp-date">{e.date || "No date"}</div>
+          <div className="exp-date">{fmtDate(e._rawDate || e.date) || "No date"}</div>
           <div className="exp-time">{e.time}</div>
         </td>
         <td>
@@ -428,7 +430,7 @@ export default function ExpensesPage() {
           </div>
           <div className="gx-exp-card-title">
             <div className="nm">{e.title}</div>
-            <div className="ds">{e.date || "No date"}{e.time ? ` · ${e.time}` : ""}</div>
+            <div className="ds">{fmtDate(e._rawDate || e.date) || "No date"}{e.time ? ` · ${e.time}` : ""}</div>
           </div>
           <div className="gx-exp-card-amount">{fmt(e.amount, e.currency)}</div>
         </div>

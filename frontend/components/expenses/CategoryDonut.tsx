@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/expenses/CategoryDonut.tsx
 
 import { arc, fmt0 } from "@/lib/format";
@@ -10,6 +11,7 @@ interface Props { data: DataItem[]; total: number; }
 const GAP_DEG = 3; // degrees of blank space between each segment
 
 export default function CategoryDonut({ data, total }: Props) {
+  usePreferences();
   const hasGap = data.length > 1;
   let acc = 0;
 

@@ -16,7 +16,7 @@ interface Props {
 export default function EditGroupModal({ group, onClose, onSaved, onToast }: Props) {
   const [name, setName] = useState(group.name);
   const [type, setType] = useState<GroupType>(group.type);
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState(group.currency || "MAD");
   const [photo, setPhoto] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +95,7 @@ export default function EditGroupModal({ group, onClose, onSaved, onToast }: Pro
                   <option value="MAD">MAD - Moroccan Dirham</option>
                   <option value="EUR">EUR - Euro</option>
                   <option value="GBP">GBP - British Pound</option>
+                  {["SAR", "AED", "DZD", "TND", "EGP", "CAD", "AUD", "JPY", "CHF", "INR", "BRL", "TRY"].map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
               </div>
             </div>

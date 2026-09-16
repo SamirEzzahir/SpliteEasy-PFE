@@ -9,6 +9,7 @@ import { AuthProvider } from "@/lib/auth/AuthContext";
 import { WSProvider } from "@/lib/ws-context";
 import { PublicSettingsProvider } from "@/lib/public-settings";
 import ConditionalShell from "@/components/shell/ConditionalShell";
+import PreferencesProvider from "@/components/PreferencesProvider";
 
 export const metadata: Metadata = {
   title: "SplitEasy",
@@ -27,13 +28,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
         <AuthProvider>
-          <WSProvider>
-            <PublicSettingsProvider>
-              <AppProvider>
-                <ConditionalShell>{children}</ConditionalShell>
-              </AppProvider>
-            </PublicSettingsProvider>
-          </WSProvider>
+          <PreferencesProvider>
+            <WSProvider>
+              <PublicSettingsProvider>
+                <AppProvider>
+                  <ConditionalShell>{children}</ConditionalShell>
+                </AppProvider>
+              </PublicSettingsProvider>
+            </WSProvider>
+          </PreferencesProvider>
         </AuthProvider>
         <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme="colored" />
       </body>

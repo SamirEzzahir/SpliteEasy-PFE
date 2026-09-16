@@ -21,6 +21,7 @@ export type TxType = "expense" | "income";
 export interface Tx {
   id: string;
   date: string;
+  _rawDate?: string;
   desc: string;
   jarId: string | null;
   type: TxType;
@@ -64,6 +65,7 @@ export interface Group {
   total: number;
   balance: number;
   updated: string;
+  _rawDate?: string;
   ownerUsername?: string;
   ownerId?: string;
   isDefaultPersonal?: boolean;

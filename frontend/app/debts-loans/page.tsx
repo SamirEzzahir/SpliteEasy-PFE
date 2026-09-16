@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/debts-loans/page.tsx — Debts (you owe) & Loans (owed to you).
 // Redesigned with Tailwind + a local shadcn-style UI kit + Lucide icons.
 // Backend: /debts-loans/*. Theme colors are bound to the app's CSS variables so
@@ -16,7 +17,7 @@ import {
   Plus, ArrowUpRight, ArrowDownLeft, Scale, Receipt, Coins, HandCoins,
   Trash2, CalendarClock, Wallet, Check,
 } from "lucide-react";
-import { fmt } from "@/lib/format";
+import { fmt, fmtDate, fmtNumber, displayDate } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -205,7 +206,9 @@ function RepaymentDialog({row,tab,onClose,onSaved}:{row:Row;tab:Tab;onClose:()=>
 
 export default function DebtsLoansPage() {
   const { user } = useAuth();
-  const [currency,setCurrency] = useState("MAD");
+  const { currency: preferredCurrency } = usePreferences();
+  const [currencyChoice,setCurrency] = useState<string | null>(null);
+  const currency = currencyChoice || preferredCurrency;
   const [repaying,setRepaying] = useState<Row|null>(null);
 
   const [tab, setTab] = useState<Tab>("debts");
@@ -263,7 +266,7 @@ export default function DebtsLoansPage() {
   const remove = async (row: Row) => {
     const result = await Swal.fire({
       title: `Delete this ${isDebt ? "debt" : "loan"}?`,
-      text: `${row.name} — ${row.currency?fmt(row.original_amount, row.currency):row.original_amount.toFixed(2)}`,
+      text: `${row.name} — ${row.currency?fmt(row.original_amount, row.currency):fmtNumber(row.original_amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: "warning", showCancelButton: true,
       confirmButtonColor: "#ef4444", cancelButtonColor: "#6b7280", confirmButtonText: "Delete",
     });
@@ -286,9 +289,9 @@ export default function DebtsLoansPage() {
 
   const dueBadge = (iso?: string | null) => {
     if (!iso) return null;
-    const d = new Date(iso.endsWith("Z") ? iso : iso + "Z");
+    const d = displayDate(iso);
     const overdue = d.getTime() < Date.now();
-    const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const label = fmtDate(d);
     return (
       <Badge tone={overdue ? "danger" : "neutral"}>
         <CalendarClock size={11} /> {overdue ? `Overdue ${label}` : `Due ${label}`}
@@ -388,7 +391,7 @@ export default function DebtsLoansPage() {
                   <div className="mt-2 flex items-baseline gap-1.5">
                     <span className="text-[19px] font-extrabold tabular-nums tracking-tight"
                       style={{ color: paid ? "var(--ink-3)" : accent }}>
-                      {row.currency?fmt(row.remaining_amount, row.currency):`${row.remaining_amount.toFixed(2)} (currency unknown)`}
+                      {row.currency?fmt(row.remaining_amount, row.currency):`${fmtNumber(row.remaining_amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (currency unknown)`}
                     </span>
                     <span className="text-[12px] font-semibold text-[var(--ink-4)]">of {fmt(row.original_amount, currency)}</span>
                   </div>

@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { settleApi } from "@/lib/api/settle";
@@ -8,6 +9,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { fmt } from "@/lib/format";
 
 export default function PendingSettlements() {
+  usePreferences();
   const { groups, loading: groupsLoading } = useApp();
   const { user } = useAuth();
   const [items, setItems] = useState<Array<{ payment: ApiSettlement; groupId?: string }>>([]);

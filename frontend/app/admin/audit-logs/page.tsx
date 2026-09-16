@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // app/admin/audit-logs/page.tsx — immutable trail of admin actions, filterable.
 
 import { useCallback, useEffect, useState } from "react";
@@ -30,6 +31,7 @@ function prettyAction(a: string): string {
 }
 
 export default function AdminAuditLogsPage() {
+  usePreferences();
   const [rows, setRows] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);

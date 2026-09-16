@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/modals/CelebrateOverlay.tsx
 
 import { useMemo } from "react";
@@ -11,6 +12,7 @@ const COLORS = ["#5b4ef0", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9", "#ec4899"
 interface Props { jar: Jar; amount: number; onClose: () => void; }
 
 export default function CelebrateOverlay({ jar, amount, onClose }: Props) {
+  usePreferences();
   const confetti = useMemo(
     () =>
       Array.from({ length: 36 }, (_, i) => ({

@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "@/hooks/usePreferences";
 // components/jars/IllustratedView.tsx — SVG jar with liquid fill
 
 import { useId } from "react";
@@ -57,6 +58,7 @@ function JarSVG({ color, soft, fill, icon }: JarSVGProps) {
 interface Props { jars: Jar[]; totals: { income: number }; }
 
 export default function IllustratedView({ jars, totals }: Props) {
+  usePreferences();
   return (
     <div className="card">
       <div className="ill-grid">
