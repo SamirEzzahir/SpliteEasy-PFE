@@ -1,5 +1,6 @@
 "use client";
 import { usePreferences } from "@/hooks/usePreferences";
+import { expenseShare } from "@/lib/expense-split";
 // app/groups/[id]/page.tsx — Group Activity (expenses + settlements)
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -549,7 +550,7 @@ export default function GroupDetailPage() {
                 const e = row.data;
                 const cat          = categoryById(e.categoryId);
                 const payer        = personById(e.paidBy);
-                const yourShare    = e.amount / Math.max(1, e.splitIds.length || group?.memberIds.length || 1);
+                const yourShare    = expenseShare(e, currentUserId, group?.memberIds);
                 const youArePayer  = e.paidBy === currentUserId;
                 const youParticipate = e.splitIds.length === 0 || e.splitIds.includes(currentUserId);
                 const notInvolved  = !youArePayer && !youParticipate;
@@ -720,8 +721,7 @@ export default function GroupDetailPage() {
               const e = row.data;
               const cat        = categoryById(e.categoryId);
               const payer      = personById(e.paidBy);
-              const splitCount = e.splitIds.length || group?.memberIds.length || 1;
-              const yourShare  = e.amount / Math.max(1, splitCount);
+              const yourShare  = expenseShare(e, currentUserId, group?.memberIds);
               const youArePayer  = e.paidBy === currentUserId;
               const youParticipate = e.splitIds.length === 0 || e.splitIds.includes(currentUserId);
               const notInvolved  = !youArePayer && !youParticipate;

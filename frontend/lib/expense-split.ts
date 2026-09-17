@@ -1,3 +1,13 @@
+import type { Expense } from "./types";
+
+/** Saved shares are authoritative, including zero and a payer outside the split. */
+export function expenseShare(expense: Expense, userId: string, fallbackIds: string[] = []): number {
+  const saved = expense.splitAmounts?.[userId];
+  if (saved !== undefined) return saved;
+  const ids = expense.splitIds.length ? expense.splitIds : fallbackIds;
+  return allocateShares(expense.amount, ids)[userId] ?? 0;
+}
+
 /** Allocate whole cents deterministically; displayed shares equal submitted shares. */
 export function allocateShares(amount: number, ids: string[], weights?: Record<string, number>): Record<string, number> {
   const cents = Math.round(amount * 100);

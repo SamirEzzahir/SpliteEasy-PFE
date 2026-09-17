@@ -27,6 +27,7 @@ import type { Expense } from "@/lib/types";
 
 import { expenseRange, expenseRangeOptions, inExpenseRange } from "@/lib/expense-range";
 import { expenseDateInput } from "@/lib/expense-date";
+import { expenseShare } from "@/lib/expense-split";
 
 const PER_PAGE = 7;
 
@@ -50,7 +51,7 @@ function myShareInfo(e: Expense, myId: string) {
   // You paid and you're the only participant → "Not Split" (neutral, no lend/owe)
   const onlyYou = youArePayer && (e.splitIds.length === 0 || (e.splitIds.length === 1 && e.splitIds[0] === myId));
   if (onlyYou) return { label: `Not Split ${fmt(e.amount, e.currency)}`, type: "self" as const, amount: 0 };
-  const share = e.amount / Math.max(1, e.splitIds.length);
+  const share = expenseShare(e, myId);
   if (youArePayer) {
     const lent = e.amount - share;
     return { label: `Lent ${fmt(lent, e.currency)}`, type: "lent" as const, amount: lent };

@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { categoryById, personById } from "@/lib/data";
 import { fmt, fmtDate } from "@/lib/format";
+import { expenseShare } from "@/lib/expense-split";
 import type { Expense, Group } from "@/lib/types";
 
 interface Props {
@@ -21,7 +22,7 @@ export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit 
   const payer = personById(e.paidBy);
   const currency = e.currency || group.currency || preferences.currency;
   const participants = e.splitIds.length > 0 ? e.splitIds : group.memberIds;
-  const sharePerPerson = e.amount / Math.max(1, participants.length);
+  const splitLabel = e.splitType === "percentage" ? "By percentage" : e.splitType === "custom" ? "Exact amounts" : "Equally";
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -83,6 +84,7 @@ export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit 
           {/* Split between */}
           <div className="detail-block">
             <span className="detail-lbl"><Icon name="groups" size={14} /> Split between ({participants.length})</span>
+            <span className="detail-val">{splitLabel}</span>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
               {participants.map((id) => {
                 const p = personById(id);
@@ -93,7 +95,7 @@ export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit 
                       {p.you ? p.name + " (You)" : p.name}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-                      {fmt(sharePerPerson, currency)}
+                      {fmt(expenseShare(e, id, participants), currency)}
                     </span>
                   </div>
                 );
