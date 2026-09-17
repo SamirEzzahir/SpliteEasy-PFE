@@ -13,6 +13,8 @@ class Settings(BaseModel):
     JWT_SECRET: str = os.getenv("JWT_SECRET", "samir")
     JWT_ALG: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    CURRENCY_API_KEY: str = os.getenv("CURRENCY_API_KEY", "")
+    CURRENCY_API_REFRESH_SECONDS: int = int(os.getenv("CURRENCY_API_REFRESH_SECONDS", "3600"))
 
 settings = Settings()
 

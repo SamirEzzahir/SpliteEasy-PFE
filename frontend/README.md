@@ -203,6 +203,7 @@ Check calendar boundaries with `node scripts/check-expense-ranges.cjs`.
 
 ### Analytics and real-time deployment
 
+- [Group currency conversion](../docs/CURRENCY_CONVERSION.md): switch between original currency totals and an approximate total in your preferred currency, using timestamped exchange rates.
 - [Google Analytics setup](../docs/GOOGLE_ANALYTICS.md): enter the GA4 Measurement ID in Admin → Settings.
 - [Nginx Proxy Manager setup](../docs/NGINX_PROXY_MANAGER.md): WebSocket forwarding for chat and notifications.
 - `node scripts/check-websocket-proxy.cjs` verifies the real Next.js WebSocket rewrite using a local test backend.

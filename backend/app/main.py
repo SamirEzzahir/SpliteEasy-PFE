@@ -26,6 +26,7 @@ from app.routers import auth, users, groups, expenses, friends, stats, settle, a
 from app.routers import settings as settings_router
 from app.routers import reports as reports_router
 from app.routers import announcements as announcements_router
+from app.routers import exchange_rates
 
 # Platform settings (cache + maintenance flag) and JWT helpers for the guard.
 from fastapi import Request
@@ -233,5 +234,6 @@ app.include_router(support.router, tags=["Support"])
 app.include_router(settings_router.router, tags=["Settings"])
 app.include_router(reports_router.router, tags=["Moderation"])
 app.include_router(announcements_router.router, tags=["Announcements"])
+app.include_router(exchange_rates.router)
 
  

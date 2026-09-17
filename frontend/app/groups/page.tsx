@@ -13,9 +13,11 @@ import CreateGroupModal from "@/components/modals/CreateGroupModal";
 import EditGroupModal from "@/components/modals/EditGroupModal";
 import ManageGroupMembersModal from "@/components/modals/ManageGroupMembersModal";
 import { categoryById, personById } from "@/lib/data";
-import { fmt, fmtDate } from "@/lib/format";
+import { fmt, fmtDate, fmtDateTime } from "@/lib/format";
 import { summarizeGroups, type GroupCurrencyTotal } from "@/lib/group-summary";
 import { groupBalanceLabel } from "@/lib/group-balance";
+import { convertCurrencyTotal } from "@/lib/currency-conversion";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { groupsApi } from "@/lib/api/groups";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -93,6 +95,15 @@ export default function GroupsPage() {
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [booting, setBooting] = useState(true);
   const [page, setPage] = useState(1);
+  const [currencyView, setCurrencyView] = useState<"original" | "converted">("original");
+  useEffect(() => {
+    try { if (localStorage.getItem("spliteasy.groupCurrencyView") === "converted") setCurrencyView("converted"); }
+    catch { /* Default to recorded currencies when storage is unavailable. */ }
+  }, []);
+  function changeCurrencyView(view: "original" | "converted") {
+    setCurrencyView(view);
+    try { localStorage.setItem("spliteasy.groupCurrencyView", view); } catch { /* Session-only preference. */ }
+  }
   const cardMenuRef    = useRef<HTMLDivElement | null>(null);
   const previewMenuRef = useRef<HTMLDivElement | null>(null);
   const pageSize = view === "grid" ? 6 : 7;
@@ -157,9 +168,20 @@ export default function GroupsPage() {
 
   const groupStats = useMemo(() => summarizeGroups(groups), [groups]);
   const balancesUnavailable = groups.some(group => group.balanceUnavailable);
+  const needsRates = groupStats.currencies.some(row => row.currency !== userCurrency && (row.total !== 0 || row.owed !== 0 || row.owe !== 0));
+  const exchange = useExchangeRates(currencyView === "converted" && needsRates);
+  const missingCurrencies = convertCurrencyTotal(
+    groupStats.currencies.map(row => ({ currency: row.currency, amount: Math.abs(row.total) + row.owed + row.owe })),
+    userCurrency, exchange.snapshot?.rates,
+  ).missing;
 
   function summaryValue(metric: "total" | "owed" | "owe") {
     if (metric !== "total" && balancesUnavailable) return "Unavailable";
+    if (currencyView === "converted") {
+      const result = convertCurrencyTotal(groupStats.currencies.map(row => ({ currency: row.currency, amount: row[metric] })), userCurrency, exchange.snapshot?.rates);
+      if (result.total === null) return exchange.loading ? "Loading rates…" : "Conversion unavailable";
+      return `≈ ${fmt(result.total, userCurrency)}`;
+    }
     const currencies = [...groupStats.currencies].sort((a, b) =>
       Number(b.currency === userCurrency) - Number(a.currency === userCurrency) || a.currency.localeCompare(b.currency));
     const nonzero = currencies.filter(row => row[metric] !== 0);
@@ -410,6 +432,28 @@ export default function GroupsPage() {
         <PageHeader title="Groups" subtitle="Open a group to see expenses, balances, and your next payment."
           actions={<button className="btn btn-primary" onClick={() => setShowCreate(true)}><Icon name="plus" size={16} />Create group</button>} />
 
+        <div className="card" style={{ padding: 14, marginBottom: 16 }}>
+          <div role="group" aria-label="Summary currency display" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontWeight: 600, marginRight: 8 }}>Summary currency</span>
+            <button className={`btn ${currencyView === "original" ? "btn-primary" : "btn-secondary"}`} aria-pressed={currencyView === "original"} onClick={() => changeCurrencyView("original")}>By currency</button>
+            <button className={`btn ${currencyView === "converted" ? "btn-primary" : "btn-secondary"}`} aria-pressed={currencyView === "converted"} onClick={() => changeCurrencyView("converted")}>Approximate total ({userCurrency})</button>
+          </div>
+          {currencyView === "converted" && <div aria-live="polite" style={{ marginTop: 10, color: "var(--ink-3)", fontSize: 12 }}>
+            <span>Display estimate only. Expenses and settlements keep their original currencies.</span>
+            {needsRates ? <>
+              {exchange.snapshot && <div>
+                <a href={exchange.snapshot.provider === "CurrencyAPI" ? "https://currencyapi.com" : "https://www.exchangerate-api.com"} target="_blank" rel="noreferrer">Rates by {exchange.snapshot.provider}</a>
+                {` · ${exchange.snapshot.update_frequency} · Updated ${fmtDateTime(exchange.snapshot.updated_at)}`}
+                {exchange.snapshot.stale && <strong style={{ color: "var(--warn-text)" }}> · Older rates — refresh pending</strong>}
+              </div>}
+              {exchange.loading && <div>Checking exchange rates…</div>}
+              {exchange.error && <div role="status">{exchange.error} {exchange.snapshot ? "Showing the last available estimate." : "Switch to By currency to see original totals."}</div>}
+              {exchange.snapshot && missingCurrencies.length > 0 && <div>Missing rates: {missingCurrencies.join(", ")}. Affected totals cannot be converted.</div>}
+              <button className="btn btn-secondary" style={{ marginTop: 8 }} disabled={exchange.loading} onClick={exchange.refresh}>Refresh rates</button>
+            </> : <div>All amounts are already in {userCurrency}; no exchange rate is needed.</div>}
+          </div>}
+        </div>
+
         <div className="ui-stat-grid cols-4">
           {loading ? (
             <><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /></>
@@ -431,7 +475,7 @@ export default function GroupsPage() {
               <StatCard icon="groups" tone="primary" label="Active Groups"
                 value={groupStats.active} sub="Ready to split" />
               <StatCard icon="wallet" tone="neutral" label="Total Spending"
-                value={summaryValue("total")} sub={groupStats.currencies.length > 1 ? "Across all groups · totals by currency" : "Across all groups"} />
+                value={summaryValue("total")} sub={currencyView === "converted" ? `Approximate total in ${userCurrency}` : groupStats.currencies.length > 1 ? "Across all groups · totals by currency" : "Across all groups"} />
             </>
           )}
         </div>
