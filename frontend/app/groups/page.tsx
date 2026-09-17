@@ -14,6 +14,7 @@ import EditGroupModal from "@/components/modals/EditGroupModal";
 import ManageGroupMembersModal from "@/components/modals/ManageGroupMembersModal";
 import { categoryById, personById } from "@/lib/data";
 import { fmt, fmtDate } from "@/lib/format";
+import { summarizeGroups, type GroupCurrencyTotal } from "@/lib/group-summary";
 import { groupsApi } from "@/lib/api/groups";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -73,11 +74,10 @@ function settlementPct(group: Group) {
 }
 
 export default function GroupsPage() {
-  usePreferences();
+  const { currency: userCurrency } = usePreferences();
   const { groups, createGroup, expenses, refetchSplitting, showToast, loading } = useApp();
   const { user } = useAuth();
   const router = useRouter();
-  const userCurrency = user?.preferred_currency || "MAD";
   const myId = user?.id;
 
   const [selectedId, setSelected] = useState<string | null>(null);
@@ -157,13 +157,16 @@ export default function GroupsPage() {
     selected ? expenses.filter((expense) => expense.groupId === selected.id) : []
   ).slice(0, 4);
 
-  const groupStats = useMemo(() => {
-    const active = groups.length;
-    const owed = groups.filter((group) => group.balance > 0).reduce((sum, group) => sum + group.balance, 0);
-    const owe = Math.abs(groups.filter((group) => group.balance < 0).reduce((sum, group) => sum + group.balance, 0));
-    const total = groups.reduce((sum, group) => sum + group.total, 0);
-    return { active, owed, owe, total };
-  }, [groups]);
+  const groupStats = useMemo(() => summarizeGroups(groups), [groups]);
+
+  function summaryValue(metric: "total" | "owed" | "owe") {
+    const currencies = [...groupStats.currencies].sort((a, b) =>
+      Number(b.currency === userCurrency) - Number(a.currency === userCurrency) || a.currency.localeCompare(b.currency));
+    const nonzero = currencies.filter(row => row[metric] !== 0);
+    const rows: GroupCurrencyTotal[] = nonzero.length ? nonzero : currencies.slice(0, 1);
+    if (!rows.length) return fmt(0, userCurrency);
+    return <>{rows.map(row => <span key={row.currency} style={{ display: "block" }}>{fmt(row[metric], row.currency)}</span>)}</>;
+  }
 
   const ensureSelected = (group: Group) => {
     setSelected(group.id);
@@ -414,13 +417,13 @@ export default function GroupsPage() {
             <>
               {/* Clickable balance shortcuts that apply a balance quick-filter */}
               <StatCard icon="upload" tone="success" label="You Are Owed"
-                value={groupStats.owed} currency={userCurrency}
+                value={summaryValue("owed")}
                 sub={balanceFilter === "owed" ? "Click to clear filter" : "Click to filter"}
                 onClick={() => setBalanceFilter((f) => f === "owed" ? "all" : "owed")}
                 active={balanceFilter === "owed"}
                 title="Show only groups where you are owed money" />
               <StatCard icon="download" tone="danger" label="You Owe"
-                value={groupStats.owe} currency={userCurrency}
+                value={summaryValue("owe")}
                 sub={balanceFilter === "owe" ? "Click to clear filter" : "Click to filter"}
                 onClick={() => setBalanceFilter((f) => f === "owe" ? "all" : "owe")}
                 active={balanceFilter === "owe"}
@@ -428,7 +431,7 @@ export default function GroupsPage() {
               <StatCard icon="groups" tone="primary" label="Active Groups"
                 value={groupStats.active} sub="Ready to split" />
               <StatCard icon="wallet" tone="neutral" label="Total Spending"
-                value={groupStats.total} currency={userCurrency} sub="Across all groups" />
+                value={summaryValue("total")} sub={groupStats.currencies.length > 1 ? "Across all groups · totals by currency" : "Across all groups"} />
             </>
           )}
         </div>
