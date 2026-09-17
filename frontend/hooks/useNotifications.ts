@@ -13,7 +13,7 @@ const POLL_MS = 5 * 60 * 1000;
 
 export function useNotifications() {
   const { user } = useAuth();
-  const { subscribe } = useWS();
+  const { subscribe, connected } = useWS();
   const [items, setItems] = useState<Notif[]>([]);
   const [unread, setUnread] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -36,17 +36,19 @@ export function useNotifications() {
     // Subscribe to any WS event that signals a new notification
     const unsub1 = subscribe("notification_string", () => void refresh());
     const unsub2 = subscribe("notification", () => void refresh());
+    const unsub3 = subscribe("connected", () => void refresh());
 
     // Fallback poll
-    pollRef.current = setInterval(() => void refresh(), POLL_MS);
+    pollRef.current = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, connected ? POLL_MS : 15000);
 
     return () => {
       unsub1();
       unsub2();
+      unsub3();
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
     };
-  }, [user, refresh, subscribe]);
+  }, [user, refresh, subscribe, connected]);
 
   const markRead = useCallback(async (id: string) => {
     await notificationsApi.markRead(id);

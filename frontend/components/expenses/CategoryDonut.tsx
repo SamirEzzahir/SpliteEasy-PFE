@@ -6,11 +6,11 @@ import { arc, fmt0 } from "@/lib/format";
 import type { Category } from "@/lib/types";
 
 interface DataItem extends Category { amount: number; }
-interface Props { data: DataItem[]; total: number; }
+interface Props { data: DataItem[]; total: number; currency?: string; }
 
 const GAP_DEG = 3; // degrees of blank space between each segment
 
-export default function CategoryDonut({ data, total }: Props) {
+export default function CategoryDonut({ data, total, currency }: Props) {
   usePreferences();
   const hasGap = data.length > 1;
   let acc = 0;
@@ -44,7 +44,7 @@ export default function CategoryDonut({ data, total }: Props) {
       </svg>
       <div className="donut-center">
         <div>
-          <div className="v num">{fmt0(total)}</div>
+          <div className="v num">{fmt0(total, currency)}</div>
           <div className="l">Total</div>
         </div>
       </div>

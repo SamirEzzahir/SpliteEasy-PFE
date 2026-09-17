@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { useRouter } from "next/navigation";
 import { authApi, type RegisterPayload } from "@/lib/api/auth";
 import { apiErrorMessage, onUnauthorized, tokenStore } from "@/lib/api/client";
+import { usersApi } from "@/lib/api/users";
 import type { ApiUser } from "@/lib/api/types";
 
 interface AuthState {
@@ -15,6 +16,7 @@ interface AuthState {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
+  savePreferredCurrency: (currency: string) => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -58,6 +60,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== "spliteasy.currency-change" || !event.newValue) return;
+      try {
+        const change = JSON.parse(event.newValue);
+        if (typeof change.currency !== "string" || !/^[A-Z]{3}$/.test(change.currency)) return;
+        setUser(current => current && current.id === change.userId ? { ...current, preferred_currency: change.currency } : current);
+      } catch { /* Ignore malformed browser events. */ }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const savePreferredCurrency = useCallback(async (currency: string) => {
+    const updated = await usersApi.updatePreferredCurrency(currency);
+    setUser(current => current?.id === updated.id ? { ...current, preferred_currency: updated.preferred_currency } : current);
+    try {
+      localStorage.setItem("spliteasy.currency-change", JSON.stringify({ userId: updated.id, currency: updated.preferred_currency, changedAt: Date.now() }));
+    } catch { /* Saving still works when browser storage is unavailable. */ }
+  }, []);
+
   const login = useCallback(async (username: string, password: string) => {
     setError(null);
     try {
@@ -90,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <AuthCtx.Provider value={{ user, loading, error, login, register, logout, refresh }}>
+    <AuthCtx.Provider value={{ user, loading, error, login, register, logout, refresh, savePreferredCurrency }}>
       {children}
     </AuthCtx.Provider>
   );

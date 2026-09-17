@@ -128,7 +128,7 @@ async def send_group_message_ep(
     msg = await crud.add_group_message(session, group_id, current.id, payload.content)
     
     # Broadcast to other members in the group via websocket
-    from app.routers.notifications import active_connections
+    from app.core.realtime import broadcast
     import json
 
     memberships = await crud.get_group_members(session, group_id)
@@ -146,16 +146,8 @@ async def send_group_message_ep(
     }
     
     for member in memberships:
-        if member.user_id == current.id:
-            continue
-            
-        websocket = active_connections.get(member.user_id)
-        if websocket:
-            try:
-                await websocket.send_text(json.dumps(msg_data))
-            except Exception as e:
-                print(f"Failed to send chat message to user {member.user_id}: {e}")
-                
+        await broadcast(member.user_id, json.dumps(msg_data))
+
     return msg
 
 
@@ -168,7 +160,7 @@ async def broadcast_typing_ep(
 ):
     await crud.ensure_user_in_group(session, current.id, group_id)
 
-    from app.routers.notifications import active_connections
+    from app.core.realtime import broadcast
     import json
 
     memberships = await crud.get_group_members(session, group_id)
@@ -182,9 +174,4 @@ async def broadcast_typing_ep(
     for member in memberships:
         if member.user_id == current.id:
             continue
-        ws = active_connections.get(member.user_id)
-        if ws:
-            try:
-                await ws.send_text(payload)
-            except Exception:
-                pass
+        await broadcast(member.user_id, payload)

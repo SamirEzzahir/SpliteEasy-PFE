@@ -9,7 +9,7 @@ import { apiErrorMessage } from "@/lib/api/client";
 import { usersApi } from "@/lib/api/users";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { usePreferences } from "@/hooks/usePreferences";
-import { setDisplayPreference, setPreferredCurrency } from "@/lib/preferences";
+import { setDisplayPreference } from "@/lib/preferences";
 import { fmt, fmtDate } from "@/lib/format";
 
 type ThemeChoice = "system" | "light" | "dark";
@@ -55,7 +55,7 @@ function joinedDate(value?: string): string {
 }
 
 export default function SettingsPage() {
-  const { user, refresh, logout } = useAuth();
+  const { user, refresh, logout, savePreferredCurrency } = useAuth();
   const [section, setSection] = useState<"profile" | "appearance" | "security">("profile");
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [currencySaving, setCurrencySaving] = useState(false);
@@ -131,7 +131,7 @@ export default function SettingsPage() {
 
   const saveCurrency = async (next: string) => {
     setCurrencySaving(true); setPreferenceError("");
-    try { await usersApi.updatePreferredCurrency(next); setPreferredCurrency(next); await refresh(); }
+    try { await savePreferredCurrency(next); }
     catch { setPreferenceError("Could not save your currency preference. Please try again."); }
     finally { setCurrencySaving(false); }
   };

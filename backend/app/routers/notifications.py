@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List
+from typing import List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -9,11 +9,9 @@ from app import models, schemas
 from app.auth import get_current_user
 from app.core.config import settings
 from app.core.db import async_session
+from app.core.realtime import active_connections, broadcast, disconnect
 
 router = APIRouter(prefix="/Notifications")
-
-# ================== ACTIVE CONNECTIONS ==================
-active_connections: Dict[uuid.UUID, WebSocket] = {}
 
 # ================== WEBSOCKET ENDPOINT ==================
 @router.websocket("/ws/{user_id}")
@@ -42,31 +40,17 @@ async def websocket_endpoint(websocket: WebSocket, user_id: uuid.UUID):
         await websocket.close(code=1008, reason="Invalid token")
         return
 
+    await websocket.accept()
+    active_connections.setdefault(user_id, set()).add(websocket)
     try:
-        await websocket.accept()
-        
-        # Store the connection
-        active_connections[user_id] = websocket
-        print(f"✅ User {user_id} connected to WebSocket")
-        
-        try:
-            while True:
-                # Keep the connection alive by receiving messages
-                data = await websocket.receive_text()
-                # print(f"📨 Received from user {user_id}: {data}")
-                
-        except WebSocketDisconnect:
-            # Clean up connection when client disconnects
-            if active_connections.get(user_id) is websocket:
-                del active_connections[user_id]
-                print(f"❌ User {user_id} disconnected from WebSocket")
-                
-    except Exception as e:
-        print(f"❌ WebSocket error for user {user_id}: {e}")
-        try:
-            await websocket.close(code=1008, reason="Internal server error")
-        except:
-            pass
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        pass
+    finally:
+        disconnect(user_id, websocket)
 
 # ================== HELPER FUNCTION ==================
 async def send_notification(session: AsyncSession, user_id: uuid.UUID, message: str, type: str = "info", link: str = None):
@@ -85,22 +69,8 @@ async def send_notification(session: AsyncSession, user_id: uuid.UUID, message: 
         await session.commit()
         await session.refresh(notification)
 
-        # 2. Send Real-time WebSocket Message if user is connected
-        websocket = active_connections.get(user_id)
-        if websocket:
-            # Send simplified JSON message to frontend, or just the text
-            # Here sending just the message text for compatibility with existing frontend simple string handling
-            # Ideally should send JSON but existing frontend expects string? 
-            # Let's check: "this.handleNotification(event.data);" -> shows toast.
-            # We'll send the message string for toast, but the frontend should ideally re-fetch or use the data.
-            # To keep it backward compatible:
-            await websocket.send_text(message)
-            print(f"📨 Sent notification to user {user_id}: {message}")
-            return True
-        else:
-            print(f"⚠️ User {user_id} not connected to WebSocket (Saved to DB only)")
-            return False
-            
+        return await broadcast(user_id, message)
+
     except Exception as e:
         print(f"❌ Error sending/saving notification to user {user_id}: {e}")
         return False

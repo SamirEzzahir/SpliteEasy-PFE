@@ -68,7 +68,7 @@ function sameDay(a: string, b: string) {
 export default function GroupChat({ groupId, groupName, embedded = false }: Props) {
   usePreferences();
   const { user } = useAuth();
-  const { subscribe } = useWS();
+  const { subscribe, connected } = useWS();
   const [open, setOpen] = useState(embedded);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
@@ -104,6 +104,29 @@ export default function GroupChat({ groupId, groupName, embedded = false }: Prop
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    const recover = async () => {
+      if (inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      try {
+        const latest = await chatApi.fetchMessages(groupId);
+        if (!cancelled) setMessages(previous => {
+          const merged = new Map(previous.filter(message => message.group_id === groupId).map(message => [message.id, message]));
+          latest.forEach(message => merged.set(message.id, message));
+          return Array.from(merged.values()).sort((a, b) => a.created_at.localeCompare(b.created_at));
+        });
+      } catch { /* Retry on reconnect or the next polling interval. */ }
+      finally { inFlight = false; }
+    };
+    if (connected) void recover();
+    const onVisible = () => { void recover(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = !connected ? setInterval(() => void recover(), 10000) : undefined;
+    return () => { cancelled = true; clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
+  }, [groupId, connected]);
 
   useEffect(() => {
     if (open) setUnread(0);

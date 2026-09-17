@@ -194,6 +194,19 @@ Native date and number inputs keep their browser input behavior and canonical AP
 
 Regression checks: `node scripts/check-preferences.cjs` from the repository root.
 
+Saved currency changes also synchronize across open tabs for the same account.
+The Expenses overview follows its date range and list filters, and totals only
+expenses recorded in the preferred currency. Other currencies remain visible in
+the list with their original amounts. The range menu includes month, quarter-length
+(current month plus two), year, all-time and inclusive custom date ranges.
+Check calendar boundaries with `node scripts/check-expense-ranges.cjs`.
+
+### Analytics and real-time deployment
+
+- [Google Analytics setup](../docs/GOOGLE_ANALYTICS.md): enter the GA4 Measurement ID in Admin → Settings.
+- [Nginx Proxy Manager setup](../docs/NGINX_PROXY_MANAGER.md): WebSocket forwarding for chat and notifications.
+- `node scripts/check-websocket-proxy.cjs` verifies the real Next.js WebSocket rewrite using a local test backend.
+
 ---
 
 ## Theme System

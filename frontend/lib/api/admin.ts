@@ -121,6 +121,7 @@ export interface PermissionInfo {
 }
 
 export interface PlatformSettings {
+  google_analytics_measurement_id: string;
   app_name: string;
   app_description: string;
   logo_url: string;

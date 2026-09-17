@@ -672,7 +672,10 @@ async def update_settings(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_permission("manage_settings")),
 ):
-    updated = await settings_store.update_settings(session, payload)
+    try:
+        updated = await settings_store.update_settings(session, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     await admin_service.record_audit(
         session, current_user, "settings.update", "settings", None,
         details=", ".join(k for k in payload.keys() if k in settings_store.DEFAULTS)[:480],
@@ -928,7 +931,7 @@ async def system_health(
     return {
         "backend": "ok",
         "database": "ok" if db_ok else "down",
-        "websocket": {"status": "ok", "active_connections": len(active_connections)},
+        "websocket": {"status": "ok", "active_connections": sum(len(sockets) for sockets in active_connections.values())},
         "app_version": "1.0",
         "build_version": os.getenv("BUILD_VERSION", "dev"),
         "uptime_seconds": int(time.time() - _PROCESS_START),

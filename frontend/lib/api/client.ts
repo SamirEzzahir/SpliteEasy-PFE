@@ -87,13 +87,7 @@ export function apiErrorMessage(err: unknown): string {
   return String(err);
 }
 
-// WebSocket base — WS can't proxy through Next.js rewrites, so it always points
-// straight at the backend. Resolution order:
-//   1. NEXT_PUBLIC_WS_URL          — explicit override (recommended)
-//   2. NEXT_PUBLIC_API_URL → ws    — reuse the public API host
-//   3. derive from the page origin — uses wss + port 443 behind an HTTPS proxy
-// Local development uses NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8800 in .env.local.
-
+// WebSockets use the same /api external rewrite as HTTP behind the proxy.
 export function wsBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -101,7 +95,7 @@ export function wsBaseUrl(): string {
   }
   if (typeof window !== "undefined") {
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${window.location.host}`;
+    return `${proto}://${window.location.host}/api`;
   }
   return "ws://127.0.0.1:8800";
 }

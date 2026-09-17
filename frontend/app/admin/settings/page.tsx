@@ -47,7 +47,7 @@ function TextField({ label, value, onChange, disabled, type = "text", placeholde
   return (
     <div className="field" style={{ marginBottom: 0 }}>
       <label>{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} placeholder={placeholder} />
+      <input aria-label={label} type={type} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} placeholder={placeholder} />
     </div>
   );
 }
@@ -75,9 +75,11 @@ export default function AdminSettingsPage() {
 
   async function save() {
     if (!settings) return;
+    const id = settings.google_analytics_measurement_id?.trim().toUpperCase() || "";
+    if (id && !/^G-[A-Z0-9]{4,20}$/.test(id)) { toast.error("Enter a valid Measurement ID starting with G-."); return; }
     setSaving(true);
     try {
-      await adminApi.updateSettings(settings);
+      setSettings(await adminApi.updateSettings({ ...settings, google_analytics_measurement_id: id }));
       await refreshPublic();
       toast.success("Settings saved");
     } catch (e) { toast.error(apiErrorMessage(e)); }
@@ -128,6 +130,13 @@ export default function AdminSettingsPage() {
           <TextField label="Default language" value={settings.default_language} onChange={(v) => set("default_language", v)} disabled={ro} placeholder="en" />
           <TextField label="Default timezone" value={settings.default_timezone} onChange={(v) => set("default_timezone", v)} disabled={ro} placeholder="UTC" />
         </div>
+      </Section>
+
+      <Section title="Google Analytics" desc="Track visits across the app. Paste your GA4 Measurement ID and save; no page code changes or rebuild required.">
+        <TextField label="Measurement ID" value={settings.google_analytics_measurement_id || ""} onChange={v => set("google_analytics_measurement_id", v)} disabled={ro} placeholder="G-XXXXXXXXXX" />
+        <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
+          Find it in Google Analytics → Admin → Data streams → Web stream. Keep Enhanced measurement → Page views → Browser history changes enabled to track page navigation. Leave the ID empty to disable tracking.
+        </p>
       </Section>
 
       <Section title="Authentication" desc="Sign-up and session policy.">

@@ -5,6 +5,7 @@ Writes upsert the row and refresh the cache. Values are stored as text and coerc
 to the type of their entry in DEFAULTS.
 """
 from typing import Any
+import re
 
 from sqlalchemy import select
 
@@ -20,6 +21,7 @@ DEFAULTS: dict[str, Any] = {
     "favicon_url": "",
     "default_language": "en",
     "default_timezone": "UTC",
+    "google_analytics_measurement_id": "",
     # Authentication
     "registration_enabled": True,
     "email_verification_enabled": False,
@@ -44,7 +46,7 @@ DEFAULTS: dict[str, Any] = {
 # Keys safe to expose without privileged auth (drives the frontend).
 PUBLIC_KEYS = [
     "app_name", "app_description", "logo_url", "favicon_url",
-    "default_language", "default_timezone",
+    "default_language", "default_timezone", "google_analytics_measurement_id",
     "maintenance_mode", "maintenance_message",
     "registration_enabled", "email_verification_enabled",
     "feature_chat", "feature_notifications", "feature_budget", "feature_reports", "feature_support", "feature_personal_finance",
@@ -115,6 +117,13 @@ def get_int(key: str) -> int:
 
 async def update_settings(session, values: dict[str, Any]) -> dict[str, Any]:
     """Upsert known settings and refresh the cache. Unknown keys are ignored."""
+    values = dict(values)
+    if "google_analytics_measurement_id" in values:
+        measurement_id = str(values["google_analytics_measurement_id"] or "").strip().upper()
+        if measurement_id and not re.fullmatch(r"G-[A-Z0-9]{4,20}", measurement_id):
+            raise ValueError("Enter a valid Google Analytics Measurement ID (G-...) or leave it empty.")
+        values["google_analytics_measurement_id"] = measurement_id
+    pending = {}
     for key, val in values.items():
         if key not in DEFAULTS:
             continue
@@ -124,6 +133,7 @@ async def update_settings(session, values: dict[str, Any]) -> dict[str, Any]:
             existing.value = stored
         else:
             session.add(AppSetting(key=key, value=stored))
-        _cache[key] = _coerce(key, stored)
+        pending[key] = _coerce(key, stored)
     await session.commit()
+    _cache.update(pending)
     return all_settings()

@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Isolate integration-check output from an already running development server.
+  distDir: process.env.SPLITEASY_NEXT_DIST_DIR || ".next",
   // Emit a self-contained server bundle (.next/standalone) for a small Docker
   // runtime image. Harmless for local `next dev` / `next start`.
   output: "standalone",

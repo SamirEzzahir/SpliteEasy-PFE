@@ -16,10 +16,10 @@ interface Props {
 }
 
 export default function ExpenseDetailModal({ expense: e, group, onClose, onEdit }: Props) {
-  usePreferences();
+  const preferences = usePreferences();
   const cat = categoryById(e.categoryId);
   const payer = personById(e.paidBy);
-  const currency = group.currency || e.currency || "USD";
+  const currency = e.currency || group.currency || preferences.currency;
   const participants = e.splitIds.length > 0 ? e.splitIds : group.memberIds;
   const sharePerPerson = e.amount / Math.max(1, participants.length);
 

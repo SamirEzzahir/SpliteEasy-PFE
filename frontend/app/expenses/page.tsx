@@ -14,7 +14,7 @@ import AddExpenseFullModal from "@/components/modals/AddExpenseFullModal";
 import EditExpenseFullModal from "@/components/modals/EditExpenseFullModal";
 import ExpenseDetailModal from "@/components/modals/ExpenseDetailModal";
 import { CATEGORIES, categoryById, personById } from "@/lib/data";
-import { fmt, fmtDate, fmtNumber } from "@/lib/format";
+import { fmt, fmtDate, displayDate } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { expensesApi } from "@/lib/api/expenses";
@@ -24,6 +24,9 @@ import FilterDropdown from "@/components/ui/FilterDropdown";
 import Pagination from "@/components/ui/Pagination";
 import SharePill from "@/components/ui/SharePill";
 import type { Expense } from "@/lib/types";
+
+import { expenseRange, expenseRangeOptions, inExpenseRange } from "@/lib/expense-range";
+import { expenseDateInput } from "@/lib/expense-date";
 
 const PER_PAGE = 7;
 
@@ -36,24 +39,7 @@ type SortCol = "date" | "amount" | "group";
 function rawTs(e: Expense): number {
   const iso = e._rawDate;
   if (!iso) return NaN;
-  return new Date(iso.endsWith("Z") ? iso : iso + "Z").getTime();
-}
-
-function isThisMonth(e: Expense): boolean {
-  const t = rawTs(e);
-  if (Number.isNaN(t)) return false;
-  const d = new Date(t);
-  const now = new Date();
-  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-}
-
-function isLastMonth(e: Expense): boolean {
-  const t = rawTs(e);
-  if (Number.isNaN(t)) return false;
-  const d = new Date(t);
-  const now = new Date();
-  const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return d.getMonth() === last.getMonth() && d.getFullYear() === last.getFullYear();
+  return displayDate(iso).getTime();
 }
 
 // myId param replaces hardcoded ME constant — fixes data correctness for all users
@@ -113,13 +99,12 @@ function SortTh({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
-  usePreferences();
+  const { currency: userCurrency } = usePreferences();
   const { expenses, addExpense, groups, showToast, loading, refetchSplitting } = useApp();
   const { user } = useAuth();
 
   // Fix: derive myId from authenticated user instead of hardcoded string
   const myId = String(user?.id ?? "");
-  const userCurrency = user?.preferred_currency || "MAD";
 
   const [filter, setFilter] = useState<"all" | "personal" | "bygroup">("all");
   const [query, setQuery] = useState("");
@@ -130,11 +115,15 @@ export default function ExpensesPage() {
   const [sortCol, setSortCol] = useState<SortCol>("date");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [dateFilter, setDateFilter] = useState("all");
+  const [customStart, setCustomStart] = useState(() => expenseDateInput());
+  const [customEnd, setCustomEnd] = useState(() => expenseDateInput());
+  const range = expenseRange(dateFilter, customStart, customEnd);
+  const rangeLabel = dateFilter === "custom" ? `${fmtDate(customStart)} - ${fmtDate(customEnd)}` : expenseRangeOptions.find(o => o.id === dateFilter)?.label;
   const [groupFilter, setGroupFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  useEffect(() => { setPage(1); }, [filter, query, dateFilter, groupFilter, categoryFilter, sortCol, sortDir]);
+  useEffect(() => { setPage(1); }, [filter, query, dateFilter, customStart, customEnd, groupFilter, categoryFilter, sortCol, sortDir]);
   // Reset collapse state when leaving By Group view
   useEffect(() => { if (filter !== "bygroup") setCollapsedGroups(new Set()); }, [filter]);
 
@@ -154,11 +143,7 @@ export default function ExpensesPage() {
   }
 
   // ── Filter / sort options ────────────────────────────────────────────────────
-  const dateOptions = [
-    { id: "all", label: "All Time" },
-    { id: "thisMonth", label: "This Month" },
-    { id: "lastMonth", label: "Last Month" },
-  ];
+  const dateOptions = expenseRangeOptions;
   const groupOptions = [
     { id: "all", label: "All Groups" },
     ...groups.map((g) => ({ id: g.id, label: g.name })),
@@ -178,8 +163,7 @@ export default function ExpensesPage() {
   const filtered = useMemo(() => {
     let list = expenses;
     if (filter === "personal") list = list.filter((e) => e.paidBy === myId);
-    if (dateFilter === "thisMonth") list = list.filter((e) => isThisMonth(e));
-    if (dateFilter === "lastMonth") list = list.filter((e) => isLastMonth(e));
+    list = list.filter(e => inExpenseRange(e._rawDate, expenseRange(dateFilter, customStart, customEnd)));
     if (groupFilter !== "all") list = list.filter((e) => e.groupId === groupFilter);
     if (categoryFilter !== "all") list = list.filter((e) => e.categoryId === categoryFilter);
     if (query.trim()) {
@@ -199,7 +183,7 @@ export default function ExpensesPage() {
       return sortDir === "desc" ? -cmp : cmp;
     });
     return list;
-  }, [expenses, filter, query, dateFilter, groupFilter, categoryFilter, sortCol, sortDir, myId]);
+  }, [expenses, filter, query, dateFilter, customStart, customEnd, groupFilter, categoryFilter, sortCol, sortDir, myId]);
 
   // ── By Group — true grouping structure ──────────────────────────────────────
   const groupedData = useMemo(() => {
@@ -212,64 +196,50 @@ export default function ExpensesPage() {
       map.get(key)!.expenses.push(e);
     }
     return Array.from(map.entries())
-      .map(([key, val]) => ({ key, ...val, subtotal: val.expenses.reduce((s, e) => s + e.amount, 0) }))
+      .map(([key, val]) => {
+        const subtotals: Record<string, number> = {};
+        val.expenses.forEach(e => { const currency = e.currency || userCurrency; subtotals[currency] = (subtotals[currency] || 0) + e.amount; });
+        return { key, ...val, subtotals, subtotal: subtotals[userCurrency] || 0 };
+      })
       .sort((a, b) => b.subtotal - a.subtotal);
-  }, [filter, filtered, groups]);
+  }, [filter, filtered, groups, userCurrency]);
 
   // ── Pagination (flat view only) ──────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   // ── Stat calculations ────────────────────────────────────────────────────────
+  const overviewExpenses = useMemo(() => filtered.filter(e => (e.currency || userCurrency) === userCurrency), [filtered, userCurrency]);
   const totals = useMemo(() => {
-    const total = expenses.reduce((s, e) => s + e.amount, 0);
-    const thisMonthExp = expenses.filter((e) => isThisMonth(e));
-    const lastMonthExp = expenses.filter((e) => isLastMonth(e));
-    const thisMonthTotal = thisMonthExp.reduce((s, e) => s + e.amount, 0);
-    const lastMonthTotal = lastMonthExp.reduce((s, e) => s + e.amount, 0);
-    const monthDelta = lastMonthTotal > 0
-      ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100
-      : null;
-
+    const total = overviewExpenses.reduce((s, e) => s + e.amount, 0);
     // iOwe: sum of "owe" shares across all expenses
     let iOwe = 0;
     // youAreOwed: sum of amounts others owe me (I paid, they're in split)
     let youAreOwed = 0;
-    for (const e of expenses) {
+    for (const e of overviewExpenses) {
       const info = myShareInfo(e, myId);
       if (!info) continue;
       if (info.type === "owe") iOwe += info.amount;
       if (info.type === "lent") youAreOwed += info.amount;
     }
 
-    return { total, thisMonth: thisMonthTotal, thisMonthCount: thisMonthExp.length, monthDelta, iOwe, youAreOwed };
-  }, [expenses, myId]);
+    return { total, iOwe, youAreOwed };
+  }, [overviewExpenses, myId]);
 
   const byCategory = useMemo(() => {
     const m: Record<string, number> = {};
-    expenses.forEach((e) => { m[e.categoryId] = (m[e.categoryId] || 0) + e.amount; });
+    overviewExpenses.forEach((e) => { m[e.categoryId] = (m[e.categoryId] || 0) + e.amount; });
     return CATEGORIES.map((c) => ({ ...c, amount: m[c.id] || 0 })).filter((c) => c.amount > 0);
-  }, [expenses]);
+  }, [overviewExpenses]);
 
   const byGroup = useMemo(() => {
     const m: Record<string, number> = {};
-    expenses.forEach((e) => { m[e.groupId] = (m[e.groupId] || 0) + e.amount; });
+    overviewExpenses.forEach((e) => { m[e.groupId] = (m[e.groupId] || 0) + e.amount; });
     return groups.map((g) => ({ ...g, amount: m[g.id] || 0 }))
       .filter((g) => g.amount > 0)
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-  }, [expenses, groups]);
-
-  function renderDelta(delta: number | null) {
-    if (delta === null) return <span style={{ color: "var(--ink-4)", fontSize: 11 }}>No prior month data</span>;
-    const pos = delta >= 0;
-    return (
-      <>
-        <span className={`delta ${pos ? "neg" : "pos"}`}>{pos ? "↑" : "↓"} {fmtNumber(Math.abs(delta), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
-        {" "}vs last month
-      </>
-    );
-  }
+  }, [overviewExpenses, groups]);
 
   // ── Delete — exact pattern from groups/[id]/page.tsx ────────────────────────
   const deleteExpense = async (expenseId: string, title: string) => {
@@ -480,6 +450,22 @@ export default function ExpensesPage() {
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}><Icon name="plus" size={16} />Add expense</button>
       </>} />
 
+      <div className="card" style={{ padding: 16, marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <strong>Expense overview</strong>
+          <FilterDropdown icon="receipt" label="Date range" options={dateOptions} value={dateFilter} onChange={setDateFilter} />
+          {dateFilter === "custom" && <>
+            <label className="field" style={{ margin: 0 }}>From<input type="date" aria-label="Start date" value={customStart} onChange={e => setCustomStart(e.target.value)} /></label>
+            <label className="field" style={{ margin: 0 }}>To<input type="date" aria-label="End date" value={customEnd} min={customStart} onChange={e => setCustomEnd(e.target.value)} /></label>
+          </>}
+        </div>
+        {range.error && <p role="alert" style={{ color: "var(--rose-text)" }}>{range.error}</p>}
+        <p style={{ margin: "10px 0 0", color: "var(--ink-3)", fontSize: 12 }}>
+          {rangeLabel} · Overview in {userCurrency}. The range applies to the list, charts and totals.
+          {overviewExpenses.length !== filtered.length && " Expenses in other currencies remain in the list and are excluded from overview totals."}
+          {dateFilter === "last3Months" && " Includes this month and the previous two months."}
+        </p>
+      </div>
       <div className="page-2col">
         <div>
           {/* ── Stat cards ── */}
@@ -490,16 +476,16 @@ export default function ExpensesPage() {
               <>
                 <StatCard icon="wallet" tone="primary" label="Total Spent"
                   value={totals.total} currency={userCurrency}
-                  sub={`${expenses.length} transactions · all time`} />
-                <StatCard icon="receipt" tone="neutral" label="This Month"
-                  value={fmt(totals.thisMonth, userCurrency)}
-                  sub={renderDelta(totals.monthDelta)} />
+                  sub={`${overviewExpenses.length} transactions - ${rangeLabel}`} />
+                <StatCard icon="receipt" tone="neutral" label="Average Expense"
+                  value={fmt(overviewExpenses.length ? totals.total / overviewExpenses.length : 0, userCurrency)}
+                  sub="in the selected period" />
                 <StatCard icon="coin" tone="success" label="You Are Owed"
                   value={totals.youAreOwed} currency={userCurrency}
-                  colorValue={totals.youAreOwed > 0} sub="others owe you" />
+                  colorValue={totals.youAreOwed > 0} sub="from selected expenses" />
                 <StatCard icon="wallet" tone="danger" label="You Owe"
                   value={totals.iOwe} currency={userCurrency}
-                  colorValue={totals.iOwe > 0} sub="across all groups" />
+                  colorValue={totals.iOwe > 0} sub="from selected expenses" />
               </>
             )}
           </div>
@@ -527,7 +513,7 @@ export default function ExpensesPage() {
             {/* Filter row */}
             <FilterPanel count={[dateFilter, groupFilter, categoryFilter].filter((v) => v !== "all").length}>
             <div className="filter-row">
-              <FilterDropdown icon="receipt" label="All Time"       options={dateOptions}     value={dateFilter}     onChange={setDateFilter} />
+
               <FilterDropdown icon="groups"  label="All Groups"     options={groupOptions}    value={groupFilter}    onChange={setGroupFilter} />
               <FilterDropdown icon="filter"  label="All Categories" options={categoryOptions} value={categoryFilter} onChange={setCategoryFilter} />
               {hasActiveFilters && (
@@ -590,7 +576,7 @@ export default function ExpensesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {groupedData.map(({ key, groupName, groupColor, expenses: groupExp, subtotal }) => {
+                    {groupedData.map(({ key, groupName, groupColor, expenses: groupExp, subtotals }) => {
                       const collapsed = collapsedGroups.has(key);
                       return [
                         /* Group header row */
@@ -633,7 +619,7 @@ export default function ExpensesPage() {
                           </td>
                           <td colSpan={2} style={{ padding: "10px 12px", textAlign: "right" }}>
                             <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
-                              {fmt(subtotal, userCurrency)}
+                              {Object.entries(subtotals).map(([currency, amount]) => fmt(amount, currency)).join(" + ")}
                             </span>
                           </td>
                         </tr>,
@@ -647,7 +633,7 @@ export default function ExpensesPage() {
 
               {/* Mobile cards, grouped (table is hidden ≤768px) */}
               <div className="gx-exp-cards">
-                {groupedData.map(({ key, groupName, groupColor, expenses: groupExp, subtotal }) => {
+                {groupedData.map(({ key, groupName, groupColor, expenses: groupExp, subtotals }) => {
                   const collapsed = collapsedGroups.has(key);
                   return (
                     <div key={`m-${key}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -666,7 +652,7 @@ export default function ExpensesPage() {
                         <span style={{ width: 10, height: 10, borderRadius: "50%", background: groupColor, flexShrink: 0 }} />
                         <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--ink)" }}>{groupName}</span>
                         <span style={{ background: "var(--line)", color: "var(--ink-3)", borderRadius: 999, fontSize: 11, fontWeight: 700, padding: "1px 7px" }}>{groupExp.length}</span>
-                        <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: 13, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{fmt(subtotal, userCurrency)}</span>
+                        <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: 13, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{Object.entries(subtotals).map(([currency, amount]) => fmt(amount, currency)).join(" + ")}</span>
                       </button>
                       {!collapsed && groupExp.map((e) => renderExpenseCard(e))}
                     </div>
@@ -732,7 +718,7 @@ export default function ExpensesPage() {
             <div className="rail-head"><h3>Spending by Category</h3></div>
             <div className="rail-donut-wrap">
               <div className="rail-donut">
-                <CategoryDonut data={byCategory} total={totals.total} />
+                <CategoryDonut data={byCategory} total={totals.total} currency={userCurrency} />
               </div>
               <div className="rail-legend">
                 {byCategory.slice(0, 6).map((c) => (
@@ -764,7 +750,7 @@ export default function ExpensesPage() {
                   <div key={g.id} className="spend-row">
                     <div className="spend-row-h">
                       <span className="nm">{g.name}</span>
-                      <span className="amt num">{fmt(g.amount, g.currency)}</span>
+                      <span className="amt num">{fmt(g.amount, userCurrency)}</span>
                     </div>
                     <div className="spend-bar" title={`${pct}% of top group`}>
                       <div className="spend-bar-fill" style={{ width: pct + "%", background: g.color }} />

@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { api } from "@/lib/api/client";
 
 export interface PublicSettings {
+  google_analytics_measurement_id: string;
   app_name: string;
   app_description: string;
   logo_url: string;
@@ -26,6 +27,7 @@ export interface PublicSettings {
 }
 
 const DEFAULTS: PublicSettings = {
+  google_analytics_measurement_id: "",
   app_name: "SplitEasy",
   app_description: "",
   logo_url: "",

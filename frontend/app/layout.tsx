@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "SplitEasy", statusBarStyle: "default" },
 };
 
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
@@ -31,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PreferencesProvider>
             <WSProvider>
               <PublicSettingsProvider>
+                <GoogleAnalytics />
                 <AppProvider>
                   <ConditionalShell>{children}</ConditionalShell>
                 </AppProvider>

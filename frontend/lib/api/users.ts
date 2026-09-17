@@ -44,8 +44,9 @@ export const usersApi = {
     await this.setSettlementMode(id, mode);
   },
 
-  async updatePreferredCurrency(currency: string): Promise<void> {
-    await api.put("/users/user/me/preferred-currency", { currency });
+  async updatePreferredCurrency(currency: string): Promise<ApiUser> {
+    const response = await api.put<ApiUser>("/users/user/me/preferred-currency", { currency });
+    return response.data;
   },
 
   async setOnboardingCompleted(completed: boolean): Promise<void> {
