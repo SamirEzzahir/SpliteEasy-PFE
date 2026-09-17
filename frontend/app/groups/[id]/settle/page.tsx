@@ -59,7 +59,7 @@ export default function GroupSettlePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const { groups, loading: groupsLoading } = useApp();
+  const { groups, loading: groupsLoading, refetchSplitting } = useApp();
 
   const groupId = String(params.id);
   const group = groups.find((g) => g.id === groupId);
@@ -177,7 +177,7 @@ export default function GroupSettlePage() {
     try {
       await settleApi.acceptSettlement(id);
       toast.success("Settlement accepted!");
-      await refetch();
+      await Promise.all([refetch(), refetchSplitting()]);
     } catch {
       toast.error("Could not accept settlement");
     } finally {

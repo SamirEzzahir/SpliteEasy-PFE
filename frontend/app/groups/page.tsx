@@ -15,6 +15,7 @@ import ManageGroupMembersModal from "@/components/modals/ManageGroupMembersModal
 import { categoryById, personById } from "@/lib/data";
 import { fmt, fmtDate } from "@/lib/format";
 import { summarizeGroups, type GroupCurrencyTotal } from "@/lib/group-summary";
+import { groupBalanceLabel } from "@/lib/group-balance";
 import { groupsApi } from "@/lib/api/groups";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -62,15 +63,12 @@ const groupVisuals: Record<GroupType, { image: string; label: string }> = {
 const isBackendGroup = (group: Group) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(group.id);
 
-function balanceMeta(balance: number, currency?: string) {
-  if (balance > 0) return { className: "owed", label: "You are owed", value: fmt(balance, currency) };
-  if (balance < 0) return { className: "you-owe", label: "You owe", value: fmt(Math.abs(balance), currency) };
-  return { className: "settled", label: "Settled", value: "" };
-}
-
-function settlementPct(group: Group) {
-  const settled = Math.max(0, group.total - Math.abs(group.balance));
-  return group.total ? Math.round((settled / group.total) * 100) : 100;
+function balanceMeta(group: Group) {
+  const label = groupBalanceLabel(group);
+  if (group.balanceUnavailable) return { className: "unavailable", label, value: "" };
+  if (group.balance > 0) return { className: "owed", label, value: fmt(group.balance, group.currency) };
+  if (group.balance < 0) return { className: "you-owe", label, value: fmt(Math.abs(group.balance), group.currency) };
+  return { className: (group.outstanding ?? 0) > 0 ? "pending" : "settled", label, value: "" };
 }
 
 export default function GroupsPage() {
@@ -158,8 +156,10 @@ export default function GroupsPage() {
   ).slice(0, 4);
 
   const groupStats = useMemo(() => summarizeGroups(groups), [groups]);
+  const balancesUnavailable = groups.some(group => group.balanceUnavailable);
 
   function summaryValue(metric: "total" | "owed" | "owe") {
+    if (metric !== "total" && balancesUnavailable) return "Unavailable";
     const currencies = [...groupStats.currencies].sort((a, b) =>
       Number(b.currency === userCurrency) - Number(a.currency === userCurrency) || a.currency.localeCompare(b.currency));
     const nonzero = currencies.filter(row => row[metric] !== 0);
@@ -330,12 +330,12 @@ export default function GroupsPage() {
                 <strong>{fmt(group.total, group.currency)}</strong>
               </div>
               {!group.isDefaultPersonal && <><div>
-                <span>{group.balance < 0 ? "You owe" : "You're owed"}</span>
-                <strong className={group.balance < 0 ? "neg" : "pos"}>{fmt(Math.abs(group.balance), group.currency)}</strong>
+                <span>{group.balanceUnavailable || group.balance === 0 ? "Your balance" : group.balance < 0 ? "You owe" : "You are owed"}</span>
+                <strong className={group.balanceUnavailable ? "" : group.balance < 0 ? "neg" : "pos"}>{group.balanceUnavailable ? "Unavailable" : fmt(Math.abs(group.balance), group.currency)}</strong>
               </div>
               <div>
-                <span>Progress</span>
-                <strong>{settlementPct(group)}%</strong>
+                <span>Still to settle in group</span>
+                <strong>{group.balanceUnavailable ? "Unavailable" : fmt(group.outstanding ?? Math.abs(group.balance), group.currency)}</strong>
               </div></>}
             </div>
 
@@ -436,6 +436,10 @@ export default function GroupsPage() {
           )}
         </div>
 
+        {balancesUnavailable && <div role="status" className="card" style={{ padding: 14, marginBottom: 16 }}>
+          Some group balances could not be loaded. <button className="btn btn-secondary" disabled={loading} onClick={() => void refetchSplitting()}>Retry balances</button>
+        </div>}
+
         <div className="groups-toolbar">
           <div className="search groups-search">
             <Icon name="search" size={14} />
@@ -497,9 +501,8 @@ export default function GroupsPage() {
                   {pagedGroups.map((group) => {
                     const lastExpense = expenses.find((expense) => expense.groupId === group.id);
                     const isSel = selected ? group.id === selected.id : false;
-                    const balance = balanceMeta(group.balance, group.currency);
+                    const balance = balanceMeta(group);
                     const visual = groupVisuals[group.type] || groupVisuals.social;
-                    const pct = settlementPct(group);
                     return (
                       <article
                         key={group.id}
@@ -510,8 +513,8 @@ export default function GroupsPage() {
                           <span className="group-type-pill">{group.isDefaultPersonal ? "Personal" : visual.label}</span>
                           {isSel && <span className="group-selected-pill">Selected</span>}
                           {/* P2.8 — attention dot for groups with unsettled balance */}
-                          {group.balance !== 0 && (
-                            <span className="group-attention-dot" title={group.balance > 0 ? "You are owed money" : "You owe money"} />
+                          {!group.balanceUnavailable && (group.balance !== 0 || (group.outstanding ?? 0) > 0) && (
+                            <span className="group-attention-dot" title={balance.label} />
                           )}
                           <button
                             className="group-menu-btn"
@@ -608,12 +611,12 @@ export default function GroupsPage() {
                       <strong>{fmt(selected.total, selected.currency)}</strong>
                     </div>
                     {!selected.isDefaultPersonal && <><div>
-                      <span>{selected.balance < 0 ? "You owe" : "You're owed"}</span>
-                      <strong className={selected.balance < 0 ? "neg" : "pos"}>{fmt(Math.abs(selected.balance), selected.currency)}</strong>
+                      <span>{selected.balanceUnavailable || selected.balance === 0 ? "Your balance" : selected.balance < 0 ? "You owe" : "You are owed"}</span>
+                      <strong className={selected.balanceUnavailable ? "" : selected.balance < 0 ? "neg" : "pos"}>{selected.balanceUnavailable ? "Unavailable" : fmt(Math.abs(selected.balance), selected.currency)}</strong>
                     </div>
                     <div>
-                      <span>Progress</span>
-                      <strong>{settlementPct(selected)}%</strong>
+                      <span>Still to settle in group</span>
+                      <strong>{selected.balanceUnavailable ? "Unavailable" : fmt(selected.outstanding ?? Math.abs(selected.balance), selected.currency)}</strong>
                     </div></>}
                   </div>
 

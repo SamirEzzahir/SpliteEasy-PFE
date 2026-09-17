@@ -19,6 +19,7 @@ import { INITIAL_JARS, INITIAL_TX, INITIAL_INCOME } from "./jars";
 import { EXPENSES, GROUPS, FRIENDS_INIT, personById } from "./data";
 import { fmt, todayStr } from "./format";
 import { expenseTimestamp } from "./expense-date";
+import { groupBalanceSnapshot } from "./group-balance";
 import { useAuth } from "./auth/AuthContext";
 import { economeApi } from "./api/econome";
 import { groupsApi } from "./api/groups";
@@ -175,10 +176,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           settleApi.globalBalances().catch(() => []),
         ]);
 
-      // Fetch members for all groups in parallel (needed for memberIds).
-      const membersPerGroup = await Promise.all(
-        rawGroups.map((g) => groupsApi.members(g.id).catch(() => [])),
-      );
+      // Use settlement balances, which include accepted repayments and the
+      // account's global-settlement mode. A failed request is not a zero balance.
+      const [membersPerGroup, balancesPerGroup] = await Promise.all([
+        Promise.all(rawGroups.map((g) => groupsApi.members(g.id).catch(() => []))),
+        Promise.all(rawGroups.map((g) => g.is_default_personal
+          ? Promise.resolve([])
+          : settleApi.groupBalances(g.id).catch(() => null))),
+      ]);
 
       // Register all users we've seen so personById() resolves correctly.
       for (const members of membersPerGroup) {
@@ -212,7 +217,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const mappedGroups: Group[] = rawGroups.map((g, i) => {
         const memberIds = membersPerGroup[i].map((m) => String(m.user_id));
-        return mapGroup(g, { memberIds, total: totalByGroup.get(g.id) ?? 0, balance: 0 });
+        return mapGroup(g, {
+          memberIds, total: totalByGroup.get(g.id) ?? 0,
+          ...groupBalanceSnapshot(balancesPerGroup[i], user.id),
+        });
       });
       setGroups(mappedGroups);
 

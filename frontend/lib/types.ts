@@ -64,6 +64,9 @@ export interface Group {
   memberIds: string[];
   total: number;
   balance: number;
+  balanceUnavailable?: boolean;
+  /** Remaining net transfers across all group members, in the group currency. */
+  outstanding?: number;
   updated: string;
   _rawDate?: string;
   ownerUsername?: string;

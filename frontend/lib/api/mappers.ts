@@ -88,6 +88,8 @@ export interface GroupExtras {
   memberIds: string[];
   total: number;
   balance: number;
+  balanceUnavailable?: boolean;
+  outstanding?: number;
 }
 
 function formatRelativeDate(iso?: string): string {
@@ -117,6 +119,8 @@ export function mapGroup(g: ApiGroup, extras: GroupExtras): Group {
     memberIds: extras.memberIds,
     total: extras.total || g.total_amount || 0,
     balance: extras.balance,
+    balanceUnavailable: extras.balanceUnavailable,
+    outstanding: extras.outstanding,
     updated: formatRelativeDate(g.created_at),
     _rawDate: g.created_at,
     ownerUsername: g.owner_username ?? undefined,

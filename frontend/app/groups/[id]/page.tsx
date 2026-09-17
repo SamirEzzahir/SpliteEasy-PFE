@@ -234,7 +234,7 @@ export default function GroupDetailPage() {
     try {
       await settleApi.acceptSettlement(id);
       toast.success("Settlement accepted!");
-      await fetchSideData();
+      await Promise.all([fetchSideData(), refetchSplitting()]);
     } catch {
       toast.error("Could not accept settlement");
     } finally {
@@ -899,7 +899,7 @@ export default function GroupDetailPage() {
             await settleApi.acceptSettlement(id);
             toast.success("Settlement accepted!");
             setViewSettlement(null);
-            await fetchSideData();
+            await Promise.all([fetchSideData(), refetchSplitting()]);
           }}
           onReject={async (id) => {
             const result = await Swal.fire({
